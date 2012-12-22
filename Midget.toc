@@ -1,0 +1,14 @@
+## Interface: 50001
+## Author: ckaotik
+## Title: Midget
+## Version: dev
+## OptionalDeps: Cork, Blizzard_TradeSkillUI, Blizzard_AchievementUI, TipTac, TipTacTalents
+## RequiredDeps:
+## SavedVariables: MidgetDB
+
+core.lua
+#modules\gemparser.lua
+modules\learner.lua
+modules\procparser.lua
+modules\tracker.lua
+modules\tradeskill.lua
