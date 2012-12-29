@@ -9,6 +9,7 @@
 core.lua
 #modules\gemparser.lua
 modules\learner.lua
+modules\spellbook.lua
 modules\procparser.lua
 modules\tracker.lua
 modules\tradeskill.lua
