@@ -29,41 +29,89 @@ local function AddTradeSkillLevels(id)
 	end
 end
 
+local function AddTradeSkillInfoIcon(line)
+	local button = CreateFrame("Button", "$parentInfoIcon", line)
+	button:SetSize(12, 12)
+	button:SetNormalTexture("Interface\\COMMON\\Indicator-Gray")
+	button:SetPoint("TOPLEFT", 0, -2)
+	button:Hide()
+
+	button:SetScript("OnEnter", ns.ShowTooltip)
+	button:SetScript("OnLeave", ns.HideTooltip)
+
+	line.infoIcon = button
+	return button
+end
+
 local function AddTradeSkillReagentCosts()
 	if not MidgetDB.tradeskillCosts then return end
 
-	local skillIndex, reagentIndex, reagent, amount, name
+	local skillIndex, reagentIndex, reagent, amount, name, lineIndex, skillType
+	local craftedItem, craftedValue, infoIcon, difference
 	local reagentPrice, craftPrice
 
 	local hasFilterBar = TradeSkillFilterBar:IsShown()
 	local displayedSkills = hasFilterBar and (TRADE_SKILLS_DISPLAYED - 1) or TRADE_SKILLS_DISPLAYED
 	local offset = FauxScrollFrame_GetOffset(TradeSkillListScrollFrame)
-	for line = 1, displayedSkills do -- GetNumTradeSkills()
+	for line = 1, displayedSkills do
 		skillIndex = line + offset
-		reagentIndex = 1
-		craftPrice = 0
+		lineIndex = line + (hasFilterBar and 1 or 0)
 
-		while GetTradeSkillReagentItemLink(skillIndex, reagentIndex) do
-			_, _, amount = GetTradeSkillReagentInfo(skillIndex, reagentIndex)
-			reagent = GetTradeSkillReagentItemLink(skillIndex, reagentIndex)
-			reagent = ns.GetItemID(reagent)
+		_, skillType = GetTradeSkillInfo(skillIndex)
+		infoIcon = _G["TradeSkillSkill"..lineIndex.."InfoIcon"]
+		if not skillType or (skillType ~= "optimal" and skillType ~= "medium" and skillType ~= "easy") then
+			if infoIcon then infoIcon:Hide() end
+		else
+			reagentIndex, craftPrice = 1, 0
+			infoIcon = infoIcon or AddTradeSkillInfoIcon(_G["TradeSkillSkill"..lineIndex])
 
-			if LPT and LPT:ItemInSet(reagent, "Tradeskill.Mat.BySource.Vendor") then
-				reagentPrice = 4 * (select(11, GetItemInfo(reagent)) or 0)
+			while GetTradeSkillReagentItemLink(skillIndex, reagentIndex) do
+				_, _, amount = GetTradeSkillReagentInfo(skillIndex, reagentIndex)
+				reagent = GetTradeSkillReagentItemLink(skillIndex, reagentIndex)
+				reagent = ns.GetItemID(reagent)
+
+				if reagent then
+					if LPT and LPT:ItemInSet(reagent, "Tradeskill.Mat.BySource.Vendor") then
+						reagentPrice = 4 * (select(11, GetItemInfo(reagent)) or 0)
+					else
+						reagentPrice = GetAuctionBuyout(reagent) or 0 -- [TODO] what about BoP things?
+					end
+					reagentPrice = reagentPrice * amount
+					craftPrice = craftPrice + reagentPrice
+				end
+
+				reagentIndex = reagentIndex + 1
+			end
+
+			craftedItem = GetTradeSkillItemLink(skillIndex)
+			craftedValue = craftedItem and GetAuctionBuyout(craftedItem) or 0
+
+			if craftPrice > 0 and craftedValue > 0 then
+				infoIcon.tiptext = COSTS_LABEL.." "..GetCoinTextureString(craftPrice) .. "\n"
+					..SELL_PRICE..": "..GetCoinTextureString(craftedValue)
+
+				difference = craftedValue - craftPrice
+				if difference > 0 then
+					infoIcon.tiptext = infoIcon.tiptext .. "\n"..string.format(LOOT_ROLL_YOU_WON, GetCoinTextureString(difference))
+					if craftPrice > 0 and difference / craftPrice > 0.2 and difference > 500000 then
+						infoIcon:SetNormalTexture("Interface\\COMMON\\Indicator-Green")
+					else
+						infoIcon:SetNormalTexture("Interface\\COMMON\\Indicator-Yellow")
+					end
+				else
+					infoIcon:SetNormalTexture("Interface\\COMMON\\Indicator-Red")
+				end
+				infoIcon:Show()
 			else
-				reagentPrice = GetAuctionBuyout(reagent)
+				infoIcon:Hide()
 			end
-			reagentPrice = (reagentPrice or 0) * amount
-			craftPrice = craftPrice + reagentPrice
 
-			reagentIndex = reagentIndex + 1
-		end
-
-		if craftPrice > 0 then
-			name = _G["TradeSkillSkill"..(line+(hasFilterBar and 1 or 0))]:GetText()
-			if name then
-				_G["TradeSkillSkill"..(line+(hasFilterBar and 1 or 0))]:SetText(name .. " "..GetCoinTextureString(floor(craftPrice/1000)*1000))
-			end
+			--[[ if craftPrice > 0 then
+				name = _G["TradeSkillSkill"..lineIndex]:GetText()
+				if name then
+					_G["TradeSkillSkill"..lineIndex]:SetText(name .. " "..GetCoinTextureString(floor(craftPrice/1000)*1000))
+				end
+			end --]]
 		end
 	end
 end

@@ -83,7 +83,7 @@ function ns.Debug(...)
   end
 end
 
-function ns:ShowTooltip(self)
+function ns.ShowTooltip(self)
 	if self.tiptext then
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 		GameTooltip:SetText(self.tiptext, nil, nil, nil, nil, true)

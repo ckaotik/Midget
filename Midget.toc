@@ -2,14 +2,22 @@
 ## Author: ckaotik
 ## Title: Midget
 ## Version: dev
-## OptionalDeps: Cork, Blizzard_TradeSkillUI, Blizzard_AchievementUI, TipTac, TipTacTalents
-## RequiredDeps:
+## OptionalDeps: Cork, Blizzard_TradeSkillUI, Blizzard_AchievementUI, TipTac
+## Dependencies: Blizzard_EncounterJournal
 ## SavedVariables: MidgetDB
 
+# libraries
+libs\LibButtonFacade-1.0\LibButtonFacade-1.0.lua
+libs\LibItemSearch-1.0\LibItemSearch-1.0.lua
+
 core.lua
-#modules\gemparser.lua
+
+# modules
+modules\journal.lua
 modules\learner.lua
 modules\spellbook.lua
 modules\procparser.lua
 modules\tracker.lua
 modules\tradeskill.lua
+# modules\gemparser.lua
+# modules\stats.lua

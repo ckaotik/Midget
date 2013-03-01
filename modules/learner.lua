@@ -68,10 +68,10 @@ end, "learnall")
 -- ================================================
 -- SpamMerger for respec learned/unlearned spells
 -- ================================================
-local UNLEARNED = string.gsub(ERR_SPELL_UNLEARNED_S, "%%s", "(.-)")
-local LEARNED = string.gsub(ERR_LEARN_ABILITY_S, "%%s", "(.-)")
-local LEARNED_SPELL = string.gsub(ERR_LEARN_SPELL_S, "%%s", "(.-)")
-local LEARNED_PASSIVE = string.gsub(ERR_LEARN_PASSIVE_S, "%%s", "(.-)")
+local UNLEARNED = string.gsub(ERR_SPELL_UNLEARNED_S, "%%s", "(.+)")
+local LEARNED = string.gsub(ERR_LEARN_ABILITY_S, "%%s", "(.+)")
+local LEARNED_SPELL = string.gsub(ERR_LEARN_SPELL_S, "%%s", "(.+)")
+local LEARNED_PASSIVE = string.gsub(ERR_LEARN_PASSIVE_S, "%%s", "(.+)")
 local respecUnlearned, respecLearned = {}, {}
 
 local function RespecSpamChatFilter(chatFrame, event, message, ...)
@@ -94,8 +94,8 @@ local function SortSpellTable(a, b)
 		nameB = GetSpellInfo(b)
 
 	else
-		nameA = a:match("%[(.-)%]")
-		nameB = b:match("%[(.-)%]")
+		nameA = a:match("%[(.-)%]") or a
+		nameB = b:match("%[(.-)%]") or b
 	end
 	passiveA = IsPassiveSpell(nameA) or 0
 	passiveB = IsPassiveSpell(nameB) or 0
@@ -147,15 +147,26 @@ ns.RegisterEvent("ADDON_LOADED", function(frame, event, arg1)
 
 		ns.RegisterEvent("LEARNED_SPELL_IN_TAB", function(frame, event, arg1)
 			table.insert(respecLearned, arg1)
-		end, "respecLearned")
+		end, "respecLearned", true)
 
 		ns.RegisterEvent("PLAYER_SPECIALIZATION_CHANGED", function()
 			PrintRespecChanges()
 			ChatFrame_RemoveMessageEventFilter("CHAT_MSG_SYSTEM", RespecSpamChatFilter)
 
+			ns.UnregisterEvent("UNIT_SPELLCAST_INTERRUPTED", "respecCancelled")
 			ns.UnregisterEvent("PLAYER_SPECIALIZATION_CHANGED", "respec")
 			ns.UnregisterEvent("LEARNED_SPELL_IN_TAB", "respecLearned")
 		end, "respec")
+
+		ns.RegisterEvent("UNIT_SPELLCAST_INTERRUPTED", function(...)
+			local spell = select(5, ...)
+			if spell ~= 63645 and spell ~= 63644 then return end
+			ChatFrame_RemoveMessageEventFilter("CHAT_MSG_SYSTEM", RespecSpamChatFilter)
+
+			ns.UnregisterEvent("UNIT_SPELLCAST_INTERRUPTED", "respecCancelled")
+			ns.UnregisterEvent("PLAYER_SPECIALIZATION_CHANGED", "respec")
+			ns.UnregisterEvent("LEARNED_SPELL_IN_TAB", "respecLearned")
+		end, "respecCancelled")
 	end)
 
 	ns.UnregisterEvent("ADDON_LOADED", "respecInit")
