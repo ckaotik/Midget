@@ -36,6 +36,9 @@ if not MidgetDB then
 		scanGems = false,
 	}
 end
+if not MidgetLocalDB then
+	MidgetLocalDB = {}
+end
 
 local frame, eventHooks = CreateFrame("Frame", "MidgetEventHandler"), {}
 local function eventHandler(frame, event, arg1, ...)

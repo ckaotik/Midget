@@ -5,6 +5,7 @@
 ## OptionalDeps: Cork, Blizzard_TradeSkillUI, Blizzard_AchievementUI, TipTac
 ## Dependencies: Blizzard_EncounterJournal
 ## SavedVariables: MidgetDB
+## SavedVariablesPerCharacter: MidgetLocalDB
 
 # libraries
 libs\LibButtonFacade-1.0\LibButtonFacade-1.0.lua

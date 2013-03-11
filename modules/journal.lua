@@ -66,41 +66,26 @@ local function ArrowClicked(self, button)
 	currentInstanceID = EJ_GetInstanceByIndex(index, isRaid)
 	EncounterJournal_DisplayInstance(currentInstanceID)
 end
-local buttonLeft, buttonRight
+
 local function CreateArrow(direction, ...)
 	local arrow = CreateFrame("Button", nil, EncounterJournal.encounter)
-	arrow:SetHighlightTexture("Interface\\Addons\\Clash\\Media\\ArrowGlow")
-	arrow:SetNormalTexture("Interface\\Addons\\Clash\\Media\\Arrow")
+	arrow:SetScript("OnClick", ArrowClicked)
+
+	arrow:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight")
+	arrow:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-"..(direction == 1 and "Next" or "Prev").."Page-Up")
+	arrow:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-"..(direction == 1 and "Next" or "Prev").."Page-Down")
 	arrow:SetPoint(...)
 
-	arrow:SetHitRectInsets(-5, -5, -5, -5)
-	arrow:SetSize(18, 18)
+	arrow:SetSize(20, 20)
 	arrow.direction = direction
-
-	local normal = arrow:GetNormalTexture()
-	normal:SetVertexColor(0.8, 0.8, 0.8)
-	normal:SetRotation(1.57 * direction)
-
-	local light = arrow:GetHighlightTexture()
-	light:SetRotation(1.57 * direction)
-	light:SetBlendMode("ADD")
-
-	arrow:SetScript("OnClick", ArrowClicked)
-	arrow:SetScript("OnMouseDown", function()
-		normal:SetVertexColor(0.5, 0.5, 0.5)
-		light:SetAlpha(0)
-	end)
-	arrow:SetScript("OnMouseUp", function()
-		normal:SetVertexColor(.8, .8, .8)
-		light:SetAlpha(1)
-	end)
 
 	return arrow
 end
+local buttonLeft, buttonRight
 EncounterJournal:HookScript("OnShow", function()
 	if not buttonLeft then
-		buttonLeft = CreateArrow(-1, "TOPLEFT", "$parent", "TOPLEFT", 10, -10)
-		buttonRight = CreateArrow(1, "TOPLEFT", buttonLeft, "TOPRIGHT", 10, 0)
+		buttonLeft = CreateArrow(-1, "TOPLEFT", "$parent", "TOPLEFT", 20, -10)
+		buttonRight = CreateArrow(1, "TOPLEFT", buttonLeft, "TOPRIGHT", 0, 0)
 	end
 end)
 
@@ -128,6 +113,50 @@ local function MoveToRight()
 	scrollBar:SetPoint("TOPRIGHT", 0, -17)
 end
 
+local function ManageLootRoles(self, btn)
+	local bossButton = self:GetParent()
+	if not MidgetLocalDB.LFRLootRoles then MidgetLocalDB.LFRLootRoles = {} end
+
+	if btn == 'RightButton' then
+		MidgetLocalDB.LFRLootRoles[bossButton.encounterID] = nil
+	else
+		local role = MidgetLocalDB.LFRLootRoles[bossButton.encounterID]
+		if not role or role == "DAMAGER" then role = "TANK"
+		elseif role == "TANK" then role = "HEALER"
+		elseif role == "HEALER" then role = "DAMAGER"
+		end
+		MidgetLocalDB.LFRLootRoles[bossButton.encounterID] = role
+	end
+end
+local function UpdateBossLootRoles(bossButton)
+	if not bossButton then return end
+	if not bossButton.roleButton then
+		local button = CreateFrame("Button", nil, bossButton)
+			  button:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight")
+			  button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+			  button:SetScript("OnClick", function(self, btn)
+			  	ManageLootRoles(self, btn)
+			  	UpdateBossLootRoles(self:GetParent())
+			  end)
+			  button:SetPoint("TOPRIGHT", -4, -6)
+			  button:SetSize(16, 16)
+		bossButton.roleButton = button
+	end
+	local roleButton = bossButton.roleButton
+
+	local lootRole = MidgetLocalDB.LFRLootRoles and MidgetLocalDB.LFRLootRoles[bossButton.encounterID] or nil
+	if lootRole then
+		-- roleButton:SetNormalTexture("Interface\\GroupFrame\\UI-Group-"..lootRole.."Icon")
+		roleButton:SetNormalTexture("Interface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES")
+      	roleButton:GetNormalTexture():SetTexCoord(GetTexCoordsForRoleSmallCircle(lootRole))
+		roleButton:SetAlpha(1)
+	else
+		roleButton:SetNormalTexture("Interface\\Vehicles\\UI-Vehicles-Raid-Icon")
+		roleButton:GetNormalTexture():SetTexCoord(0, 1, 0, 1)
+		roleButton:SetAlpha(0.5)
+	end
+end
+
 local selectedEncounter, selectedDifficulty = nil, nil
 local function UpdateBossButtons()
 	if EncounterJournal.encounter.info.tab ~= 2 then return end
@@ -144,6 +173,7 @@ local function UpdateBossButtons()
 	local name, description, bossID, _, link = EJ_GetEncounterInfoByIndex(bossIndex)
 	while bossID do -- buttons should already exist from Blizzard's code!
 		bossButton = _G["EncounterJournalBossButton"..bossIndex]
+		UpdateBossLootRoles(bossButton)
 		if bossButton.encounterID == EncounterJournal.encounterID then
 			selectedEncounter = bossButton.encounterID
 			selectedDifficulty = EJ_GetDifficulty()
