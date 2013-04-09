@@ -296,6 +296,11 @@ end
 ns.RegisterEvent("ADDON_LOADED", function(frame, event, arg1)
 	if arg1 ~= addonName then return end
 
+	local scanButton = CreateFrame("Button", "$parentScanButton", SpellBookFrame, "UIPanelButtonTemplate");
+	scanButton:SetText("Scan")
+	scanButton:SetPoint("LEFT", "$parentTutorialButton", "RIGHT", -20, 2)
+	scanButton:SetScript("OnClick", ns.ScanSpells)
+
 	local searchbox = CreateFrame("EditBox", "$parentSearchBox", SpellBookFrame, "SearchBoxTemplate")
 	searchbox:SetPoint("TOPRIGHT", SpellBookFrame, "TOPRIGHT", -20, -1)
 	searchbox:SetSize(120, 20)
@@ -324,12 +329,16 @@ ns.RegisterEvent("ADDON_LOADED", function(frame, event, arg1)
 		ns.SearchInSpellBook()
 	end
 
-	hooksecurefunc("SpellBookFrame_Update", ns.SearchInSpellBook)
-
-	local scanButton = CreateFrame("Button", "$parentScanButton", SpellBookFrame, "UIPanelButtonTemplate");
-	scanButton:SetText("Scan")
-	scanButton:SetPoint("LEFT", "$parentTutorialButton", "RIGHT", -20, 2)
-	scanButton:SetScript("OnClick", ns.ScanSpells)
+	hooksecurefunc("SpellBookFrame_Update", function()
+		if SpellBookFrame.bookType == BOOKTYPE_SPELL then
+			searchbox:Show()
+			scanButton:Show()
+			ns.SearchInSpellBook()
+		else
+			searchbox:Hide()
+			scanButton:Hide()
+		end
+	end)
 
 	ns.UnregisterEvent("ADDON_LOADED", "searchSpellBook")
 end, "searchSpellBook")
