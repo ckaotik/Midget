@@ -24,6 +24,7 @@ if not MidgetDB then
 		menuBarHeight = true,
 
 		autoCheckSpells = true,
+		autocompleteAlts = true,
 
 		undressButton = true,
 		modelLighting = true,
@@ -263,29 +264,86 @@ local function AddTipTacStyles()
 end
 
 -- ================================================
+-- Autocomplete character names
+-- ================================================
+local function AddAltCharactersToAutoComplete()
+	if not MidgetDB.autocompleteAlts then return end
+
+	local characters = {}
+	local myName = UnitName('player')
+
+	if DataStore and DataStore.GetCharacters then
+		for characterName, characterKey in pairs(DataStore:GetCharacters()) do
+			tinsert(characters, characterName)
+		end
+	else
+		-- TODO
+	end
+
+	local lastQuery
+	hooksecurefunc('AutoComplete_Update', function(parent, text, cursorPosition)
+		if parent == SendMailNameEditBox and cursorPosition <= strlen(text) then
+			-- possible flags can be found here: http://wow.go-hero.net/framexml/16650/AutoComplete.lua
+			-- /spew GetAutoCompleteResults('t', AUTOCOMPLETE_FLAG_ALL, AUTOCOMPLETE_FLAG_NONE, AUTOCOMPLETE_MAX_BUTTONS+1, 0)
+			local include, exclude = parent.autoCompleteParams.include, parent.autoCompleteParams.exclude
+			local newResults = { GetAutoCompleteResults(text, include, exclude, AUTOCOMPLETE_MAX_BUTTONS+1, cursorPosition) }
+			for _, character in pairs(characters) do
+				if character ~= myName and find(lower(character), '^'..lower(text))
+					and not tContains(newResults, character) then
+					table.insert(newResults, character)
+				end
+			end
+			sort(newResults)
+			AutoComplete_UpdateResults(AutoCompleteBox, unpack(newResults))
+
+			-- also write out the first match
+			local currentText = parent:GetText()
+			if newResults[1] and currentText ~= lastQuery then
+				lastQuery = currentText
+				local newText = string.gsub(currentText, parent.autoCompleteRegex or AUTOCOMPLETE_SIMPLE_REGEX,
+					string.format(parent.autoCompleteFormatRegex or AUTOCOMPLETE_SIMPLE_FORMAT_REGEX, newResults[1],
+					string.match(currentText, parent.autoCompleteRegex or AUTOCOMPLETE_SIMPLE_REGEX)),
+					1)
+				parent:SetText(newText)
+				parent:HighlightText(strlen(currentText), strlen(newText))
+				parent:SetCursorPosition(strlen(currentText))
+			end
+		end
+	end)
+end
+
+-- ================================================
 -- Undress button on models!
 -- ================================================
 function ns.AddUndressButton(frame)
-	local undress = CreateFrame("Button", frame:GetName() .. "ControlFrameUndressButton", frame.controlFrame, "ModelControlButtonTemplate")
-	undress:SetPoint("LEFT", _G[frame:GetName() .. "ControlFrameRotateResetButton"], "RIGHT", 0, 0)
-	frame.controlFrame:SetWidth(frame.controlFrame:GetWidth() + undress:GetWidth())
-
-	undress.tooltip = "Undress";
-	undress.tooltipText = "Click to completely undress this character!";
-
-	undress:RegisterForClicks("AnyUp")
-	undress:SetScript("OnClick", function(self)
+	local undressButton = CreateFrame("Button", "$parentUndressButton", frame.controlFrame, "ModelControlButtonTemplate")
+	undressButton:SetPoint("LEFT", "$parentRotateResetButton", "RIGHT", 0, 0)
+	undressButton:RegisterForClicks("AnyUp")
+	undressButton:SetScript("OnClick", function(self)
 		self:GetParent():GetParent():Undress()
 		PlaySound("igInventoryRotateCharacter");
 	end)
+
+	undressButton.tooltip = "Undress"
+	undressButton.tooltipText = "Click to completely undress this character!"
+
+	frame.controlFrame:SetWidth(frame.controlFrame:GetWidth() + undressButton:GetWidth())
+	frame.controlFrame.undressButton = undressButton
 end
+
 local function AddUndressButtons()
 	if not MidgetDB.undressButton then return end
+	-- these models are create before we can hook
 	for _, name in pairs({"DressUpModel", "SideDressUpModel"}) do
 		if not _G[name.."ControlFrameUndressButton"] then
 			ns.AddUndressButton(_G[name])
 		end
 	end
+	hooksecurefunc('Model_OnLoad', function(self)
+		if self.controlFrame and not self.controlFrame.undressButton then
+			ns.AddUndressButton(self)
+		end
+	end)
 end
 local function FixModelLighting()
 	if not MidgetDB.modelLighting then return end
@@ -297,8 +355,6 @@ local function FixModelLighting()
 			if name == "SideDressUpModel" then
 				frame:SetModelScale(2)
 				frame:SetPosition(0, 0.1, -0.5)
-			elseif name == "DressUpModel" then
-				-- frame:SetModelScale(2)
 			end
 		end
 	end
@@ -319,6 +375,7 @@ ns.RegisterEvent("ADDON_LOADED", function(frame, event, arg1)
 		OutgoingWhisperColor()
 		InterfaceOptionsScrolling()
 		AddMoreSharedMedia()
+		AddAltCharactersToAutoComplete()
 
 		SLASH_ROLECHECK1 = "/rolecheck"
 		SlashCmdList.ROLECHECK = InitiateRolePoll
