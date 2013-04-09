@@ -6,6 +6,14 @@ local addonName, ns, _ = ...
 -- ================================================
 -- Train All button for professions
 -- ================================================
+local function LearnAllSkills()
+	for i=1, GetNumTrainerServices() do
+		if select(3, GetTrainerServiceInfo(i)) == "available" then
+			BuyTrainerService(i)
+		end
+	end
+end
+
 local trainAllCost = 0
 StaticPopupDialogs["MIDGET_TRAINALL"] = {
 	text = COSTS_LABEL,
@@ -16,11 +24,7 @@ StaticPopupDialogs["MIDGET_TRAINALL"] = {
 		MoneyFrame_Update(self.moneyFrame, trainAllCost)
 	end,
 	OnAccept = function(self)
-		for i=1, GetNumTrainerServices() do
-			if select(3, GetTrainerServiceInfo(i)) == "available" then
-				BuyTrainerService(i)
-			end
-		end
+		LearnAllSkills()
 	end,
 	EditBoxOnEscapePressed = function(self)
 		self:GetParent():GetParent().button2:Click()
@@ -39,9 +43,14 @@ local function AddTrainAllButton()
 	if not button then
 		button = CreateFrame("Button", "MidgetTrainAllButton", ClassTrainerFrame, "MagicButtonTemplate")
 		button:SetPoint("TOPRIGHT", ClassTrainerTrainButton, "TOPLEFT")
-		button:SetText("Train all")
+		button:SetWidth(100)
+		button:SetFormattedText(LEARN_SKILL_TEMPLATE, ALL)
 		button:SetScript("OnClick", function(self, btn)
-			StaticPopup_Show("MIDGET_TRAINALL")
+			if IsShiftKeyDown() then
+				LearnAllSkills()
+			else
+				StaticPopup_Show("MIDGET_TRAINALL")
+			end
 		end)
 	end
 
@@ -60,10 +69,13 @@ local function AddTrainAllButton()
 	end
 end
 
+ns.RegisterEvent("TRAINER_SHOW", function()
+	AddTrainAllButton()
+end, "learnallshow")
 ns.RegisterEvent("TRAINER_UPDATE", function()
 	AddTrainAllButton()
 	-- ns.UnregisterEvent("TRAINER_UPDATE", "learnall")
-end, "learnall")
+end, "learnallupdate")
 
 -- ================================================
 -- SpamMerger for respec learned/unlearned spells
