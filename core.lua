@@ -1,8 +1,8 @@
 local addonName, ns, _ = ...
 Midget = ns
 
--- GLOBALS: _G, LibStub, Midget, MidgetDB, TipTac, UIParent, CorkFrame, MainMenuBar, InterfaceOptionsFrameAddOnsList, SLASH_ROLECHECK1, DEFAULT_CHAT_FRAME, CHAT_CONFIG_CHAT_LEFT, WHISPER
--- GLOBALS: GameTooltip, PlaySound, GetScreenHeight, ToggleChatMessageGroup, PetBattleFrame, GetLocale, IsListeningForMessageType, CreateFrame, IsAddOnLoaded, ScrollFrameTemplate_OnMouseWheel, hooksecurefunc
+-- GLOBALS: _G, LibStub, Midget, MidgetDB, MidgetLocalDB, TipTac, UIParent, CorkFrame, MainMenuBar, InterfaceOptionsFrameAddOnsList, SLASH_ROLECHECK1, DEFAULT_CHAT_FRAME, CHAT_CONFIG_CHAT_LEFT, WHISPER, SlashCmdList
+-- GLOBALS: GameTooltip, PlaySound, GetScreenHeight, ToggleChatMessageGroup, PetBattleFrame, GetLocale, IsListeningForMessageType, CreateFrame, IsAddOnLoaded, ScrollFrameTemplate_OnMouseWheel, hooksecurefunc, InitiateRolePoll
 local split, find, gmatch, lower, join, gsub, length, tonumber, tostringall, format = string.split, string.find, string.gmatch, string.lower, string.join, string.gsub, string.len, tonumber, tostringall, string.format
 local abs = math.abs
 local assert, type, pairs, ipairs, select = assert, type, pairs, ipairs, select
@@ -264,55 +264,6 @@ local function AddTipTacStyles()
 end
 
 -- ================================================
--- Autocomplete character names
--- ================================================
-local function AddAltCharactersToAutoComplete()
-	if not MidgetDB.autocompleteAlts then return end
-
-	local characters = {}
-	local myName = UnitName('player')
-
-	if DataStore and DataStore.GetCharacters then
-		for characterName, characterKey in pairs(DataStore:GetCharacters()) do
-			tinsert(characters, characterName)
-		end
-	else
-		-- TODO
-	end
-
-	local lastQuery
-	hooksecurefunc('AutoComplete_Update', function(parent, text, cursorPosition)
-		if parent == SendMailNameEditBox and cursorPosition <= strlen(text) then
-			-- possible flags can be found here: http://wow.go-hero.net/framexml/16650/AutoComplete.lua
-			-- /spew GetAutoCompleteResults('t', AUTOCOMPLETE_FLAG_ALL, AUTOCOMPLETE_FLAG_NONE, AUTOCOMPLETE_MAX_BUTTONS+1, 0)
-			local include, exclude = parent.autoCompleteParams.include, parent.autoCompleteParams.exclude
-			local newResults = { GetAutoCompleteResults(text, include, exclude, AUTOCOMPLETE_MAX_BUTTONS+1, cursorPosition) }
-			for _, character in pairs(characters) do
-				if character ~= myName and find(lower(character), '^'..lower(text))
-					and not tContains(newResults, character) then
-					table.insert(newResults, character)
-				end
-			end
-			sort(newResults)
-			AutoComplete_UpdateResults(AutoCompleteBox, unpack(newResults))
-
-			-- also write out the first match
-			local currentText = parent:GetText()
-			if newResults[1] and currentText ~= lastQuery then
-				lastQuery = currentText
-				local newText = string.gsub(currentText, parent.autoCompleteRegex or AUTOCOMPLETE_SIMPLE_REGEX,
-					string.format(parent.autoCompleteFormatRegex or AUTOCOMPLETE_SIMPLE_FORMAT_REGEX, newResults[1],
-					string.match(currentText, parent.autoCompleteRegex or AUTOCOMPLETE_SIMPLE_REGEX)),
-					1)
-				parent:SetText(newText)
-				parent:HighlightText(strlen(currentText), strlen(newText))
-				parent:SetCursorPosition(strlen(currentText))
-			end
-		end
-	end)
-end
-
--- ================================================
 -- Undress button on models!
 -- ================================================
 function ns.AddUndressButton(frame)
@@ -375,7 +326,6 @@ ns.RegisterEvent("ADDON_LOADED", function(frame, event, arg1)
 		OutgoingWhisperColor()
 		InterfaceOptionsScrolling()
 		AddMoreSharedMedia()
-		AddAltCharactersToAutoComplete()
 
 		SLASH_ROLECHECK1 = "/rolecheck"
 		SlashCmdList.ROLECHECK = InitiateRolePoll
