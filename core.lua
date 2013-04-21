@@ -224,6 +224,34 @@ local function ShortenLFRNames()
 end
 
 -- ================================================
+-- Chat link icons
+-- ================================================
+local function AddLootIcons(self, event, message, ...)
+	local function Icon(link)
+		local texture = GetItemIcon(link)
+		return "\124T" .. texture .. ":" .. 12 .. "\124t" .. link
+	end
+	message = message:gsub("(\124c%x+\124Hitem:.-\124h\124r)", Icon)
+	return false, message, ...
+end
+
+-- ================================================
+-- add show in journal entry to unit dropdowns
+-- ================================================
+local function CustomizeDropDowns()
+	local dropDown = UIDROPDOWNMENU_INIT_MENU
+	local which = dropDown.which
+	if which then
+		for index, value in ipairs(UnitPopupMenus[which]) do
+			if value == "PET_SHOW_IN_JOURNAL" and not (dropDown.unit and UnitIsBattlePet(dropDown.unit)) then
+				UnitPopupShown[1][index] = 0
+				break
+			end
+		end
+	end
+end
+
+-- ================================================
 --  move pet battle frame down a little
 -- ================================================
 local function MovePetBatteFrame(offset)
@@ -329,6 +357,12 @@ ns.RegisterEvent("ADDON_LOADED", function(frame, event, arg1)
 
 		SLASH_ROLECHECK1 = "/rolecheck"
 		SlashCmdList.ROLECHECK = InitiateRolePoll
+
+		ChatFrame_AddMessageEventFilter("CHAT_MSG_LOOT", AddLootIcons)
+
+		-- add "Show in pet journal" dropdown entry
+		hooksecurefunc("UnitPopup_HideButtons", CustomizeDropDowns)
+		table.insert(UnitPopupMenus["TARGET"], #UnitPopupMenus["TARGET"], "PET_SHOW_IN_JOURNAL")
 
 		-- for some obscure reason, this is not functional?
 		-- SLASH_RELOAD = "/rl"
