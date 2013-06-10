@@ -115,10 +115,14 @@ end
 hooksecurefunc("EncounterJournal_DisplayInstance", UpdateBossButtons)
 hooksecurefunc("EncounterJournal_DisplayEncounter", function(encounterID, noButton)
 	if selectedEncounter and selectedEncounter == EncounterJournal.encounterID then
-		-- unselect this boss
+		-- unselect this boss without changing scroll position in boss list
 		NavBar_Reset(EncounterJournal.navBar)
-		EncounterJournal_DisplayInstance(EncounterJournal.instanceID)
 		selectedEncounter = nil
+
+		local leftScroll = EncounterJournal.encounter.info.bossesScroll.ScrollBar
+		local bossListScrollValue = leftScroll:GetValue()
+		EncounterJournal_DisplayInstance(EncounterJournal.instanceID)
+		leftScroll:SetValue(bossListScrollValue)
 	else
 		selectedEncounter = encounterID
 	end
