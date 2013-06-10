@@ -92,6 +92,7 @@ end)
 -- ================================================
 --  Show boss buttons when browsing loot
 -- ================================================
+--[[
 local function MoveToLeft()
 	local scroll = EncounterJournal.encounter.info.detailsScroll
 	scroll:ClearAllPoints()
@@ -112,7 +113,11 @@ local function MoveToRight()
 	scrollBar:SetPoint("BOTTOMRIGHT", 0, 17)
 	scrollBar:SetPoint("TOPRIGHT", 0, -17)
 end
+--]]
 
+-- ================================================
+--  loot wishlist
+-- ================================================
 local function ManageLootRoles(self, btn)
 	local bossButton = self:GetParent()
 	if not MidgetLocalDB.LFRLootRoles then MidgetLocalDB.LFRLootRoles = {} end
@@ -162,18 +167,21 @@ local function UpdateBossButtons()
 	if EncounterJournal.encounter.info.tab ~= 2 then return end
 	selectedEncounter = nil
 
-	EncounterJournal_ClearDetails()
+	-- EncounterJournal_ClearDetails()
 
+	--[[
 	EncounterJournal.encounter.instance:Hide()
 	EncounterJournal.encounter.model:Hide()
 	EncounterJournal.encounter.info.dungeonBG:Hide()
 	EncounterJournal.encounter.info.detailsScroll:Show()
+	--]]
 
 	local bossIndex, bossButton = 1, nil
 	local name, description, bossID, _, link = EJ_GetEncounterInfoByIndex(bossIndex)
 	while bossID do -- buttons should already exist from Blizzard's code!
 		bossButton = _G["EncounterJournalBossButton"..bossIndex]
 		UpdateBossLootRoles(bossButton)
+		--[[
 		if bossButton.encounterID == EncounterJournal.encounterID then
 			selectedEncounter = bossButton.encounterID
 			selectedDifficulty = EJ_GetDifficulty()
@@ -182,11 +190,13 @@ local function UpdateBossButtons()
 			bossButton:UnlockHighlight()
 		end
 		bossButton:Show()
+		--]]
 		bossIndex = bossIndex + 1
 		name, description, bossID, _, link = EJ_GetEncounterInfoByIndex(bossIndex)
 	end
 end
 
+--[[
 local function TabClicked(self, button)
 	local tabType = self:GetID()
 	if tabType == 1 then -- info
@@ -205,8 +215,12 @@ local function TabClicked(self, button)
 		end
 	end
 end
+--]]
 
 -- events / hooks
+hooksecurefunc("EncounterJournal_DisplayEncounter", UpdateBossButtons)
+hooksecurefunc("EncounterJournal_DisplayInstance", UpdateBossButtons)
+--[[
 EncounterJournal.encounter.info.lootTab:HookScript("OnClick", TabClicked)
 EncounterJournal.encounter.info.bossTab:HookScript("OnClick", TabClicked)
 hooksecurefunc("EncounterJournal_DisplayEncounter", function(encounterID, noButton)
@@ -243,3 +257,4 @@ hooksecurefunc("EncounterJournal_DisplayInstance", function(instanceID, noButton
 	end
 	UpdateBossButtons()
 end)
+--]]
