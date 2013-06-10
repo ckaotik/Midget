@@ -149,37 +149,36 @@ local function PrintRespecChanges()
 	end
 end
 
+local function SpellLearned(self, event, arg1)
+	table.insert(respecLearned, arg1)
+end
+local function RespecStopped(self, event, ...)
+	local spellID = select(5, ...)
+	if spellID ~= 63645 and spellID ~= 63644 then return end
+
+	ChatFrame_RemoveMessageEventFilter("CHAT_MSG_SYSTEM", RespecSpamChatFilter)
+	ns.UnregisterEvent("UNIT_SPELLCAST_INTERRUPTED", "respecCancelled")
+	ns.UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED",   "respecCompleted")
+	ns.UnregisterEvent("LEARNED_SPELL_IN_TAB", "respecLearned")
+
+	if event == "UNIT_SPELLCAST_SUCCEEDED" then
+		PrintRespecChanges()
+	end
+end
+local function RespecStarted()
+	wipe(respecUnlearned)
+	wipe(respecLearned)
+
+	ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", RespecSpamChatFilter)
+	ns.RegisterEvent("LEARNED_SPELL_IN_TAB", SpellLearned, "respecLearned", true)
+	ns.RegisterEvent("UNIT_SPELLCAST_SUCCEEDED",   RespecStopped, "respecCompleted")
+	ns.RegisterEvent("UNIT_SPELLCAST_INTERRUPTED", RespecStopped, "respecCancelled")
+end
+
 ns.RegisterEvent("ADDON_LOADED", function(frame, event, arg1)
 	if arg1 ~= addonName then return end
 
-	hooksecurefunc("SetActiveSpecGroup", function(newSpec)
-		wipe(respecUnlearned)
-		wipe(respecLearned)
-		ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", RespecSpamChatFilter)
-
-		ns.RegisterEvent("LEARNED_SPELL_IN_TAB", function(frame, event, arg1)
-			table.insert(respecLearned, arg1)
-		end, "respecLearned", true)
-
-		ns.RegisterEvent("PLAYER_SPECIALIZATION_CHANGED", function()
-			PrintRespecChanges()
-			ChatFrame_RemoveMessageEventFilter("CHAT_MSG_SYSTEM", RespecSpamChatFilter)
-
-			ns.UnregisterEvent("UNIT_SPELLCAST_INTERRUPTED", "respecCancelled")
-			ns.UnregisterEvent("PLAYER_SPECIALIZATION_CHANGED", "respec")
-			ns.UnregisterEvent("LEARNED_SPELL_IN_TAB", "respecLearned")
-		end, "respec")
-
-		ns.RegisterEvent("UNIT_SPELLCAST_INTERRUPTED", function(...)
-			local spell = select(5, ...)
-			if spell ~= 63645 and spell ~= 63644 then return end
-			ChatFrame_RemoveMessageEventFilter("CHAT_MSG_SYSTEM", RespecSpamChatFilter)
-
-			ns.UnregisterEvent("UNIT_SPELLCAST_INTERRUPTED", "respecCancelled")
-			ns.UnregisterEvent("PLAYER_SPECIALIZATION_CHANGED", "respec")
-			ns.UnregisterEvent("LEARNED_SPELL_IN_TAB", "respecLearned")
-		end, "respecCancelled")
-	end)
+	hooksecurefunc("SetActiveSpecGroup", RespecStarted)
 
 	ns.UnregisterEvent("ADDON_LOADED", "respecInit")
 end, "respecInit")
