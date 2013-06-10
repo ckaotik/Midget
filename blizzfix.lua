@@ -10,6 +10,7 @@ for i=1,30 do
 	tip:AddFontStrings(left, right)
 end
 
+--[[
 function ns.GetTradeSkillReagentItemLink(i, j)
 	tip:ClearLines()
 	tip:SetTradeSkillItem(i, j)
@@ -17,3 +18,4 @@ function ns.GetTradeSkillReagentItemLink(i, j)
 	return link
 end
 GetTradeSkillReagentItemLink = ns.GetTradeSkillReagentItemLink -- tainting, ho!
+--]]
