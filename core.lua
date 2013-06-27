@@ -42,7 +42,6 @@ local localDefaults = {
 }
 
 local function UpdateDatabase()
-	print("UpdateDatabase", MidgetDB, MidgetLocalDB)
 	-- keep database up to date, i.e. remove artifacts + add new options
 	if MidgetDB == nil then
 		MidgetDB = globalDefaults
