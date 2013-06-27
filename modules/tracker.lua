@@ -1,13 +1,8 @@
 local _, ns = ...
--- GLOBALS: MidgetDB, CreateFrame, hooksecurefunc, UIDropDownMenu_AddButton, math, select
+-- GLOBALS: MidgetLocalDB, CreateFrame, hooksecurefunc, UIDropDownMenu_AddButton, math, select
 -- GLOBALS: WatchFrame, WatchFrameHeaderDropDown, WatchFrame_AddObjectiveHandler, WatchFrame_Update, WatchFrame_SetLine, WATCHFRAME_QUEST_OFFSET, WATCHFRAME_TYPE_OFFSET, WATCHFRAME_INITIAL_OFFSET, WATCHFRAMELINES_FONTSPACING
 -- GLOBALS: TRADESKILLS, TRADESKILL_RANK, GetProfessions, GetProfessionInfo, C_PetJournal, BATTLE_PET_SOURCE_5, ITEM_QUALITY_COLORS
 local DASH_NONE, DASH_SHOW, DASH_HIDE, DASH_ICON = 0, 1, 2, 3
-local function updateHandler(frame, event, ...)
-	if event ~= "UNIT_SPELLCAST_SUCCEEDED" or select(5, ...) == 127841 then
-		WatchFrame_Update()
-	end
-end
 
 -- ================================================
 -- Skill progress tracker
@@ -21,6 +16,11 @@ local function WatchFrame_GetSkillLine()
 	if not line then
 		WATCHFRAME_SKILLLINES[skillLineIndex] = WatchFrame.lineCache:GetFrame()
 		line = WATCHFRAME_SKILLLINES[skillLineIndex]
+	end
+	if not line.icon then
+		line.icon = line:CreateTexture('$parentIcon')
+		line.icon:SetSize(16, 16)
+		line.icon:SetPoint("TOPLEFT", 0, -1)
 	end
 
 	line:Reset()
@@ -45,7 +45,7 @@ local function WatchFrame_ReleaseUnusedSkillLines()
 end
 local function DisplaySkillTracker(lineFrame, nextAnchor, maxHeight, frameWidth)
 	skillLineIndex = 1 -- reset count or we get everything dozens of times!
-	if not MidgetDB.trackProfessionSkills then
+	if not MidgetLocalDB.trackProfessionSkills then
 		WatchFrame_ReleaseUnusedSkillLines()
 		return nextAnchor, 0, 0, 0
 	end
@@ -54,7 +54,7 @@ local function DisplaySkillTracker(lineFrame, nextAnchor, maxHeight, frameWidth)
 	local profession, skillName, texture, current, max, progress
 	for i = 1, select('#', GetProfessions()) do
 		profession = select(i, GetProfessions())
-		if profession then
+		if profession and MidgetLocalDB.trackProfession[i] then
 			skillName, texture, current, max = GetProfessionInfo(profession)
 			if current < math.max(max, MAX_SKILL) then
 				if skillLineIndex == 1 then
@@ -101,13 +101,12 @@ local function DisplaySkillTracker(lineFrame, nextAnchor, maxHeight, frameWidth)
 
 				line:Show()
 				previousLine = line
-				-- WatchFrameLines_AddUpdateFunction(WatchFrame_UpdateTimedAchievements)
 			end
 		end
 	end
 	WatchFrame_ReleaseUnusedSkillLines()
 	-- nextAnchor, maxLineWidth, numObjectives, numPopUps
-	return previousLine or nextAnchor, 0, 1, 0
+	return previousLine or nextAnchor, 0, previousLine and 1 or 0, 0
 end
 
 -- ================================================
@@ -122,6 +121,11 @@ local function WatchFrame_GetTeamLine()
 	if not line then
 		WATCHFRAME_TEAMLINES[teamLineIndex] = WatchFrame.lineCache:GetFrame()
 		line = WATCHFRAME_TEAMLINES[teamLineIndex]
+	end
+	if not line.icon then
+		line.icon = line:CreateTexture('$parentIcon')
+		line.icon:SetSize(16, 16)
+		line.icon:SetPoint("TOPLEFT", 0, -1)
 	end
 	line:Reset()
 	teamLineIndex = teamLineIndex + 1
@@ -146,7 +150,7 @@ local function WatchFrame_ReleaseUnusedTeamLines()
 end
 local function DisplayTeamTracker(lineFrame, nextAnchor, maxHeight, frameWidth)
 	teamLineIndex = 1 -- reset count or we get everything dozens of times!
-	if not MidgetDB.trackBattlePetTeams then
+	if not MidgetLocalDB.trackBattlePetTeams then
 		WatchFrame_ReleaseUnusedTeamLines()
 		return nextAnchor, 0, 0, 0
 	end
@@ -154,19 +158,37 @@ local function DisplayTeamTracker(lineFrame, nextAnchor, maxHeight, frameWidth)
 	local line, previousLine
 	local petID, customName, level, xp, maxXp, petName, texture, petType, health, maxHealth, rarity
 	for i = 1, MAX_ACTIVE_PETS do
-		-- petID, ability1ID, ability2ID, ability3ID, locked
 		petID = C_PetJournal.GetPetLoadOutInfo(i)
 		if petID then
-			-- speciesID, customName, level, xp, maxXp, displayID, isFavorite, petName, petIcon, petType, creatureID
 			_, customName, level, xp, maxXp, _, _, petName, texture, petType = C_PetJournal.GetPetInfoByPetID(petID)
-			-- health, maxHealth, attack, speed, rarity
 			health, maxHealth, _, _, rarity = C_PetJournal.GetPetStats(petID)
 
 			if teamLineIndex == 1 then
 				-- header
 				line = WatchFrame_GetTeamLine()
-				-- BATTLE_PET_SOURCE_5 / TOOLTIP_BATTLE_PET
-				WatchFrame_SetLine(line, previousLine, -WATCHFRAME_QUEST_OFFSET, true, BATTLE_PET_SOURCE_5, DASH_NONE)
+				WatchFrame_SetLine(line, previousLine, -WATCHFRAME_QUEST_OFFSET, true,
+					BATTLE_PET_SOURCE_5, DASH_NONE, true)
+
+				--[[ TODO: add button to heal pets
+				if ( item and (not isComplete or showItemWhenComplete) ) then
+		          watchItemIndex = watchItemIndex + 1;
+		          itemButton = _G["WatchFrameItem"..watchItemIndex];
+		          if ( not itemButton ) then
+		            WATCHFRAME_NUM_ITEMS = watchItemIndex;
+		            itemButton = CreateFrame("BUTTON", "WatchFrameItem" .. watchItemIndex, lineFrame, "WatchFrameItemButtonTemplate");
+		          end
+		          itemButton:Show();
+		          itemButton:ClearAllPoints();
+		          itemButton:SetID(questIndex);
+		          SetItemButtonTexture(itemButton, item);
+		          SetItemButtonCount(itemButton, charges);
+		          itemButton.charges = charges;
+		          WatchFrameItem_UpdateCooldown(itemButton);
+		          itemButton.rangeTimer = -1;
+		          itemButton:SetPoint("TOPRIGHT", questTitle, "TOPRIGHT", 10, -2);
+		        end
+				--]]
+
 				if not previousLine then
 					line:SetPoint("RIGHT", lineFrame, "RIGHT", 0, 0)
 					line:SetPoint("LEFT", lineFrame, "LEFT", 0, 0)
@@ -227,19 +249,42 @@ local function DisplayTeamTracker(lineFrame, nextAnchor, maxHeight, frameWidth)
 
 			line:Show()
 			previousLine = line
-			-- WatchFrameLines_AddUpdateFunction(WatchFrame_UpdateTimedAchievements)
 		end
 	end
 	WatchFrame_ReleaseUnusedTeamLines()
 	-- nextAnchor, maxLineWidth, numObjectives, numPopUps
-	return previousLine or nextAnchor, 0, 1, 0
+	return previousLine or nextAnchor, 0, previousLine and 1 or 0, 0
+end
+
+local function updateHandler(frame, event, ...)
+	if event ~= "UNIT_SPELLCAST_SUCCEEDED" or select(5, ...) == 127841 then -- revive pet
+		WatchFrame_Update()
+	end
+end
+
+local function CreateSkillTrackingCheckboxes()
+	local function OnClick(self, btn)
+		MidgetLocalDB.trackProfession[ self:GetID() ] = not MidgetLocalDB.trackProfession[ self:GetID() ]
+		WatchFrame_Update()
+	end
+
+	for i, tradeskill in pairs({'PrimaryProfession1', 'PrimaryProfession2', 'SecondaryProfession1', 'SecondaryProfession2', 'SecondaryProfession3', 'SecondaryProfession4'}) do
+		local button = CreateFrame('CheckButton', '$parentTrackSkill', _G[tradeskill], 'UICheckButtonTemplate')
+		button:SetSize(18, 18)
+		button:SetID(i)
+		button:SetPoint('RIGHT', '$parentProfessionName', 'LEFT', -2, 0)
+		button:SetChecked(MidgetLocalDB.trackProfession[i] or false)
+		button:SetScript('OnClick', OnClick)
+	end
 end
 
 ns.RegisterEvent("ADDON_LOADED", function()
 	WatchFrame_AddObjectiveHandler(DisplayTeamTracker)
 	WatchFrame_AddObjectiveHandler(DisplaySkillTracker)
 
+	CreateSkillTrackingCheckboxes()
 	ns.RegisterEvent("CHAT_MSG_SKILL", updateHandler, "tracker_updateSkills")
+
 	ns.RegisterEvent("UNIT_SPELLCAST_SUCCEEDED", updateHandler, "tracker_updateBattlePetsRevive")
 	ns.RegisterEvent("PET_JOURNAL_LIST_UPDATE", updateHandler, "tracker_updateBattlePetsList")
 
@@ -249,19 +294,19 @@ ns.RegisterEvent("ADDON_LOADED", function()
 	hooksecurefunc(WatchFrameHeaderDropDown, "initialize", function()
 		UIDropDownMenu_AddButton {
 			text = TRADESKILLS,
-			checked = MidgetDB.trackProfessionSkills,
+			checked = MidgetLocalDB.trackProfessionSkills,
 			isNotRadio = true,
 			func = function()
-				MidgetDB.trackProfessionSkills = not MidgetDB.trackProfessionSkills
+				MidgetLocalDB.trackProfessionSkills = not MidgetLocalDB.trackProfessionSkills
 				WatchFrame_Update()
 			end
 		}
 		UIDropDownMenu_AddButton {
 			text = BATTLE_PET_SOURCE_5,
-			checked = MidgetDB.trackBattlePetTeams,
+			checked = MidgetLocalDB.trackBattlePetTeams,
 			isNotRadio = true,
 			func = function()
-				MidgetDB.trackBattlePetTeams = not MidgetDB.trackBattlePetTeams
+				MidgetLocalDB.trackBattlePetTeams = not MidgetLocalDB.trackBattlePetTeams
 				WatchFrame_Update()
 			end
 		}
