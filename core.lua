@@ -1,48 +1,84 @@
 local addonName, ns, _ = ...
-Midget = ns
 
--- GLOBALS: _G, LibStub, Midget, MidgetDB, MidgetLocalDB, TipTac, UIParent, CorkFrame, MainMenuBar, InterfaceOptionsFrameAddOnsList, SLASH_ROLECHECK1, DEFAULT_CHAT_FRAME, CHAT_CONFIG_CHAT_LEFT, WHISPER, SlashCmdList
--- GLOBALS: GameTooltip, PlaySound, GetScreenHeight, ToggleChatMessageGroup, PetBattleFrame, GetLocale, IsListeningForMessageType, CreateFrame, IsAddOnLoaded, ScrollFrameTemplate_OnMouseWheel, hooksecurefunc, InitiateRolePoll
+-- GLOBALS: _G, LibStub, Midget, MidgetDB, MidgetLocalDB, TipTac, UIParent, CorkFrame, MainMenuBar, InterfaceOptionsFrameAddOnsList, SLASH_ROLECHECK1, DEFAULT_CHAT_FRAME, CHAT_CONFIG_CHAT_LEFT, WHISPER, SlashCmdList, UnitPopupMenus, UIDROPDOWNMENU_INIT_MENU, StaticPopupDialogs, STATICPOPUP_NUMDIALOGS
+-- GLOBALS: GameTooltip, PlaySound, GetScreenHeight, ToggleChatMessageGroup, PetBattleFrame, GetLocale, IsListeningForMessageType, CreateFrame, IsAddOnLoaded, ScrollFrameTemplate_OnMouseWheel, hooksecurefunc, InitiateRolePoll, GetItemIcon, ChatFrame_AddMessageEventFilter, IsShiftKeyDown, UnitPopupShown, StaticPopup_Hide, UnitIsBattlePet
+-- GLOBALS: table, string, math
+
 local split, find, gmatch, lower, join, gsub, length, tonumber, tostringall, format = string.split, string.find, string.gmatch, string.lower, string.join, string.gsub, string.len, tonumber, tostringall, string.format
 local abs = math.abs
-local assert, type, pairs, ipairs, select = assert, type, pairs, ipairs, select
+local assert, type, pairs, ipairs, select, print = assert, type, pairs, ipairs, select, print
 
--- settings
-if not MidgetDB then
-	MidgetDB = {
-		tradeskillCosts = false,
-		tradeskillLevels = true,
-		tradeskillTooltips = true,
-		tradeskillCraftedTooltip = false,
+-- settings -- TODO: put into ns. so modules can have settings, too
+local globalDefaults = {
+	tradeskillCosts = false,
+	tradeskillLevels = true,
+	tradeskillTooltips = true,
+	tradeskillCraftedTooltip = false,
 
-		CorkButton = false,
-		TipTacStyles = true,
-		moreSharedMedia = true,
+	CorkButton = false,
+	TipTacStyles = true,
+	moreSharedMedia = true,
 
-		movePetBattleFrame = true,
-		PetBattleFrameOffset = -16,
-		menuBarHeight = true,
+	movePetBattleFrame = true,
+	PetBattleFrameOffset = -16,
+	menuBarHeight = true,
 
-		autoCheckSpells = true,
-		autocompleteAlts = true,
+	autoCheckSpells = true,
+	autocompleteAlts = true,
 
-		undressButton = true,
-		modelLighting = true,
-		shortenLFRNames = true,
-		outgoingWhisperColor = true,
-		InterfaceOptionsScrolling = true,
-		trackBattlePetTeams = true,
-		trackProfessionSkills = true,
+	undressButton = true,
+	modelLighting = true,
+	shortenLFRNames = true,
+	outgoingWhisperColor = true,
+	InterfaceOptionsScrolling = true,
+	hidePopupOnSHIFT = true,
 
-		scanGems = false,
-	}
+	scanGems = false,
+}
+local localDefaults = {
+	trackBattlePetTeams = true,
+	trackProfessionSkills = true,
+	trackProfession = {},
+}
+
+local function UpdateDatabase()
+	print("UpdateDatabase", MidgetDB, MidgetLocalDB)
+	-- keep database up to date, i.e. remove artifacts + add new options
+	if MidgetDB == nil then
+		MidgetDB = globalDefaults
+	else
+		--[[for key,value in pairs(MidgetDB) do
+			if globalDefaults[key] == nil then MidgetDB[key] = nil end
+		end--]]
+		for key,value in pairs(globalDefaults) do
+			if MidgetDB[key] == nil then MidgetDB[key] = value end
+		end
+	end
+
+	if MidgetLocalDB == nil then
+		MidgetLocalDB = localDefaults
+	else
+		--[[for key,value in pairs(MidgetLocalDB) do
+			if localDefaults[key] == nil then MidgetLocalDB[key] = nil end
+		end--]]
+		for key,value in pairs(localDefaults) do
+			if MidgetLocalDB[key] == nil then MidgetLocalDB[key] = value end
+		end
+	end
 end
-if not MidgetLocalDB then
-	MidgetLocalDB = {}
-end
+
+function ns:GetName() return addonName end
 
 local frame, eventHooks = CreateFrame("Frame", "MidgetEventHandler"), {}
 local function eventHandler(frame, event, arg1, ...)
+	if event == 'ADDON_LOADED' and arg1 == addonName then
+		-- make sure we always init before any other module
+		ns.Initialize()
+		if not eventHooks[event] or ns.Count(eventHooks[event]) < 1 then
+			frame:UnregisterEvent(event)
+		end
+	end
+
 	if eventHooks[event] then
 		for id, listener in pairs(eventHooks[event]) do
 			listener(frame, event, arg1, ...)
@@ -50,6 +86,7 @@ local function eventHandler(frame, event, arg1, ...)
 	end
 end
 frame:SetScript("OnEvent", eventHandler)
+frame:RegisterEvent("ADDON_LOADED")
 
 function ns.RegisterEvent(event, callback, id, silentFail)
 	assert(callback and event and id, format("Usage: RegisterEvent(event, callback, id[, silentFail])"))
@@ -70,14 +107,15 @@ function ns.UnregisterEvent(event, id)
 	end
 end
 
-function ns:GetName()
-	return addonName
-end
-
 -- ================================================
 -- Little Helpers
 -- ================================================
-function ns.Print(text)
+function ns.Print(text, ...)
+	if ... and text:find("%%") then
+		text = format(text, ...)
+		elseif ... then
+		text = join(", ", tostringall(...))
+	end
 	DEFAULT_CHAT_FRAME:AddMessage("|cff22CCDDMidget|r "..text)
 end
 
@@ -340,34 +378,29 @@ local function FixModelLighting()
 end
 
 -- ================================================
--- events & handling
--- ================================================
-ns.RegisterEvent("ADDON_LOADED", function(frame, event, arg1)
-	if arg1 == addonName then
-		CreateCorkButton()
-		MovePetBatteFrame(MidgetDB.PetBattleFrameOffset)
-		AddUndressButtons()
-		FixModelLighting()
-		FixMenuBarHeight()
-		ShortenLFRNames()
-		AddTipTacStyles()
-		OutgoingWhisperColor()
-		InterfaceOptionsScrolling()
-		AddMoreSharedMedia()
+function ns.Initialize()
+	UpdateDatabase()
 
-		SLASH_ROLECHECK1 = "/rolecheck"
-		SlashCmdList.ROLECHECK = InitiateRolePoll
+	CreateCorkButton()
+	MovePetBatteFrame(MidgetDB.PetBattleFrameOffset)
+	AddUndressButtons()
+	FixModelLighting()
+	FixMenuBarHeight()
+	ShortenLFRNames()
+	AddTipTacStyles()
+	OutgoingWhisperColor()
+	InterfaceOptionsScrolling()
+	AddMoreSharedMedia()
 
-		ChatFrame_AddMessageEventFilter("CHAT_MSG_LOOT", AddLootIcons)
+	SLASH_ROLECHECK1 = "/rolecheck"
+	SlashCmdList.ROLECHECK = InitiateRolePoll
 
-		-- add "Show in pet journal" dropdown entry
-		hooksecurefunc("UnitPopup_HideButtons", CustomizeDropDowns)
-		table.insert(UnitPopupMenus["TARGET"], #UnitPopupMenus["TARGET"], "PET_SHOW_IN_JOURNAL")
+	ChatFrame_AddMessageEventFilter("CHAT_MSG_LOOT", AddLootIcons)
 
-		-- for some obscure reason, this is not functional?
-		-- SLASH_RELOAD = "/rl"
-		-- SlashCmdList.RELOAD = ReloadUI
+	-- add "Show in pet journal" dropdown entry
+	hooksecurefunc("UnitPopup_HideButtons", CustomizeDropDowns)
+	table.insert(UnitPopupMenus["TARGET"], #UnitPopupMenus["TARGET"], "PET_SHOW_IN_JOURNAL")
 
-		ns.UnregisterEvent("ADDON_LOADED", "core")
-	end
-end, "core")
+	-- expose us to the world
+	Midget = ns
+end

@@ -171,8 +171,8 @@ local function RespecStarted()
 
 	ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", RespecSpamChatFilter)
 	ns.RegisterEvent("LEARNED_SPELL_IN_TAB", SpellLearned, "respecLearned", true)
-	ns.RegisterEvent("UNIT_SPELLCAST_SUCCEEDED",   RespecStopped, "respecCompleted")
-	ns.RegisterEvent("UNIT_SPELLCAST_INTERRUPTED", RespecStopped, "respecCancelled")
+	ns.RegisterEvent("UNIT_SPELLCAST_SUCCEEDED",   RespecStopped, "respecCompleted", true)
+	ns.RegisterEvent("UNIT_SPELLCAST_INTERRUPTED", RespecStopped, "respecCancelled", true)
 end
 
 ns.RegisterEvent("ADDON_LOADED", function(frame, event, arg1)

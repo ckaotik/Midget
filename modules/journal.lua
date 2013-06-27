@@ -112,6 +112,7 @@ local function UpdateBossButtons()
 	end
 end
 
+local lastEncounter
 local function CheckUpdateLootSpec()
 	-- print('encounter started/changed/finished', UnitName('target'), UnitName('boss1'), UnitName('boss2'), UnitName('boss3'), UnitName('boss4'))
 
@@ -201,12 +202,11 @@ hooksecurefunc("EncounterJournal_DisplayEncounter", function(encounterID, noButt
 	selectedDifficulty = EJ_GetDifficulty()
 end)
 
-local lastEncounter = nil
 ns.RegisterEvent("PLAYER_REGEN_ENABLED", function() lastEncounter = nil end, "encounter_end")
 ns.RegisterEvent("INSTANCE_ENCOUNTER_ENGAGE_UNIT", CheckUpdateLootSpec, "encounter_start")
-if BigWigsLoader then
+--[[ if BigWigsLoader then
 	BigWigsLoader:RegisterMessage("BigWigs_OnBossEngage", function( ... )
 		print('bigwigs boss enabled', ...)
 		CheckUpdateLootSpec()
 	end)
-end
+end --]]
