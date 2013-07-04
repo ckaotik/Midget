@@ -45,7 +45,7 @@ local function WatchFrame_ReleaseUnusedSkillLines()
 end
 local function DisplaySkillTracker(lineFrame, nextAnchor, maxHeight, frameWidth)
 	skillLineIndex = 1 -- reset count or we get everything dozens of times!
-	if not MidgetLocalDB.trackProfessionSkills then
+	if #(MidgetLocalDB.trackProfession) == 0 then
 		WatchFrame_ReleaseUnusedSkillLines()
 		return nextAnchor, 0, 0, 0
 	end
@@ -292,15 +292,6 @@ ns.RegisterEvent("ADDON_LOADED", function()
 		WatchFrame_Update()
 	end)
 	hooksecurefunc(WatchFrameHeaderDropDown, "initialize", function()
-		UIDropDownMenu_AddButton {
-			text = TRADESKILLS,
-			checked = MidgetLocalDB.trackProfessionSkills,
-			isNotRadio = true,
-			func = function()
-				MidgetLocalDB.trackProfessionSkills = not MidgetLocalDB.trackProfessionSkills
-				WatchFrame_Update()
-			end
-		}
 		UIDropDownMenu_AddButton {
 			text = BATTLE_PET_SOURCE_5,
 			checked = MidgetLocalDB.trackBattlePetTeams,

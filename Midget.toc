@@ -13,6 +13,7 @@ libs\LibItemSearch-1.0\LibItemSearch-1.0.lua
 
 blizzfix.lua
 core.lua
+config.lua
 
 # modules
 # modules\battlepets.lua

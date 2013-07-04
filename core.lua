@@ -31,7 +31,7 @@ local globalDefaults = {
 	shortenLFRNames = true,
 	outgoingWhisperColor = true,
 	InterfaceOptionsScrolling = true,
-	hidePopupOnSHIFT = true,
+	SHIFTAcceptPopups = true,
 
 	scanGems = false,
 }
@@ -347,6 +347,7 @@ function ns.AddUndressButton(frame)
 	frame.controlFrame.undressButton = undressButton
 end
 
+
 local function AddUndressButtons()
 	if not MidgetDB.undressButton then return end
 	-- these models are create before we can hook
@@ -377,6 +378,24 @@ local function FixModelLighting()
 end
 
 -- ================================================
+-- Accept popups on SHIFT
+-- ================================================
+local openPopup
+local function AutoAcceptPopup(self)
+	popup = self or openPopup
+	if not MidgetDB.SHIFTAcceptPopups or not popup then return end
+	if IsShiftKeyDown() then
+		if popup.which == "GOSSIP_CONFIRM" and not popup.data then
+			-- delay
+			openPopup = popup
+		else
+			StaticPopup_OnClick(popup, 1)
+			openPopup = nil
+		end
+	end
+end
+
+-- ================================================
 function ns.Initialize()
 	UpdateDatabase()
 
@@ -395,6 +414,10 @@ function ns.Initialize()
 	SlashCmdList.ROLECHECK = InitiateRolePoll
 
 	ChatFrame_AddMessageEventFilter("CHAT_MSG_LOOT", AddLootIcons)
+
+	hooksecurefunc('SelectGossipOption', AutoAcceptPopup)
+	hooksecurefunc('StaticPopup_OnShow', AutoAcceptPopup)
+	-- for i=1,4 do _G["StaticPopup"..i]:HookScript("OnShow", AutoAcceptPopup) end
 
 	-- add "Show in pet journal" dropdown entry
 	hooksecurefunc("UnitPopup_HideButtons", CustomizeDropDowns)
