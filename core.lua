@@ -383,7 +383,7 @@ end
 local openPopup
 local function AutoAcceptPopup(self)
 	popup = self or openPopup
-	if not MidgetDB.SHIFTAcceptPopups or not popup then return end
+	if not MidgetDB.SHIFTAcceptPopups or type(popup) ~= "table" then return end
 	if IsShiftKeyDown() then
 		if popup.which == "GOSSIP_CONFIRM" and not popup.data then
 			-- delay

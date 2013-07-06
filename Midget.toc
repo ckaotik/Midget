@@ -2,8 +2,8 @@
 ## Author: ckaotik
 ## Title: Midget
 ## Version: dev
-## OptionalDeps: Cork, Blizzard_TradeSkillUI, Blizzard_AchievementUI, TipTac
-## Dependencies: Blizzard_EncounterJournal
+## OptionalDeps: Cork, TipTac
+## Dependencies: Blizzard_AchievementUI, Blizzard_EncounterJournal, Blizzard_PetJournal, Blizzard_TradeSkillUI
 ## SavedVariables: MidgetDB
 ## SavedVariablesPerCharacter: MidgetLocalDB
 
@@ -16,7 +16,7 @@ core.lua
 config.lua
 
 # modules
-# modules\battlepets.lua
+modules\battlepets.lua
 # modules\gemparser.lua
 modules\journal.lua
 modules\learner.lua
