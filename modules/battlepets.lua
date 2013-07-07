@@ -145,7 +145,6 @@ end
 
 local function OnLeave(tab) GameTooltip:Hide() end
 local function OnEnter(tab)
-	-- if self.selected then return end
 	GameTooltip:SetOwner(tab, "ANCHOR_RIGHT")
 	GameTooltip:ClearLines()
 

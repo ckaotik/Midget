@@ -197,6 +197,116 @@ function ns.GetTradeSkillColoredString(orange, yellow, green, gray)
 	return string.format("|cffFF8040%s|r/|cffFFFF00%s|r/|cff40BF40%s|r/|cff808080%s|r", orange or "", yellow or "", green or "", gray or "")
 end
 
+-- ------------------------------------------------------
+-- Experimental Stuff
+-- ------------------------------------------------------
+local tradeSkillFilters = {}
+local function SaveFilters()
+	local displayedTradeskill = CURRENT_TRADESKILL
+	local filters = tradeSkillFilters[displayedTradeskill]
+	if not tradeSkillFilters[displayedTradeskill] then
+		tradeSkillFilters[displayedTradeskill] = {}
+		filters = tradeSkillFilters[displayedTradeskill]
+	else
+		wipe(filters)
+	end
+
+	filters.name = GetTradeSkillItemNameFilter()
+	filters.levelMin, filters.levelMax = GetTradeSkillItemLevelFilter()
+	filters.hasMaterials = TradeSkillFrame.filterTbl.hasMaterials
+	filters.hasSkillUp = TradeSkillFrame.filterTbl.hasSkillUp
+
+	if not GetTradeSkillInvSlotFilter(0) then
+		if not filters.slots then filters.slots = {} end
+		for i = 1, select('#', GetTradeSkillInvSlots()) do
+			filters.slots[i] = GetTradeSkillInvSlotFilter(i)
+		end
+	end
+
+	if not GetTradeSkillCategoryFilter(0) then
+		if not filters.subClasses then filters.subClasses = {} end
+		for i = 1, select('#', GetTradeSkillSubClasses()) do
+			filters.subClasses[i] = GetTradeSkillCategoryFilter(i)
+		end
+	end
+end
+
+local function RestoreFilters()
+	local displayedTradeskill = CURRENT_TRADESKILL
+	local filters = tradeSkillFilters[displayedTradeskill]
+	if not displayedTradeskill or not filters then return end
+
+	SetTradeSkillItemNameFilter(filters.name)
+	SetTradeSkillItemLevelFilter(filters.levelMin or 0, filters.levelMax or 0)
+	TradeSkillOnlyShowMakeable(filters.hasMaterials)
+	TradeSkillOnlyShowSkillUps(filters.hasSkillUp)
+
+	if filters.slots and #filters.slots > 0 then
+		SetTradeSkillInvSlotFilter(0, 1, 1)
+		for index, enabled in pairs(filters.slots) do
+			SetTradeSkillInvSlotFilter(index, enabled)
+		end
+	end
+	if filters.subClasses and #filters.subClasses > 0 then
+		SetTradeSkillCategoryFilter(0, 1, 1)
+		for index, enabled in pairs(filters.subClasses) do
+			SetTradeSkillCategoryFilter(index, enabled)
+		end
+	end
+
+	TradeSkillUpdateFilterBar()
+	TradeSkillUpdate()
+end
+
+local function RemoveActiveFilters()
+	ExpandTradeSkillSubClass(0) -- TODO: isn't currently saved/restored
+	SetTradeSkillItemLevelFilter(0, 0)
+    SetTradeSkillItemNameFilter(nil)
+    TradeSkillSetFilter(-1, -1)
+    -- TradeSkillFrame_Update()
+end
+
+local function ScanTradeSkill()
+	-- TODO: maybe even allow reagent crafting for linked skills, assuming we have the skill, too
+	if IsTradeSkillLinked() then return end
+
+	SaveFilters()
+	RemoveActiveFilters()
+	for index = 1, GetNumTradeSkills() do
+		local crafted = GetTradeSkillItemLink(index)
+		local minYield, maxYield = GetTradeSkillNumMade(index)
+		-- local skillName, skillType, numAvailable, isExpanded, altVerb, numSkillUps = GetTradeSkillInfo(index)
+
+		-- GetTradeSkillNumReagents(index, reagentIndex)
+	end
+	RestoreFilters()
+end
+
+local function SearchCraftableReagent(item)
+	local itemName = GetItemInfo(item)
+end
+
+-- open a tradeskill:
+-- SpellButton_OnClick(PrimaryProfession1SpellButtonBottom, 'LeftButton')
+-- SecondaryProfession%dSpellButtonRight / PrimaryProfession%dSpellButtonBottom
+-- CloseTradeSkill() / TradeSkillFrame_Hide()
+
+-- local itemLink = GetTradeSkillRecipeLink(index)
+-- local craftSpellID = itemLink:match('enchant:(%d+)')
+-- IsUsableSpell(craftSpellID)
+-- /cast <profession name>
+-- /run for i=1,GetNumTradeSkills() do if GetTradeSkillInfo(i)==<crafted item> then DoTradeSkill(i, <num>); CloseTradeSkill(); break end end
+
+--[[
+
+MidgetDB.craftables = {
+	itemID = { craftSpellID, ... }
+}
+
+local myProfessions = { 'Schneiderei', 'Verzauberkunst', 'Kochen' }
+
+--]]
+
 -- events
 ns.RegisterEvent("TRADE_SKILL_SHOW", function()
 	hooksecurefunc("TradeSkillFrame_Update", AddTradeSkillReagentCosts)
