@@ -98,51 +98,6 @@ local MAX_PET_LEVEL = 25
 local MAX_ACTIVE_PETS = 3
 local strongTypes, weakTypes = {}, {}
 
-function plugin.AddTeam()
-	local index = table.insert(MidgetDB.petBattleTeams, {})
-	plugin.SaveTeam(#MidgetDB.petBattleTeams)
-end
-function plugin.SaveTeam(index, name)
-	index = index or MidgetDB.petBattleTeams.selected
-	if not index then return end
-
-	local team = MidgetDB.petBattleTeams[index]
-		  team.name = name
-	-- ipairs: clear old pets but keep other team attributes
-	for i, member in ipairs(team) do
-		wipe(team[i])
-		team[i].petID = nil
-	end
-	for i = 1, MAX_ACTIVE_PETS do
-		if not team[i] then team[i] = {} end
-		team[i].petID, team[i][1], team[i][2], team[i][3] = C_PetJournal.GetPetLoadOutInfo(i)
-	end
-end
-function plugin.DeleteTeam(index)
-	if MidgetDB.petBattleTeams[index] then
-		table.remove(MidgetDB.petBattleTeams, index)
-	end
-end
-function plugin.LoadTeam(index)
-	local team = MidgetDB.petBattleTeams[index]
-	for i = 1, MAX_ACTIVE_PETS do
-		if team[i] and team[i].petID then
-			local petID = team[i].petID
-			local ability1, ability2, ability3 = team[i][1], team[i][2], team[i][3]
-
-			C_PetJournal.SetPetLoadOutInfo(i, petID, true) -- add marker that it's us modifying stuff
-			C_PetJournal.SetAbility(i, 1, ability1)
-			C_PetJournal.SetAbility(i, 2, ability2)
-			C_PetJournal.SetAbility(i, 3, ability3)
-		else
-			-- make slot empty
-			-- FIXME: C_PetJournal.SetPetLoadOutInfo(i, 0) used to work but doesn't any more
-		end
-	end
-	MidgetDB.petBattleTeams.selected = index
-	PetJournal_UpdatePetLoadOut()
-end
-
 local function OnLeave(tab) GameTooltip:Hide() end
 local function OnEnter(tab)
 	GameTooltip:SetOwner(tab, "ANCHOR_RIGHT")
@@ -162,9 +117,12 @@ local function OnClick(tab, btn)
 
 	if not tab.teamIndex then
 		plugin.AddTeam()
-	elseif IsShiftKeyDown() then
+	elseif IsModifiedClick("CHATLINK") and ChatEdit_GetActiveWindow() then
+		plugin.DumpTeam(tab.teamIndex)
+	elseif IsShiftKeyDown() and btn == 'RightButton' then
 		plugin.DeleteTeam(tab.teamIndex)
 	elseif tab.teamIndex == MidgetDB.petBattleTeams.selected then
+		-- refresh active team
 		plugin.SaveTeam(tab.teamIndex)
 	else
 		plugin.LoadTeam(tab.teamIndex)
@@ -189,10 +147,21 @@ local function GetTab(index, noCreate)
 	return tab
 end
 
-local petTypeNone = '|TInterface\\Common\\ReputationStar:0:0:0:1:32:32:0:16:0:16|t' -- '|TInterface\\COMMON\\friendship-heart:0:0:1:-2|t'
+local petTypeNone = '|TInterface\\Common\\ReputationStar:14:14:0:1:32:32:0:16:0:16|t'
+-- local petTypeNone = '|TInterface\\COMMON\\friendship-heart:0:0:1:-2|t'
 local function GetPetTypeIcon(i)
 	if not i or not PET_TYPE_SUFFIX[i] then return petTypeNone end
-	return '|TInterface\\PetBattles\\PetIcon-'..PET_TYPE_SUFFIX[i]..':0:0:0:0:128:256:63:102:129:168|t'
+	return '|TInterface\\PetBattles\\PetIcon-'..PET_TYPE_SUFFIX[i]..':14:14:0:0:128:256:63:102:129:168|t'
+end
+
+local abilities, abilityLevels = {}, {}
+local function GetPetLink(petID)
+	local _, maxHealth, power, speed, quality = C_PetJournal.GetPetStats(petID)
+	local speciesID, customName, level, _, _, _, _, name, icon, petType = C_PetJournal.GetPetInfoByPetID(petID)
+	name = name:length() > 10 and gsub(name, "%s?(.[\128-\191]*)%S+%s", "%1.") or name
+
+	local petLink = ("%1$s|Hbattlepet:%2$s:%3$s:%4$s:%5$s:%6$s:%7$s:%8$s|h[%9$s]|h|r"):format(ITEM_QUALITY_COLORS[quality - 1].hex, speciesID, level, quality-1, maxHealth, power, speed, petID, name)
+	return petLink
 end
 
 local function GetPetTypeStrength(petType, seperator)
@@ -221,8 +190,9 @@ end
 local function SetTeamTooltip(tab, tooltip)
 	if not tab.teamIndex then return end
 	local team = MidgetDB.petBattleTeams[tab.teamIndex]
+	local weaknesses = ''
 
-	tooltip:AddLine(team.name or "Team "..tab.teamIndex)
+	tooltip:AddDoubleLine(team.name or "Team "..tab.teamIndex, '|TInterface\\PetBattles\\BattleBar-AbilityBadge-Weak:20|t ')
 	for i, member in ipairs(team) do
 		local petID = member.petID
 		local speciesID, customName, level, xp, maxXp, displayID, isFavorite, name, icon, petType = C_PetJournal.GetPetInfoByPetID(petID)
@@ -247,16 +217,83 @@ local function SetTeamTooltip(tab, tooltip)
 				level < MAX_PET_LEVEL and ' ('..math.floor(xp/maxXp*100)..'%)' or '',
 				ITEM_QUALITY_COLORS[quality - 1].hex
 			),
-			string.format("|TInterface\\PetBattles\\BattleBar-AbilityBadge-Weak:0|t %1$s |TInterface\\PetBattles\\BattleBar-AbilityBadge-Strong:0|t %2$s%3$s%4$s",
-				GetPetTypeWeakness(petType),
+			string.format("|TInterface\\PetBattles\\BattleBar-AbilityBadge-Strong:20|t %1$s%2$s%3$s",
 				GetPetTypeStrength(ability1),
 				GetPetTypeStrength(ability2),
 				GetPetTypeStrength(ability3)
 			)
 		)
+
+		weaknesses = weaknesses .. GetPetTypeWeakness(petType)
 	end
 
-	tooltip:AddLine('|n'..GRAY_FONT_COLOR_CODE..'SHIFT click to delete|r')
+	-- tooltip:AddLine('Hier könnte Ihre Werbung stehen!', nil, nil, nil, true)
+	tooltip:AddLine(nil)
+	tooltip:AddLine('SHIFT Left-click to link|r', GRAY_FONT_COLOR.r, GRAY_FONT_COLOR.g, GRAY_FONT_COLOR.b)
+	tooltip:AddLine('SHIFT Right-click to delete|r', GRAY_FONT_COLOR.r, GRAY_FONT_COLOR.g, GRAY_FONT_COLOR.b)
+
+	local right = _G[tooltip:GetName() .. 'TextRight1']
+	right:SetFontObject('GameTooltipText')
+	right:SetText(right:GetText() .. weaknesses)
+end
+
+function plugin.AddTeam()
+	table.insert(MidgetDB.petBattleTeams, {})
+	local index = #MidgetDB.petBattleTeams
+	plugin.SaveTeam(index)
+	plugin.LoadTeam(index)
+end
+function plugin.SaveTeam(index, name)
+	index = index or MidgetDB.petBattleTeams.selected
+	if not index then return end
+
+	local team = MidgetDB.petBattleTeams[index]
+		  team.name = name
+	-- ipairs: clear old pets but keep other team attributes
+	for i, member in ipairs(team) do
+		wipe(team[i])
+		team[i].petID = nil
+	end
+	for i = 1, MAX_ACTIVE_PETS do
+		if not team[i] then team[i] = {} end
+		team[i].petID, team[i][1], team[i][2], team[i][3] = C_PetJournal.GetPetLoadOutInfo(i)
+	end
+end
+function plugin.DeleteTeam(index)
+	if MidgetDB.petBattleTeams[index] then
+		table.remove(MidgetDB.petBattleTeams, index)
+		plugin.LoadTeam(#MidgetDB.petBattleTeams)
+	end
+end
+function plugin.LoadTeam(index)
+	local team = MidgetDB.petBattleTeams[index]
+	for i = 1, MAX_ACTIVE_PETS do
+		if team[i] and team[i].petID then
+			local petID = team[i].petID
+			local ability1, ability2, ability3 = team[i][1], team[i][2], team[i][3]
+
+			C_PetJournal.SetPetLoadOutInfo(i, petID, true) -- add marker that it's us modifying stuff
+			C_PetJournal.SetAbility(i, 1, ability1)
+			C_PetJournal.SetAbility(i, 2, ability2)
+			C_PetJournal.SetAbility(i, 3, ability3)
+		else
+			-- make slot empty
+			-- FIXME: C_PetJournal.SetPetLoadOutInfo(i, 0) used to work but doesn't any more
+		end
+	end
+	MidgetDB.petBattleTeams.selected = index
+	PetJournal_UpdatePetLoadOut()
+end
+function plugin.DumpTeam(index)
+	local output = ''
+	local team = MidgetDB.petBattleTeams[index]
+	for i = 1, MAX_ACTIVE_PETS do
+		if team[i] and team[i].petID then
+			output = GetPetLink(team[i].petID)
+		end
+	end
+	-- output = (team.name or 'Team '..index) .. ' ' .. output
+	ChatEdit_GetActiveWindow():Insert(output)
 end
 
 function plugin.UpdateTabs()
