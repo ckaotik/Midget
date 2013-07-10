@@ -24,6 +24,7 @@ local globalDefaults = {
 	menuBarHeight = true,
 
 	autoCheckSpells = true,
+	autoScanProfessions = false,
 	autocompleteAlts = true,
 
 	undressButton = true,
@@ -112,8 +113,8 @@ end
 function ns.Print(text, ...)
 	if ... and text:find("%%") then
 		text = format(text, ...)
-		elseif ... then
-		text = join(", ", tostringall(...))
+	elseif ... then
+		text = join(", ", tostringall(text, ...))
 	end
 	DEFAULT_CHAT_FRAME:AddMessage("|cff22CCDDMidget|r "..text)
 end
