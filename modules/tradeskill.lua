@@ -1,4 +1,4 @@
-local _, ns = ...
+local addonName, ns, _ = ...
 local LPT = LibStub("LibPeriodicTable-3.1", true)
 
 -- GLOBALS: _G, Auctional, MidgetDB, GameTooltip, CURRENT_TRADESKILL, TRADE_SKILLS_DISPLAYED, Atr_ShowTipWithPricing, TradeSkillListScrollFrame, TradeSkillSkillName, TradeSkillFilterBar
@@ -255,7 +255,7 @@ local function RestoreFilters()
 	end
 
 	TradeSkillUpdateFilterBar()
-	TradeSkillUpdate()
+	-- TradeSkillFrame_Update()
 end
 
 local function RemoveActiveFilters()
@@ -273,47 +273,166 @@ local function ScanTradeSkill()
 	SaveFilters()
 	RemoveActiveFilters()
 	for index = 1, GetNumTradeSkills() do
-		local crafted = GetTradeSkillItemLink(index)
-		local minYield, maxYield = GetTradeSkillNumMade(index)
-		-- local skillName, skillType, numAvailable, isExpanded, altVerb, numSkillUps = GetTradeSkillInfo(index)
+		local skillName, skillType = GetTradeSkillInfo(index)
+		if skillName and not skillType:find('header') then
+			local minYield, maxYield = GetTradeSkillNumMade(index)
+			local crafted = GetTradeSkillItemLink(index)
+			local craftedID = crafted:match('enchant:(%d+)')
+				  craftedID = craftedID and -1*craftedID or 1*crafted:match('item:(%d+)')
+			local craftSpellID = GetTradeSkillRecipeLink(index)
+				  craftSpellID = 1*craftSpellID:match('enchant:(%d+)')
 
-		-- GetTradeSkillNumReagents(index, reagentIndex)
+			if not MidgetDB.craftables[craftedID] then MidgetDB.craftables[craftedID] = {} end
+			local craftedTable = MidgetDB.craftables[craftedID]
+			if not craftedTable[craftSpellID] then
+				craftedTable[craftSpellID] = {}
+			else
+				wipe(craftedTable[craftSpellID])
+			end
+			local dataTable = craftedTable[craftSpellID]
+
+			dataTable[1], dataTable[2] = minYield, maxYield
+			for i = 1, GetTradeSkillNumReagents(index) do
+				local _, _, reagentCount = GetTradeSkillReagentInfo(index, i)
+				local reagentID = GetTradeSkillReagentItemLink(index, i)
+					  reagentID = reagentID and 1*reagentID:match('item:(%d+)')
+				if reagentID and reagentCount > 0 then
+					tinsert(dataTable, reagentID)
+					tinsert(dataTable, reagentCount)
+				end
+			end
+			-- print('new entry', skillName, unpack(MidgetDB.craftables[craftedID][craftSpellID]))
+		end
 	end
 	RestoreFilters()
 end
 
-local function SearchCraftableReagent(item)
-	local itemName = GetItemInfo(item)
+function ns.ScanTradeSkills()
+	-- Archaeology / Fishing have no recipes
+	for _, buttonName in ipairs({ 'PrimaryProfession1SpellButtonBottom', 'PrimaryProfession2SpellButtonBottom',
+						'SecondaryProfession3SpellButtonRight', 'SecondaryProfession4SpellButtonRight' }) do
+		local button = _G[buttonName]
+		local profession = button:GetParent()
+		-- herbalism / skinning have no recipes
+		if profession.skillLine and profession.skillLine ~= 182 and profession.skillLine ~= 393 then
+			SpellButton_OnClick(button, 'LeftButton')
+			--[[ while not TradeSkillFrame:IsVisible() or CURRENT_TRADESKILL ~= profession.skillName do
+				print('waiting for', profession.skillName, CURRENT_TRADESKILL)
+				coroutine.yield()
+			end --]]
+			ns.Print('Scanning profession %s', profession.skillName)
+			ScanTradeSkill()
+			CloseTradeSkill()
+		end
+	end
 end
 
--- open a tradeskill:
--- SpellButton_OnClick(PrimaryProfession1SpellButtonBottom, 'LeftButton')
--- SecondaryProfession%dSpellButtonRight / PrimaryProfession%dSpellButtonBottom
--- CloseTradeSkill() / TradeSkillFrame_Hide()
-
--- local itemLink = GetTradeSkillRecipeLink(index)
--- local craftSpellID = itemLink:match('enchant:(%d+)')
 -- IsUsableSpell(craftSpellID)
 -- /cast <profession name>
 -- /run for i=1,GetNumTradeSkills() do if GetTradeSkillInfo(i)==<crafted item> then DoTradeSkill(i, <num>); CloseTradeSkill(); break end end
 
---[[
+local commonCraftables = {
+	-- [craftedItemID] = { [craftSpellID] = {minYield, maxYield, reagent1, required1[, reagent2, required2[, ...] ] } }
 
-MidgetDB.craftables = {
-	itemID = { craftSpellID, ... }
+	-- Lesser to Greater Essence
+	[10939] = { [13361] = {1, 1, 10938, 3} }, -- Magic
+	[11082] = { [13497] = {1, 1, 10998, 3} }, -- Astral
+	[11135] = { [13632] = {1, 1, 11134, 3} }, -- Mystic
+	[11175] = { [13739] = {1, 1, 11174, 3} }, -- Nether
+	[16203] = { [20039] = {1, 1, 16202, 3} }, -- Eternal
+	[22446] = { [32977] = {1, 1, 22447, 3} }, -- Planar
+	[34055] = { [44123] = {1, 1, 34056, 3} }, -- Cosmic
+	[52719] = { [74186] = {1, 1, 52718, 3} }, -- Celestial
+
+	-- Greater to Lesser Essence
+	[10938] = { [13362] = {3, 3, 10939, 1} }, -- Magic
+	[10998] = { [13498] = {3, 3, 11082, 1} }, -- Astral
+	[11134] = { [13633] = {3, 3, 11135, 1} }, -- Mystic
+	[11174] = { [13740] = {3, 3, 11175, 1} }, -- Nether
+	[16202] = { [20040] = {3, 3, 16203, 1} }, -- Eternal
+	[22447] = { [32978] = {3, 3, 22446, 1} }, -- Planar
+	[34056] = { [44122] = {3, 3, 34055, 1} }, -- Cosmic
+	[52718] = { [74187] = {3, 3, 52719, 1} }, -- Celestial
+
+	[52721] = { [74188] = {1, 1, 52720, 3} }, -- Heavenly Shard
+	[34052] = { [61755] = {1, 1, 34053, 3} }, -- Dream Shard
+
+	[33568] = { [59926] = {1, 1, 33567, 5} }, -- Borean Leather
+	[52976] = { [74493] = {1, 1, 52977, 5} }, -- Savage Leather
+
+	-- Motes to Primal Elementals
+	[22451] = { [28100] = {1, 1, 22572, 10} }, -- Air
+	[22452] = { [28101] = {1, 1, 22573, 10} }, -- Earth
+	[21884] = { [28102] = {1, 1, 22574, 10} }, -- Fire
+	[21886] = { [28106] = {1, 1, 22575, 10} }, -- Life
+	[22457] = { [28105] = {1, 1, 22576, 10} }, -- Mana
+	[22456] = { [28104] = {1, 1, 22577, 10} }, -- Shadow
+	[21885] = { [28103] = {1, 1, 22578, 10} }, -- Water
+
+	-- Crystallized to Eternal Elementals
+	[35623] = { [49234] = {1, 1, 37700, 10} }, -- Air
+	[35624] = { [49248] = {1, 1, 37701, 10} }, -- Earth
+	[36860] = { [49244] = {1, 1, 37702, 10} }, -- Fire
+	[35625] = { [49247] = {1, 1, 37704, 10} }, -- Life
+	[35627] = { [49246] = {1, 1, 37703, 10} }, -- Shadow
+	[35622] = { [49245] = {1, 1, 37705, 10} }, -- Water
+
+	-- Eternal to Crystallized Elementals
+	[37700] = { [56045] = {10, 10, 35623, 1} }, -- Air
+	[37701] = { [56041] = {10, 10, 35624, 1} }, -- Earth
+	[37702] = { [56042] = {10, 10, 36860, 1} }, -- Fire
+	[37704] = { [56043] = {10, 10, 35625, 1} }, -- Life
+	[37703] = { [56044] = {10, 10, 35627, 1} }, -- Shadow
+	[37705] = { [56040] = {10, 10, 35622, 1} }, -- Water
+
+	[76061] = { [129352] = {1, 1, 89112, 10} }, -- Spirit of Harmony
 }
 
-local myProfessions = { 'Schneiderei', 'Verzauberkunst', 'Kochen' }
-
---]]
-
 -- events
+local scanRoutine
 ns.RegisterEvent("TRADE_SKILL_SHOW", function()
-	hooksecurefunc("TradeSkillFrame_Update", AddTradeSkillReagentCosts)
-	hooksecurefunc("TradeSkillFrame_SetSelection", AddTradeSkillLevels)
-	hooksecurefunc("TradeSkillFrameButton_OnEnter", AddTradeSkillHoverLink)
-	hooksecurefunc("TradeSkillFrameButton_OnLeave", ns.HideTooltip)
+	if scanRoutine and coroutine.status(scanRoutine) ~= 'dead' then
+		coroutine.resume(scanRoutine)
+	else
+		scanRoutine = nil
+		ns.UnregisterEvent("TRADE_SKILL_SHOW", "tradeskill_update")
+	end
+end, "tradeskill_update")
 
-	AddTradeSkillReagentCosts()
-	ns.UnregisterEvent("TRADE_SKILL_SHOW", "tradeskill")
-end, "tradeskill")
+ns.RegisterEvent('ADDON_LOADED', function(self, event, arg1)
+	if arg1 == addonName then
+		hooksecurefunc("TradeSkillFrame_Update", AddTradeSkillReagentCosts)
+		hooksecurefunc("TradeSkillFrame_SetSelection", AddTradeSkillLevels)
+		hooksecurefunc("TradeSkillFrameButton_OnEnter", AddTradeSkillHoverLink)
+		hooksecurefunc("TradeSkillFrameButton_OnLeave", ns.HideTooltip)
+
+		-- TODO: compare to Cork's list of combinables
+		for crafted, crafts in pairs(commonCraftables) do
+			if not MidgetDB.craftables[crafted] then
+				MidgetDB.craftables[crafted] = {}
+			end
+			for craftSpell, data in pairs(crafts) do
+				MidgetDB.craftables[crafted][craftSpell] = data
+			end
+		end
+
+		if MidgetDB.autoScanProfessions then
+			-- load spellbook or we'll fail
+			ToggleSpellBook(BOOKTYPE_PROFESSION)
+			ToggleSpellBook(BOOKTYPE_PROFESSION)
+
+			local fullscreenTrigger = CreateFrame('Button', nil, nil, 'SecureActionButtonTemplate')
+			fullscreenTrigger:RegisterForClicks('AnyUp')
+			fullscreenTrigger:SetAllPoints()
+			fullscreenTrigger:SetAttribute('type', 'scanTradeSkills')
+			fullscreenTrigger:SetAttribute('_scanTradeSkills', function()
+				ns.ScanTradeSkills()
+				fullscreenTrigger:Hide()
+			end)
+		else
+			hooksecurefunc('TradeSkillFrame_Show', ScanTradeSkill)
+		end
+
+		ns.UnregisterEvent('ADDON_LOADED', 'trandeskill_init')
+	end
+end, 'trandeskill_init')
