@@ -90,44 +90,30 @@ local function ParseMacroSpells(macro)
 	local command, commandType
 	for i, action in ipairs({ string.split("\n", macro) }) do
 		commandType, command = string.match(action, "/([^%s]+)%s*(.*)")
-		if commandType and relevantMacroCommands[commandType] then
-			if commandType == 'castsequence' then
-				command = command:gsub("(reset=[^ ]*)", "")
-				for j, snippet in ipairs({ string.split(",", command) }) do
-					print('/castsequence', snippet, SecureCmdOptionParse('/cast '..snippet))
-					spell = snippet:gsub("(%[[^%]]*%])", "") 		-- cleanup [conditions]
-					--[[spell = GetSpellID(spell)
-					if spell then
-						usedSpells[ tonumber(spell) ] = true
-					end--]]
-				end
-			else
-			--	command = command:gsub("(%[[^%]]*%])", "") 		-- cleanup [conditions]
-			--[[	for j, spell in ipairs({ string.split(";", command) }) do
-					spell = GetSpellID(spell)
-					if spell then
-						usedSpells[ tonumber(spell) ] = true
-					end
-				end --]]
+		if commandType == 'startattack' then
+			usedSpells[AUTOATTACK] = true
+		elseif relevantMacroCommands[commandType] then
+			print(commandType, command)
+			-- remove conditions that do not contain [spec]
+			command = command:gsub('(%b[])', function(conditions)
+				local condition = conditions:match('(n?o?spec:[^%],]+)')
+				print('checking', conditions, condition)
+				return condition and '['..condition..']' or ''
+			end)
+
+			local splitChar = ';'
+			if commandType == 'castsequence' or commandType == 'castrandom' then
+				splitChar = ','
 			end
 
-			command = command:gsub("(%[[^%]]*%])", "") 		-- cleanup [conditions]
-			command = command:gsub("(reset=[^ ]*)", "") 	-- cleanup for /castsequence
-
-			for j, spell in ipairs({ string.split(";", command) }) do
-				spell = GetSpellID(spell)
-				if spell then
-					usedSpells[ tonumber(spell) ] = true
+			for snippet in command:gmatch('[^'..splitChar..']+') do
+				local spell = SecureCmdOptionParse(snippet)
+				local spellID = GetSpellID(spell)
+				print(snippet, spell, spellID)
+				if spellID then
+					usedSpells[ tonumber(spellID) ] = true
 				end
 			end
-			for j, spell in ipairs({ string.split(",", command) }) do
-				spell = GetSpellID(spell)
-				if spell then
-					usedSpells[ tonumber(spell) ] = true
-				end
-			end --]]
-		elseif commandType and commandType == "startattack" then
-			usedSpells[ AUTOATTACK ] = true
 		end
 	end
 end
