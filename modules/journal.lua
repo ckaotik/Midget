@@ -168,7 +168,7 @@ local function CheckUpdateLootSpec()
 		-- don't change if we have no preference set
 		if specPreference and (currentLoot == 0 and currentSpec ~= specPreference or currentLoot ~= specPreference) then
 			local _, specName, _, specIcon = GetSpecializationInfoByID(specPreference)
-			ns.Print('Changing loot spec to |T%1$s:0|t %2$s', specIcon, specName)
+			ns.Print('Changing loot spec to |T%1$s:0|t%2$s', specIcon, specName)
 			SetLootSpecialization(specPreference)
 		else
 			-- ns.Print('already in correct spec')
