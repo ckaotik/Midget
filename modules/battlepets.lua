@@ -134,7 +134,7 @@ local function GetTab(index, noCreate)
 	if not tab and not noCreate then
 		tab = CreateFrame("CheckButton", "$parentTab"..index, _G["PetJournal"], "SpellBookSkillLineTabTemplate", index)
 		if index == 1 then
-			tab:SetPoint("TOPLEFT", "$parent", "TOPRIGHT", 0, -50)
+			tab:SetPoint("TOPLEFT", "$parent", "TOPRIGHT", 0, -36)
 		else
 			tab:SetPoint("TOPLEFT", "$parentTab"..(index-1), "BOTTOMLEFT", 0, -22)
 		end
@@ -158,7 +158,7 @@ local abilities, abilityLevels = {}, {}
 local function GetPetLink(petID)
 	local _, maxHealth, power, speed, quality = C_PetJournal.GetPetStats(petID)
 	local speciesID, customName, level, _, _, _, _, name, icon, petType = C_PetJournal.GetPetInfoByPetID(petID)
-	name = name:length() > 10 and gsub(name, "%s?(.[\128-\191]*)%S+%s", "%1.") or name
+	-- name = name:len() > 10 and name:gsub("%s?(.[\128-\191]*)%S+%s", "%1·") or name
 
 	local petLink = ("%1$s|Hbattlepet:%2$s:%3$s:%4$s:%5$s:%6$s:%7$s:%8$s|h[%9$s]|h|r"):format(ITEM_QUALITY_COLORS[quality - 1].hex, speciesID, level, quality-1, maxHealth, power, speed, petID, name)
 	return petLink
@@ -289,7 +289,7 @@ function plugin.DumpTeam(index)
 	local team = MidgetDB.petBattleTeams[index]
 	for i = 1, MAX_ACTIVE_PETS do
 		if team[i] and team[i].petID then
-			output = GetPetLink(team[i].petID)
+			output = output .. GetPetLink(team[i].petID)
 		end
 	end
 	-- output = (team.name or 'Team '..index) .. ' ' .. output
