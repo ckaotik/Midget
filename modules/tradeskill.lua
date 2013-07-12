@@ -406,6 +406,8 @@ ns.RegisterEvent('ADDON_LOADED', function(self, event, arg1)
 		hooksecurefunc("TradeSkillFrameButton_OnEnter", AddTradeSkillHoverLink)
 		hooksecurefunc("TradeSkillFrameButton_OnLeave", ns.HideTooltip)
 
+		if not MidgetDB.craftables then MidgetDB.craftables = {} end
+
 		-- TODO: compare to Cork's list of combinables
 		for crafted, crafts in pairs(commonCraftables) do
 			if not MidgetDB.craftables[crafted] then
@@ -427,8 +429,10 @@ ns.RegisterEvent('ADDON_LOADED', function(self, event, arg1)
 			fullscreenTrigger:SetAttribute('type', 'scanTradeSkills')
 			fullscreenTrigger:SetAttribute('_scanTradeSkills', function()
 				ns.ScanTradeSkills()
+				UnregisterStateDriver(fullscreenTrigger, 'visibility')
 				fullscreenTrigger:Hide()
 			end)
+			RegisterStateDriver(fullscreenTrigger, 'visibility', '[combat] hide; show')
 		else
 			hooksecurefunc('TradeSkillFrame_Show', ScanTradeSkill)
 		end
