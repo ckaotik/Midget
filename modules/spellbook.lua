@@ -93,11 +93,9 @@ local function ParseMacroSpells(macro)
 		if commandType == 'startattack' then
 			usedSpells[AUTOATTACK] = true
 		elseif relevantMacroCommands[commandType] then
-			print(commandType, command)
 			-- remove conditions that do not contain [spec]
 			command = command:gsub('(%b[])', function(conditions)
 				local condition = conditions:match('(n?o?spec:[^%],]+)')
-				print('checking', conditions, condition)
 				return condition and '['..condition..']' or ''
 			end)
 
@@ -109,7 +107,6 @@ local function ParseMacroSpells(macro)
 			for snippet in command:gmatch('[^'..splitChar..']+') do
 				local spell = SecureCmdOptionParse(snippet)
 				local spellID = GetSpellID(spell)
-				print(snippet, spell, spellID)
 				if spellID then
 					usedSpells[ tonumber(spellID) ] = true
 				end
