@@ -211,10 +211,12 @@ local function SaveFilters()
 		wipe(filters)
 	end
 
-	filters.name = GetTradeSkillItemNameFilter()
-	filters.levelMin, filters.levelMax = GetTradeSkillItemLevelFilter()
+	filters.selected 	 = GetTradeSkillSelectionIndex()
+	filters.name 		 = GetTradeSkillItemNameFilter()
+	filters.levelMin,
+	filters.levelMax 	 = GetTradeSkillItemLevelFilter()
 	filters.hasMaterials = TradeSkillFrame.filterTbl.hasMaterials
-	filters.hasSkillUp = TradeSkillFrame.filterTbl.hasSkillUp
+	filters.hasSkillUp 	 = TradeSkillFrame.filterTbl.hasSkillUp
 
 	if not GetTradeSkillInvSlotFilter(0) then
 		if not filters.slots then filters.slots = {} end
@@ -255,6 +257,7 @@ local function RestoreFilters()
 	end
 
 	TradeSkillUpdateFilterBar()
+	SelectTradeSkill(filters.selected)
 	-- TradeSkillFrame_Update()
 end
 
@@ -316,18 +319,43 @@ function ns.ScanTradeSkills()
 		-- herbalism / skinning have no recipes
 		if profession.skillLine and profession.skillLine ~= 182 and profession.skillLine ~= 393 then
 			SpellButton_OnClick(button, 'LeftButton')
-			--[[ while not TradeSkillFrame:IsVisible() or CURRENT_TRADESKILL ~= profession.skillName do
-				print('waiting for', profession.skillName, CURRENT_TRADESKILL)
-				coroutine.yield()
-			end --]]
-			ns.Print('Scanning profession %s', profession.skillName)
+			-- ns.Print('Scanning profession %s', profession.skillName)
 			ScanTradeSkill()
 			CloseTradeSkill()
 		end
 	end
 end
 
--- IsUsableSpell(craftSpellID)
+-- http://www.wowpedia.org/TradeSkillLink string.byte, bit
+function ns.IsTradeSkillKnown(craftSpellID)
+	-- local professionLink = GetTradeSkillListLink()
+	-- if not professionLink then return end
+	-- local unitGUID, tradeSpellID, currentRank, maxRank, recipeList = professionLink:match("\124Htrade:([^:]+):([^:]+):([^:]+):([^:]+):([^:\124]+)")
+
+	return IsUsableSpell(craftSpellID)
+end
+
+local function ScanForReagents(index)
+	for i = 1, GetTradeSkillNumReagents(index) do
+		local _, _, reagentCount, playerReagentCount = GetTradeSkillReagentInfo(index, i)
+		local link = GetTradeSkillReagentItemLink(index, i)
+
+		local linkType, id = link and link:match("\124H([^:]+):([^:]+)")
+					    id = id and tonumber(id, 10)
+		if id and MidgetDB.craftables[id] and playerReagentCount < reagentCount then
+			for spellID, data in pairs(MidgetDB.craftables[id]) do
+				local spellLink, tradeLink = GetSpellLink(spellID)
+				if ns.IsTradeSkillKnown(spellID) then
+					-- print('could create', link, spellLink, tradeLink)
+				else
+					-- print(link, 'is craftable via', spellLink, tradeLink, "but you don't know/don't have materials")
+				end
+			end
+		end
+	end
+end
+
+-- IsUsableSpell(craftSpellID) as far as reagents are available
 -- /cast <profession name>
 -- /run for i=1,GetNumTradeSkills() do if GetTradeSkillInfo(i)==<crafted item> then DoTradeSkill(i, <num>); CloseTradeSkill(); break end end
 
@@ -386,19 +414,10 @@ local commonCraftables = {
 	[37705] = { [56040] = {10, 10, 35622, 1} }, -- Water
 
 	[76061] = { [129352] = {1, 1, 89112, 10} }, -- Spirit of Harmony
+	[76734] = { [131776] = {1, 1, 90407, 10} }, -- Serpent's Eye
 }
 
 -- events
-local scanRoutine
-ns.RegisterEvent("TRADE_SKILL_SHOW", function()
-	if scanRoutine and coroutine.status(scanRoutine) ~= 'dead' then
-		coroutine.resume(scanRoutine)
-	else
-		scanRoutine = nil
-		ns.UnregisterEvent("TRADE_SKILL_SHOW", "tradeskill_update")
-	end
-end, "tradeskill_update")
-
 ns.RegisterEvent('ADDON_LOADED', function(self, event, arg1)
 	if arg1 == addonName then
 		hooksecurefunc("TradeSkillFrame_Update", AddTradeSkillReagentCosts)
@@ -406,9 +425,9 @@ ns.RegisterEvent('ADDON_LOADED', function(self, event, arg1)
 		hooksecurefunc("TradeSkillFrameButton_OnEnter", AddTradeSkillHoverLink)
 		hooksecurefunc("TradeSkillFrameButton_OnLeave", ns.HideTooltip)
 
-		if not MidgetDB.craftables then MidgetDB.craftables = {} end
+		hooksecurefunc("TradeSkillFrame_SetSelection", ScanForReagents)
 
-		-- TODO: compare to Cork's list of combinables
+		if not MidgetDB.craftables then MidgetDB.craftables = {} end
 		for crafted, crafts in pairs(commonCraftables) do
 			if not MidgetDB.craftables[crafted] then
 				MidgetDB.craftables[crafted] = {}
