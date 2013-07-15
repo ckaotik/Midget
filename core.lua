@@ -33,6 +33,7 @@ local globalDefaults = {
 	outgoingWhisperColor = true,
 	InterfaceOptionsScrolling = true,
 	SHIFTAcceptPopups = true,
+	hideUnusableCompareTips = true,
 
 	scanGems = false,
 }
@@ -330,6 +331,27 @@ local function AddTipTacStyles()
 end
 
 -- ================================================
+-- Hide unusable item comparison
+-- ================================================
+local function HideUnusableCompareTips()
+	if not MidgetDB.hideUnusableCompareTips then return end
+	local function HookCompareItems(shoppingtip)
+		local old = shoppingtip.SetHyperlinkCompareItem
+		shoppingtip.SetHyperlinkCompareItem = function(self, link, level, shift, main, ...)
+			main = nil
+			return old(self, link, level, shift, main, ...)
+		end
+	end
+
+	HookCompareItems(ShoppingTooltip1)
+	HookCompareItems(ShoppingTooltip2)
+	HookCompareItems(ShoppingTooltip3)
+	HookCompareItems(ItemRefShoppingTooltip1)
+	HookCompareItems(ItemRefShoppingTooltip2)
+	HookCompareItems(ItemRefShoppingTooltip3)
+end
+
+-- ================================================
 -- Undress button on models!
 -- ================================================
 function ns.AddUndressButton(frame)
@@ -385,7 +407,7 @@ local openPopup
 local function AutoAcceptPopup(self)
 	popup = self or openPopup
 	if not MidgetDB.SHIFTAcceptPopups or type(popup) ~= "table" then return end
-	if IsShiftKeyDown() and not popup.which == "DEATH" then
+	if IsShiftKeyDown() and popup.which ~= "DEATH" then
 		if popup.which == "GOSSIP_CONFIRM" and not popup.data then
 			-- delay
 			openPopup = popup
@@ -410,6 +432,7 @@ function ns.Initialize()
 	OutgoingWhisperColor()
 	InterfaceOptionsScrolling()
 	AddMoreSharedMedia()
+	HideUnusableCompareTips()
 
 	SLASH_ROLECHECK1 = "/rolecheck"
 	SlashCmdList.ROLECHECK = InitiateRolePoll
