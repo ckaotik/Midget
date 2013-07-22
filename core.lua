@@ -13,7 +13,6 @@ local globalDefaults = {
 	tradeskillCosts = false,
 	tradeskillLevels = true,
 	tradeskillTooltips = true,
-	tradeskillCraftedTooltip = false,
 
 	CorkButton = false,
 	TipTacStyles = true,

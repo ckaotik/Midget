@@ -121,34 +121,32 @@ local function AddTradeSkillHoverLink(self)
 
 	local ID = self:GetID()
 	local recipeLink = ID and GetTradeSkillRecipeLink(ID)
-	if recipeLink then
+	local result = GetTradeSkillItemLink(ID)
+
+	if result and recipeLink then
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+
+		if IsEquippableItem(result) and (IsModifiedClick("COMPAREITEMS") or (GetCVarBool("alwaysCompareItems") and not GameTooltip:IsEquippedItem())) then
+			GameTooltip:SetHyperlink(result)
+			GameTooltip_ShowCompareItem(GameTooltip, 1)
+		end
 		GameTooltip:SetHyperlink(recipeLink)
 
-		local result = GetTradeSkillItemLink(ID)
 		if Atr_ShowTipWithPricing then
 			GameTooltip:AddLine(" ")
 			Atr_ShowTipWithPricing(GameTooltip, result, 1)
 		elseif IsAddOnLoaded("Auctional") then
 			Auctional.ShowSimpleTooltipData(GameTooltip, result)
 		end
-
-		GameTooltip:Show()
-
-		if MidgetDB.tradeskillCraftedTooltip then
-			local resultToolTip = _G["MidgetTradeSkillResultTooltip"]
-			if not resultToolTip then
-				resultToolTip = CreateFrame("GameTooltip", "MidgetTradeSkillResultTooltip", GameTooltip, "ShoppingTooltipTemplate")
-			end
-			resultToolTip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
-			resultToolTip:SetHyperlink(GetTradeSkillItemLink(ID))
-			resultToolTip:Show()
+		if IsAddOnLoaded("TopFit") and TopFit.TooltipAddCompareLines then
+			TopFit.TooltipAddCompareLines(GameTooltip, result)
 		end
+		GameTooltip:Show()
 
 		if not self.touched then
 			self:HookScript("OnClick", function(self)
 				if IsModifiedClick("DRESSUP") then
-					DressUpItemLink(GetTradeSkillItemLink(ID))
+					DressUpItemLink(result)
 				end
 			end)
 			self.touched = true
