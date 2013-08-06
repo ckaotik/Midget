@@ -166,7 +166,7 @@ local function CheckUpdateLootSpec()
 		local specPreference = MidgetLocalDB.LFRLootSpecs and MidgetLocalDB.LFRLootSpecs[ encounterID ] or 0
 			  specPreference = GetSpecializationInfo(specPreference)
 		-- don't change if we have no preference set
-		if specPreference and (currentLoot == 0 and currentSpec ~= specPreference or currentLoot ~= specPreference) then
+		if specPreference and ((currentLoot == 0 and currentSpec ~= specPreference) or currentLoot ~= specPreference) then
 			local _, specName, _, specIcon = GetSpecializationInfoByID(specPreference)
 			ns.Print('Changing loot spec to |T%1$s:0|t%2$s', specIcon, specName)
 			SetLootSpecialization(specPreference)
@@ -174,12 +174,6 @@ local function CheckUpdateLootSpec()
 			-- ns.Print('already in correct spec')
 		end
 	end
-
-	--[[
-	/run local d=MidgetLocalDB.LFRLootSpecs; for eID,x in pairs(MidgetLocalDB.LFRLootRoles) do if x == "TANK" then d[eID] = 3 elseif x == "DAMAGER" then d[eID] = 1 else d[eID] = 4 end end
-	/run MidgetLocalDB.LFRLootRoles = nil
-	--]]
-
 	-- ns.UnregisterEvent("INSTANCE_ENCOUNTER_ENGAGE_UNIT", "encounter_start")
 end
 
@@ -201,6 +195,16 @@ hooksecurefunc("EncounterJournal_DisplayEncounter", function(encounterID, noButt
 		selectedEncounter = encounterID
 	end
 	selectedDifficulty = EJ_GetDifficulty()
+end)
+local buttonsInit = nil
+hooksecurefunc("EncounterJournal_LootUpdate", function()
+	if buttonsInit then return end
+	-- don't like tooltips triggering EVERYWHERE
+	local lootButtons = EncounterJournal.encounter.info.lootScroll.buttons
+	for _, button in pairs(lootButtons) do
+		button:SetHitRectInsets(0, 276, 0, 0)
+	end
+	buttonsInit = true
 end)
 
 ns.RegisterEvent("PLAYER_REGEN_ENABLED", function() lastEncounter = nil end, "encounter_end")

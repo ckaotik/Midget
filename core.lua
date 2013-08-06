@@ -24,7 +24,6 @@ local globalDefaults = {
 
 	autoCheckSpells = true,
 	autoScanProfessions = false,
-	autocompleteAlts = true,
 
 	undressButton = true,
 	modelLighting = true,
