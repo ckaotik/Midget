@@ -1,6 +1,6 @@
 local addonName, ns, _ = ...
 -- GLOBALS: _G, CliqueDB3, MAX_SPELLS, SEARCH, BOOKTYPE_SPELL, SPELLBOOK_PAGENUMBERS, SPELLS_PER_PAGE, NUM_ACTIONBAR_PAGES, NUM_ACTIONBAR_BUTTONS, UIFrameFlash, UIFrameFlashStop, EditBox_ClearFocus, SpellBookFrame, SpellBookFrames, SpellBookPage1, SpellBookPage2
--- GLOBALS: IsAddOnLoaded, IsAltKeyDown, CreateFrame, PlaySound, ToggleSpellBook, FindSpellBookSlotBySpellID, SpellBookTabFlashFrame, SpellBookFrame_Update, SpellBook_GetCurrentPage, SpellBook_GetAutoCastShine, AutoCastShine_AutoCastStart, GetNumSpellTabs, GetSpellInfo, GetSpellTabInfo, GetSpellBookItemInfo, GetSpellBookItemName, GetSpellDescription, GetSpellLink, IsSpellKnown, IsPassiveSpell, GetUnitName, GetRealmName, GetMacroBody, GetFlyoutInfo, GetFlyoutSlotInfo, GetActionInfo, GetShapeshiftFormInfo, GetNumShapeshiftForms
+-- GLOBALS: IsAddOnLoaded, IsAltKeyDown, CreateFrame, PlaySound, ToggleSpellBook, FindSpellBookSlotBySpellID, SpellBookTabFlashFrame, SpellBookFrame_Update, SpellBook_GetCurrentPage, SpellBook_GetAutoCastShine, AutoCastShine_AutoCastStart, GetNumSpellTabs, GetSpellInfo, GetSpellTabInfo, GetSpellBookItemInfo, GetSpellBookItemName, GetSpellDescription, GetSpellLink, IsSpellKnown, IsPassiveSpell, GetUnitName, GetRealmName, GetMacroBody, GetFlyoutInfo, GetFlyoutSlotInfo, GetActionInfo, GetShapeshiftFormInfo, GetNumShapeshiftForms, SecureCmdOptionParse
 -- GLOBALS: hooksecurefunc, string, math, select, ipairs, tonumber, wipe, type
 
 local function GetSpellButtonByID(index)
@@ -98,6 +98,7 @@ local function ParseMacroSpells(macro)
 				local condition = conditions:match('(n?o?spec:[^%],]+)')
 				return condition and '['..condition..']' or ''
 			end)
+			command = command:gsub('^reset=.- ', ' ') -- remove castsequence conditions
 
 			local splitChar = ';'
 			if commandType == 'castsequence' or commandType == 'castrandom' then
@@ -106,9 +107,10 @@ local function ParseMacroSpells(macro)
 
 			for snippet in command:gmatch('[^'..splitChar..']+') do
 				local spell = SecureCmdOptionParse(snippet)
+				      spell = spell and spell:gsub('^!([^ ])', ' %1') -- fix !ToggleSpell
 				local spellID = GetSpellID(spell)
 				if spellID then
-					usedSpells[ tonumber(spellID) ] = true
+					usedSpells[ tonumber(spellID) ] = spell
 				end
 			end
 		end
@@ -116,8 +118,7 @@ local function ParseMacroSpells(macro)
 end
 
 local function ScanActionButtons()
-	local actionType, action, subType, spellID
-	local macro, commandType, command, overlayedSpell
+	local actionType, action, spellID
 	local numActionButtons = (NUM_ACTIONBAR_PAGES + 4) * NUM_ACTIONBAR_BUTTONS -- regular + 2 right + 2 bottom bars
 
 	usedSpells = wipe(usedSpells)
@@ -126,23 +127,15 @@ local function ScanActionButtons()
 	end
 
 	for slot = 1, numActionButtons do
-		actionType, action, subType, spellID = GetActionInfo(slot)
+		actionType, action, _, spellID = GetActionInfo(slot)
 		-- companion, equipmentset, flyout, item, macro, spell
 
 		if actionType == "spell" then
 			usedSpells[action] = true
-
-			overlayedSpell = select(9, GetSpellInfo(action))
-			if overlayedSpell and overlayedSpell ~= 0 then
-				_, action = GetSpellBookItemInfo(overlayedSpell, BOOKTYPE_SPELL)
-				if action then
-					usedSpells[action] = true
-				end
-			end
 		elseif actionType == "flyout" then
 			usedSpells[ -1*action ] = true
 		elseif actionType == "macro" and action > 0 then
-			macro = GetMacroBody(action)
+			local macro = GetMacroBody(action)
 			ParseMacroSpells(macro)
 		end
 	end
@@ -195,9 +188,10 @@ local function ScanSpellBook()
 
 		if skillType == "SPELL" and actionID then
 			-- horrible procedure to handle transforming spells, e.g. talented or multi-stance
-			spell = GetSpellBookItemName(index, BOOKTYPE_SPELL)
-			spell = GetSpellLink(spell) or GetSpellLink(actionID)
-			spellID = GetSpellID(spell)
+			spell = GetSpellBookItemName(index, BOOKTYPE_SPELL)   -- gets overlayed spell name
+			spell = GetSpellInfo(spell) or GetSpellInfo(actionID) -- gets the spell base name
+			spellID = GetSpellID(spell) -- can now get overlayed spell info
+			-- print('spellbook', index, spell, spellID, actionID, ';', IsSpellKnown(actionID), IsSpellKnown(spellID))
 			if IsSpellKnown(actionID) and not IsPassiveSpell(actionID) and not usedSpells[spellID] and not usedSpells[actionID] then
 				hasMissing = true
 				NotifyUnusedSpell(spellID)
