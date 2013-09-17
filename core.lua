@@ -182,7 +182,7 @@ local function AddMoreSharedMedia()
 end
 
 -- ================================================
--- Interface Options Scrolling
+--  Interface Options Scrolling
 -- ================================================
 local function InterfaceOptionsScrolling()
 	if not MidgetDB.InterfaceOptionsScrolling then return end
@@ -194,6 +194,43 @@ local function InterfaceOptionsScrolling()
 		f:SetScript("OnMouseWheel", function(self, val)
 			ScrollFrameTemplate_OnMouseWheel(InterfaceOptionsFrameAddOnsList, val)
 		end)
+	end
+end
+
+-- ================================================
+--  Tooltip item/spell/achievement ids
+-- ================================================
+local function AddTooltipID(tooltip, hyperlink)
+	if not hyperlink then -- OnTooltipSetItem
+		_, hyperlink = tooltip:GetItem()
+	end
+	if not hyperlink then -- OnTooltipSetSpell
+		_, _, hyperlink = tooltip:GetSpell()
+		hyperlink = hyperlink and 'spell:'..hyperlink
+	end
+	if not hyperlink then return end
+	local linkType, id, data = hyperlink:match("(%l+):([^:]*):?([^\124]*)")
+
+	--[[ local search
+	if linkType == 'item' then
+		-- search = ITEM_LEVEL
+		search = ITEM_UPGRADE_TOOLTIP_FORMAT
+	end
+	search = search and search:gsub('%%d', '(%%d+)'):gsub('%%s', '(%%s+)') --]]
+
+	local left, right = tooltip:GetName() .. 'TextLeft', tooltip:GetName() .. 'TextRight'
+	local added
+	for i = 1, tooltip:NumLines() do
+		local text = _G[left..i] and _G[left..i]:GetText()
+		if not text or text == CURRENTLY_EQUIPPED then
+			-- nothing
+		elseif not added then
+			local lineRight = _G[right..i]
+			lineRight:SetText(id)
+			lineRight:SetTextColor(0.55, 0.55, 0.55, 0.5)
+			lineRight:Show()
+			added = true
+		end
 	end
 end
 
@@ -403,7 +440,7 @@ end
 -- ================================================
 local openPopup
 local function AutoAcceptPopup(self)
-	popup = self or openPopup
+	local popup = self or openPopup
 	if not MidgetDB.SHIFTAcceptPopups or type(popup) ~= "table" then return end
 	if IsShiftKeyDown() and popup.which ~= "DEATH" then
 		if popup.which == "GOSSIP_CONFIRM" and not popup.data then
@@ -440,6 +477,15 @@ function ns.Initialize()
 	hooksecurefunc('SelectGossipOption', AutoAcceptPopup)
 	hooksecurefunc('StaticPopup_OnShow', AutoAcceptPopup)
 	-- for i=1,4 do _G["StaticPopup"..i]:HookScript("OnShow", AutoAcceptPopup) end
+
+	--[[ for _, tooltip in pairs({ GameTooltip, ItemRefTooltip,
+		ShoppingTooltip1, ShoppingTooltip2, ShoppingTooltip3,
+		ItemRefShoppingTooltip1, ItemRefShoppingTooltip2, ItemRefShoppingTooltip3 }) do
+
+		hooksecurefunc(tooltip, "SetHyperlink", AddTooltipID)
+		tooltip:HookScript("OnTooltipSetItem",  AddTooltipID)
+		tooltip:HookScript("OnTooltipSetSpell", AddTooltipID)
+	end --]]
 
 	-- add "Show in pet journal" dropdown entry
 	hooksecurefunc("UnitPopup_HideButtons", CustomizeDropDowns)
