@@ -125,7 +125,10 @@ function ns.Debug(...)
 end
 
 function ns.ShowTooltip(self)
-	if self.tiptext then
+	if self.hyperlink then
+		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+		GameTooltip:SetHyperlink(self.hyperlink)
+	elseif self.tiptext then
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 		GameTooltip:SetText(self.tiptext, nil, nil, nil, nil, true)
 	end
@@ -454,6 +457,36 @@ local function AutoAcceptPopup(self)
 end
 
 -- ================================================
+--  Fancy BigWigs pull timer, like those in challenge modes
+-- ================================================
+local function InitBigWigsFancyPullTimer()
+	if not IsAddOnLoaded("BigWigs_Plugins") then
+		ns.RegisterEvent("ADDON_LOADED", function(self, event, addon)
+			if addon == "BigWigs_Plugins" then
+				ns.UnregisterEvent("ADDON_LOADED", "bigwigs_fancypull")
+				InitBigWigsFancyPullTimer()
+			end
+		end, "bigwigs_fancypull")
+
+		return
+	end
+
+	local L = LibStub("AceLocale-3.0"):GetLocale("Big Wigs: Plugins")
+	local AceEvent = LibStub('AceEvent-3.0')
+
+	AceEvent:RegisterMessage("BigWigs_StartBar", function(event, plugin, key, text, time)
+		if text == (L['Pull'] or 'Pull') then
+			TimerTracker_OnEvent(TimerTracker, "START_TIMER", TIMER_TYPE_CHALLENGE_MODE, timeLeft, timeLeft)
+		end
+	end)
+	AceEvent:RegisterMessage("BigWigs_StopBar", function(event, plugin, text)
+		if text == (L['Pull'] or 'Pull') then
+			TimerTracker_OnEvent(TimerTracker, "PLAYER_ENTERING_WORLD")
+		end
+	end)
+end
+
+-- ================================================
 function ns.Initialize()
 	UpdateDatabase()
 
@@ -468,6 +501,7 @@ function ns.Initialize()
 	InterfaceOptionsScrolling()
 	AddMoreSharedMedia()
 	HideUnusableCompareTips()
+	InitBigWigsFancyPullTimer()
 
 	SLASH_ROLECHECK1 = "/rolecheck"
 	SlashCmdList.ROLECHECK = InitiateRolePoll
