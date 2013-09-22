@@ -115,6 +115,7 @@ end
 local MAX_PET_LEVEL, MAX_ACTIVE_PETS = 25, 3
 local WATCHFRAME_TEAMLINES = {}
 local teamLineIndex = 1
+local HEAL_PETS = 125439
 
 local function WatchFrame_GetTeamLine()
 	local line = WATCHFRAME_TEAMLINES[teamLineIndex]
@@ -135,8 +136,12 @@ local function WatchFrame_ReleaseUnusedTeamLines()
 	local line
 	for i = teamLineIndex, #WATCHFRAME_TEAMLINES do
 		line = WATCHFRAME_TEAMLINES[i]
+		if line.healPet then
+			line.healPet:Hide()
+		end
 		if line.xp then line.xp:SetValue(0) end
 		if line.progress then
+			line.progress:SetPoint("RIGHT", line.text, "RIGHT")
 			line.progress:SetValue(0)
 			line.progress:Hide()
 		end
@@ -166,28 +171,24 @@ local function DisplayTeamTracker(lineFrame, nextAnchor, maxHeight, frameWidth)
 			if teamLineIndex == 1 then
 				-- header
 				line = WatchFrame_GetTeamLine()
-				WatchFrame_SetLine(line, previousLine, -WATCHFRAME_QUEST_OFFSET, true,
-					BATTLE_PET_SOURCE_5, DASH_NONE, true)
+				WatchFrame_SetLine(line, previousLine, -WATCHFRAME_QUEST_OFFSET, true, BATTLE_PET_SOURCE_5, DASH_NONE, true)
 
-				--[[ TODO: add button to heal pets
-				if ( item and (not isComplete or showItemWhenComplete) ) then
-		          watchItemIndex = watchItemIndex + 1;
-		          itemButton = _G["WatchFrameItem"..watchItemIndex];
-		          if ( not itemButton ) then
-		            WATCHFRAME_NUM_ITEMS = watchItemIndex;
-		            itemButton = CreateFrame("BUTTON", "WatchFrameItem" .. watchItemIndex, lineFrame, "WatchFrameItemButtonTemplate");
-		          end
-		          itemButton:Show();
-		          itemButton:ClearAllPoints();
-		          itemButton:SetID(questIndex);
-		          SetItemButtonTexture(itemButton, item);
-		          SetItemButtonCount(itemButton, charges);
-		          itemButton.charges = charges;
-		          WatchFrameItem_UpdateCooldown(itemButton);
-		          itemButton.rangeTimer = -1;
-		          itemButton:SetPoint("TOPRIGHT", questTitle, "TOPRIGHT", 10, -2);
-		        end
-				--]]
+				local spellName, _, spellIcon = GetSpellInfo(HEAL_PETS)
+				local button = CreateFrame("Button", "MidgetHealBattlePetsButton", line, "SecureActionButtonTemplate,ItemButtonTemplate")
+				button:SetScale(26/37)
+				button:SetPoint("TOPRIGHT", line, "TOPRIGHT", 10, 16)
+				button:SetAttribute("type", "spell")
+				button:SetAttribute("spell", spellName)
+
+				button.hyperlink = 'spell:'..HEAL_PETS
+				button:SetScript("OnEnter", ns.ShowTooltip)
+				button:SetScript("OnLeave", ns.HideTooltip)
+
+				button.cooldown = CreateFrame("Cooldown", nil, button)
+				button.cooldown:SetAllPoints()
+
+				SetItemButtonTexture(button, spellIcon)
+				line.healPet = button
 
 				if not previousLine then
 					line:SetPoint("RIGHT", lineFrame, "RIGHT", 0, 0)
@@ -212,7 +213,7 @@ local function DisplayTeamTracker(lineFrame, nextAnchor, maxHeight, frameWidth)
 			if not line.progress then
 				line.progress = CreateFrame("StatusBar", "$parentProgressBar", line, "AchievementProgressBarTemplate")
 				line.progress:SetPoint("LEFT", line.text, "LEFT", 2, 0)
-				line.progress:SetPoint("RIGHT", line.text, "RIGHT")
+				line.progress:SetPoint("RIGHT", line.text, "RIGHT", -2, 0)
 			end
 			line.progress:Show()
 			if not line.xp then
@@ -257,9 +258,21 @@ local function DisplayTeamTracker(lineFrame, nextAnchor, maxHeight, frameWidth)
 end
 
 local function updateHandler(frame, event, ...)
-	if event ~= "UNIT_SPELLCAST_SUCCEEDED" or select(5, ...) == 127841 then -- revive pet
-		WatchFrame_Update()
+	if event == "UNIT_SPELLCAST_SUCCEEDED" then
+		spellID = select(5, ...)
+		if spellID ~= HEAL_PETS and spellID ~= 127841 then -- revive: visual
+			return
+		end
+	elseif event ~= "PET_JOURNAL_LIST_UPDATE" then
+		return
 	end
+
+	local button = _G["MidgetHealBattlePetsButton"]
+	if button then
+		local start, duration = GetSpellCooldown(HEAL_PETS)
+		button.cooldown:SetCooldown(start, duration)
+	end
+	WatchFrame_Update()
 end
 
 local function CreateSkillTrackingCheckboxes()
