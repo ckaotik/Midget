@@ -472,14 +472,12 @@ local function InitBigWigsFancyPullTimer()
 	end
 
 	local L = LibStub("AceLocale-3.0"):GetLocale("Big Wigs: Plugins")
-	local AceEvent = LibStub('AceEvent-3.0')
-
-	AceEvent:RegisterMessage("BigWigs_StartBar", function(event, plugin, key, text, time)
+	BigWigsLoader:RegisterMessage("BigWigs_StartBar", function(_, plugin, _, text, timeLeft)
 		if text == (L['Pull'] or 'Pull') then
 			TimerTracker_OnEvent(TimerTracker, "START_TIMER", TIMER_TYPE_CHALLENGE_MODE, timeLeft, timeLeft)
 		end
 	end)
-	AceEvent:RegisterMessage("BigWigs_StopBar", function(event, plugin, text)
+	BigWigsLoader:RegisterMessage("BigWigs_StopBar", function(event, plugin, text)
 		if text == (L['Pull'] or 'Pull') then
 			TimerTracker_OnEvent(TimerTracker, "PLAYER_ENTERING_WORLD")
 		end
