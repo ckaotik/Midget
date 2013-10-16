@@ -82,7 +82,7 @@ local function DisplaySkillTracker(lineFrame, nextAnchor, maxHeight, frameWidth)
 				line.icon:Show()
 
 				if not line.progress then
-					line.progress = CreateFrame("StatusBar", "$parentProgressBar", line, "AchievementProgressBarTemplate")
+					line.progress = CreateFrame("StatusBar", "$parentProgressBar", line, "AchievementProgressBarTemplate") -- FIXME
 					line.progress:SetPoint("LEFT", line.text, "LEFT", 2, 0)
 					line.progress:SetPoint("RIGHT", line.text, "RIGHT")
 				end

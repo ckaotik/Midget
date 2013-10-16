@@ -1,9 +1,9 @@
-## Interface: 50300
+## Interface: 50400
 ## Author: ckaotik
 ## Title: Midget
 ## Version: dev
 ## OptionalDeps: Cork, TipTac
-## Dependencies: Blizzard_AchievementUI, Blizzard_EncounterJournal, Blizzard_PetJournal, Blizzard_TradeSkillUI
+## Dependencies: Blizzard_TradeSkillUI
 ## SavedVariables: MidgetDB
 ## SavedVariablesPerCharacter: MidgetLocalDB
 
@@ -12,7 +12,7 @@ libs\LibStub\LibStub.lua
 libs\LibButtonFacade-1.0\LibButtonFacade-1.0.lua
 libs\LibItemSearch-1.0\LibItemSearch-1.0.lua
 
-blizzfix.lua
+# blizzfix.lua
 core.lua
 config.lua
 
@@ -21,8 +21,9 @@ modules\battlepets.lua
 # modules\gemparser.lua
 modules\journal.lua
 modules\learner.lua
-modules\procparser.lua
+modules\mail.lua
+# modules\procparser.lua
 modules\spellbook.lua
 # modules\stats.lua
-modules\tracker.lua
+# modules\tracker.lua
 modules\tradeskill.lua

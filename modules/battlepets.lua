@@ -332,7 +332,7 @@ function plugin.Update()
 end
 
 local function initialize(frame, event, arg1)
-	if arg1 == addonName then
+	if (arg1 == addonName or arg1 == 'Blizzard_PetJournal') and IsAddOnLoaded('Blizzard_PetJournal') then
 		--[[
 			hooksecurefunc('BattlePetToolTip_Show', UpdateBattlePetTooltip)
 			hooksecurefunc('FloatingBattlePet_Show', UpdateBattlePetTooltip)
