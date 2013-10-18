@@ -136,11 +136,35 @@ end
 function ns.HideTooltip()
 	GameTooltip:Hide()
 end
+
 function ns.GetItemID(itemLink)
 	if not itemLink or type(itemLink) ~= "string" then return end
 	local itemID = gsub(itemLink, ".-Hitem:([0-9]*):.*", "%1")
 	return tonumber(itemID)
 end
+
+function ns.GetLinkData(link)
+	if not link or type(link) ~= "string" then return end
+	local linkType, id, data = link:match("(%l+):([^:]*):?([^\124]*)")
+	return linkType, tonumber(id), data
+end
+
+local BATTLEPET = select(11, GetAuctionItemClasses())
+function ns.GetItemInfo(link)
+	if not link or type(link) ~= "string" then return end
+	local linkType, itemID, data = ns.GetLinkData(link)
+
+	if linkType == "battlepet" then
+		local name, texture, subClass, companionID = C_PetJournal.GetPetInfoBySpeciesID( itemID )
+		local level, quality, health, attack, speed = strsplit(':', data or '')
+
+		-- including some static values for battle pets
+		return name, trim(link), tonumber(quality), tonumber(level), 0, BATTLEPET, tonumber(subClass), 1, "", texture, nil, companionID, tonumber(health), tonumber(attack), tonumber(speed)
+	elseif linkType == "item" then
+		return GetItemInfo( itemID )
+	end
+end
+
 function string.explode(str, seperator, plain, useTable)
 	assert(type(seperator) == "string" and seperator ~= "", "Invalid seperator (need string of length >= 1)")
 	local t, pos, nexti = useTable or {}, 1, 1
