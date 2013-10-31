@@ -7,10 +7,14 @@
 ## SavedVariables: MidgetDB
 ## SavedVariablesPerCharacter: MidgetLocalDB
 
+## X-ConfigMode: true
+
+#@no-lib-strip@
 # libraries
 libs\LibStub\LibStub.lua
 libs\LibButtonFacade-1.0\LibButtonFacade-1.0.lua
 libs\LibItemSearch-1.0\LibItemSearch-1.0.lua
+#@end-no-lib-strip@
 
 # blizzfix.lua
 core.lua
@@ -18,6 +22,7 @@ config.lua
 
 # modules
 modules\battlepets.lua
+modules\configmode.lua
 # modules\gemparser.lua
 modules\journal.lua
 modules\learner.lua
