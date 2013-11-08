@@ -525,8 +525,8 @@ function ns.Initialize()
 	HideUnusableCompareTips()
 	InitBigWigsFancyPullTimer()
 
-	SLASH_ROLECHECK1 = "/rolecheck"
-	SlashCmdList.ROLECHECK = InitiateRolePoll
+	-- SLASH_ROLECHECK1 = "/rolecheck"
+	-- SlashCmdList.ROLECHECK = InitiateRolePoll
 
 	ChatFrame_AddMessageEventFilter("CHAT_MSG_LOOT", AddLootIcons)
 
