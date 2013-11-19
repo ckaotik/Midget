@@ -275,20 +275,20 @@ function ns.SearchInSpellBook()
 			end
 		end
 
-		local flashFrame = _G["SpellBookSkillLineTab"..tab.."Flash"]
+		--[[local flashFrame = _G["SpellBookSkillLineTab"..tab.."Flash"]
 		if matchInTab and flashFrame and searchString and searchString ~= "" then
 			SpellBookFrame.flashTabs = 1
 			flashFrame:Show()
 		elseif flashFrame then
 			flashFrame:Hide()
-		end
+		end--]]
 	end
 
-	if anyMatch then
+	--[[ if anyMatch then
 		UIFrameFlash(SpellBookTabFlashFrame, 0.5, 0.5, 30, nil)
 	else
 		UIFrameFlashStop(SpellBookTabFlashFrame)
-	end
+	end --]]
 end
 
 ns.RegisterEvent("ADDON_LOADED", function(frame, event, arg1)
