@@ -466,7 +466,21 @@ end
 -- Accept popups on SHIFT
 -- ================================================
 local openPopup
-local function AutoAcceptPopup(self)
+local function AutoAcceptPopup(which, arg1, arg2, data)
+	if type(which) == 'table' then
+		data  = which.data
+		which = which.which
+	end
+	local info = StaticPopupDialogs[which]
+
+	if info and which ~= 'DEATH' and MidgetDB.SHIFTAcceptPopups and IsShiftKeyDown() then
+		if info.OnAccept then
+			info.OnAccept(nil, data)
+		end
+		StaticPopup_Hide(which, data)
+	end
+end
+--[[ local function AutoAcceptPopup(self)
 	local popup = self or openPopup
 	if not MidgetDB.SHIFTAcceptPopups or type(popup) ~= "table" then return end
 	if IsShiftKeyDown() and popup.which ~= "DEATH" then
@@ -478,7 +492,7 @@ local function AutoAcceptPopup(self)
 			openPopup = nil
 		end
 	end
-end
+end --]]
 
 -- ================================================
 --  Fancy BigWigs pull timer, like those in challenge modes
@@ -530,8 +544,8 @@ function ns.Initialize()
 
 	ChatFrame_AddMessageEventFilter("CHAT_MSG_LOOT", AddLootIcons)
 
-	hooksecurefunc('SelectGossipOption', AutoAcceptPopup)
-	hooksecurefunc('StaticPopup_OnShow', AutoAcceptPopup)
+	-- hooksecurefunc('SelectGossipOption', AutoAcceptPopup)
+	hooksecurefunc('StaticPopup_Show', AutoAcceptPopup)
 	-- for i=1,4 do _G["StaticPopup"..i]:HookScript("OnShow", AutoAcceptPopup) end
 
 	--[[ for _, tooltip in pairs({ GameTooltip, ItemRefTooltip,
@@ -544,8 +558,8 @@ function ns.Initialize()
 	end --]]
 
 	-- add "Show in pet journal" dropdown entry
-	hooksecurefunc("UnitPopup_HideButtons", CustomizeDropDowns)
-	table.insert(UnitPopupMenus["TARGET"], #UnitPopupMenus["TARGET"], "PET_SHOW_IN_JOURNAL")
+	-- hooksecurefunc("UnitPopup_HideButtons", CustomizeDropDowns)
+	-- table.insert(UnitPopupMenus["TARGET"], #UnitPopupMenus["TARGET"], "PET_SHOW_IN_JOURNAL")
 
 	-- expose us to the world
 	Midget = ns
