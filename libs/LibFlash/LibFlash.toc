@@ -1,0 +1,13 @@
+## Interface: 40200
+## Version: 1.0
+## Title: LibFlash
+## Author: Starlon
+## Notes: Replacement for WoW's flash/fade functions.
+## X-Curse-Packaged-Version: v1.10b
+## X-Curse-Project-Name: LibFlash
+## X-Curse-Project-ID: libflash
+## X-Curse-Repository-ID: wow/libflash/mainline
+
+LibStub.lua
+
+LibFlash.lua

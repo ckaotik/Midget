@@ -250,7 +250,13 @@ local function SearchInSpell(index, searchString)
 		or (description and ItemSearch:UseTypedSearch(simpleSearch, description, nil, searchString))
 end
 
+local LibFlash = LibStub("LibFlash")
+local flasher = nil
 function ns.SearchInSpellBook()
+	if not flasher then
+		flasher = LibFlash:New(SpellBookTabFlashFrame)
+	end
+
 	local searchString = SpellBookFrame.searchString or ""
 	local offset, numSpells, isMatch, matchInTab, page
 
@@ -275,20 +281,21 @@ function ns.SearchInSpellBook()
 			end
 		end
 
-		--[[local flashFrame = _G["SpellBookSkillLineTab"..tab.."Flash"]
+		local flashFrame = _G["SpellBookSkillLineTab"..tab.."Flash"]
 		if matchInTab and flashFrame and searchString and searchString ~= "" then
-			SpellBookFrame.flashTabs = 1
 			flashFrame:Show()
 		elseif flashFrame then
 			flashFrame:Hide()
-		end--]]
+		end
 	end
 
-	--[[ if anyMatch then
-		UIFrameFlash(SpellBookTabFlashFrame, 0.5, 0.5, 30, nil)
+	if anyMatch then
+		SpellBookTabFlashFrame:Show()
+		flasher:FadeIn(0.5, 0, 1)
 	else
-		UIFrameFlashStop(SpellBookTabFlashFrame)
-	end --]]
+		SpellBookTabFlashFrame:Hide()
+		flasher:Stop()
+	end
 end
 
 ns.RegisterEvent("ADDON_LOADED", function(frame, event, arg1)

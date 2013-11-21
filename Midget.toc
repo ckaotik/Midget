@@ -14,6 +14,7 @@
 libs\LibStub\LibStub.lua
 libs\LibButtonFacade-1.0\LibButtonFacade-1.0.lua
 libs\LibItemSearch-1.0\LibItemSearch-1.0.lua
+libs\LibFlash\LibFlash.lua
 #@end-no-lib-strip@
 
 # blizzfix.lua
