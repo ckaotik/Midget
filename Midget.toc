@@ -15,6 +15,7 @@ libs\LibStub\LibStub.lua
 libs\LibButtonFacade-1.0\LibButtonFacade-1.0.lua
 libs\LibItemSearch-1.0\LibItemSearch-1.0.lua
 libs\LibFlash\LibFlash.lua
+libs\LibQTip-1.0\LibQTip-1.0-lua
 #@end-no-lib-strip@
 
 # blizzfix.lua
@@ -29,6 +30,7 @@ modules\journal.lua
 modules\learner.lua
 modules\mail.lua
 # modules\procparser.lua
+modules\social.lua
 modules\spellbook.lua
 # modules\stats.lua
 # modules\tracker.lua
