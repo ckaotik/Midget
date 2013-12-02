@@ -25,8 +25,10 @@ local icons = {
 	['CONTACT']        = '|TInterface\\FriendsFrame\\UI-Toast-FriendOnlineIcon:0|t',
 }
 
+local function OnLDBEnter() end
 local function SortGuildList(self, sortType, btn, up)
 	SortGuildRoster(sortType)
+	OnLDBEnter()
 end
 
 local function OnCharacterClick(self, character, btn, up)
@@ -87,11 +89,18 @@ local function OnCharacterClick(self, character, btn, up)
 	end
 end
 
-local function OnLDBEnter(self)
+local tooltip
+function OnLDBEnter(self)
 	local numColumns = 6
-	local tooltip = LibQTip:Acquire(addonName, numColumns) --, "RIGHT", "RIGHT", "LEFT", "LEFT", "CENTER", "CENTER", "RIGHT")
-	      tooltip:Clear()
-	tooltip:GetFont():SetTextColor(NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
+	if LibQTip:IsAcquired(addonName..'Social') then
+		tooltip:Clear()
+	else
+		tooltip = LibQTip:Acquire(addonName..'Social', numColumns) --, "RIGHT", "RIGHT", "LEFT", "LEFT", "CENTER", "CENTER", "RIGHT")
+		tooltip:SmartAnchorTo(self)
+		tooltip:SetAutoHideDelay(0.25, self)
+		-- tooltip:Clear()
+		tooltip:GetFont():SetTextColor(NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
+	end
 
 	local lineNum
 	lineNum = tooltip:AddHeader()
@@ -119,23 +128,28 @@ local function OnLDBEnter(self)
 			      level = level and colorFormat:format(levelColor.r*255, levelColor.g*255, levelColor.b*255, level) or nil
 			local classColor = classColors[class]
 			local infoText = broadcastText and broadcastText ~= '' and icons['BROADCAST']..broadcastText
-				or noteText and icons['NOTE']..noteText
+				or noteText and noteText ~= '' and icons['NOTE']..noteText
 				or icons['CONTACT']..presenceName
+
+			if gameText and gameText ~= '' then
+				zoneName, realmName = strsplit('-', gameText)
+				zoneName, realmName = zoneName and zoneName:trim(), realmName and realmName:trim()
+			end
 
 			lineNum = tooltip:AddLine(
 				status,
-				icons[client],	-- WoW: level
+				icons[client],		-- WoW: level
 				classColor and colorFormat:format(classColor.r*255, classColor.g*255, classColor.b*255, toonName) or toonName,
-				gameText,		-- WoW: realm
-				'',				-- WoW: zone
+				realmName or '',	-- WoW: realm
+				zoneName or '',		-- WoW: zone
 				infoText
 			)
 
 			if client == BNET_CLIENT_WOW then
-				local realm = ((faction == 'Horde' and RED_FONT_COLOR_CODE) or (faction == 'Alliance' and BATTLENET_FONT_COLOR_CODE) or '')
+				realmName = ((faction == 'Horde' and RED_FONT_COLOR_CODE) or (faction == 'Alliance' and BATTLENET_FONT_COLOR_CODE) or '')
 					.. realmName .. '|r'
 				tooltip:SetCell(lineNum, 2, level)
-				tooltip:SetCell(lineNum, 4, realm)
+				tooltip:SetCell(lineNum, 4, realmName)
 				tooltip:SetCell(lineNum, 5, zoneName)
 			end
 
@@ -147,11 +161,13 @@ local function OnLDBEnter(self)
 		end
 	end
 
-	tooltip:AddSeparator(2)
-
 	-- regular friends
 	local _, numFriendsOnline = GetNumFriends()
 	for index = 1, numFriendsOnline do
+		if index == 1 and numBNetOnline > 0 then
+			tooltip:AddLine(' ')
+			-- tooltip:AddSeparator(2)
+		end
 		local name, level, class, area, connected, status, note, RAF = GetFriendInfo(index)
 
 		local status     = icons[status] or ''
@@ -175,11 +191,14 @@ local function OnLDBEnter(self)
 		local guildMOTD = GetGuildRosterMOTD()
 		      guildMOTD = guildMOTD and guildMOTD:gsub("(%s%s+)", "\n")
 
-		lineNum = tooltip:AddLine(' ')
+		if numFriendsOnline then
+			lineNum = tooltip:AddLine(' ')
+			-- tooltip:AddSeparator(2)
+		end
 		lineNum = tooltip:AddHeader()
-		                tooltip:SetCell(lineNum, 1, guildName or '', 'LEFT', numColumns)
+		          tooltip:SetCell(lineNum, 1, guildName or '', 'LEFT', numColumns)
 		lineNum = tooltip:AddLine()
-		                tooltip:SetCell(lineNum, 1, guildMOTD or '', 'LEFT', numColumns)
+		          tooltip:SetCell(lineNum, 1, guildMOTD or '', 'LEFT', numColumns)
 		lineNum = tooltip:AddLine(' ')
 
 		lineNum = tooltip:AddLine('', _G.ITEM_LEVEL_ABBR, _G.NAMES_LABEL, _G.RANK, _G.ZONE, _G.LABEL_NOTE)
@@ -196,19 +215,17 @@ local function OnLDBEnter(self)
 		for index = 1, numOnlineAndMobile do
 			local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, canSoR, _ = GetGuildRosterInfo(index)
 
+			isMobile = isMobile and not online
 			status = status == 1 and CHAT_FLAG_AFK or status == 2 and CHAT_FLAG_DND or ''
 			status = icons[status] or (isMobile and icons['REMOTE']) or ''
+			zone = isMobile and REMOTE_CHAT or zone
 			local levelColor = GetQuestDifficultyColor(level)
 			local classColor = RAID_CLASS_COLORS[classFileName]
 			local inMyGroup  = UnitInParty(name) or UnitPlayerOrPetInRaid(name)
-			local noteText   = note
-			if officernote ~= '' then
-				if note == '' then
-					noteText = officernote
-				else
-					noteText = note .. ' '..GRAY_FONT_COLOR_CODE..officernote..'|r'
-				end
-			end
+
+			note        = note and note ~= '' and (HIGHLIGHT_FONT_COLOR_CODE .. note .. '|r') or ''
+			officernote = officernote and officernote ~= '' and (GREEN_FONT_COLOR_CODE .. officernote .. '|r') or nil
+			local noteText = note .. (officernote and ' '..officernote or '')
 
 			lineNum = tooltip:AddLine(
 				(inMyGroup and '|TInterface\\Buttons\\UI-CheckBox-Check:0|t ' or '') .. status,
@@ -222,9 +239,6 @@ local function OnLDBEnter(self)
 		end
 	end
 
-	-- Use smart anchoring code to anchor the tooltip to our LDB frame
-	tooltip:SmartAnchorTo(self)
-	tooltip:SetAutoHideDelay(0.25, self)
 	tooltip:Show()
 	-- tooltip:UpdateScrolling(maxHeight)
 end
