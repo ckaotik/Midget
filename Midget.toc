@@ -2,7 +2,7 @@
 ## Author: ckaotik
 ## Title: Midget
 ## Version: dev
-## OptionalDeps: Cork, TipTac
+## OptionalDeps: Cork, TipTac, BigWigs, Dominos
 ## Dependencies: Blizzard_TradeSkillUI
 ## SavedVariables: MidgetDB
 ## SavedVariablesPerCharacter: MidgetLocalDB

@@ -5,6 +5,16 @@ if not CONFIGMODE_CALLBACKS then
 	CONFIGMODE_CALLBACKS = {}
 end
 
+if IsAddOnLoaded("Dominos") then -- Dominos_Config
+	CONFIGMODE_CALLBACKS["Dominos"] = function(action)
+		Dominos:ToggleLockedFrames()
+	end
+end
+
+if IsAddOnLoaded("BigWigs") then -- BigWigs_Options
+	-- options:BigWigs_StartConfigureMode(nil, true) / options:BigWigs_StopConfigureMode()
+end
+
 --[[
 local chatWindowWasLocked = {}
 CONFIGMODE_CALLBACKS["Blizzard - Chat Windows"] = function(action)

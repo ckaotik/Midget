@@ -33,7 +33,6 @@ end
 
 local function OnCharacterClick(self, character, btn, up)
 	local contactType, contactInfo = strsplit(":", character)
-	-- local i_type, toon_name, full_name, presence_id = string.split(":", info)
 	if IsAltKeyDown() then
 		-- invite
 		if contactType == 'bnet' then
@@ -55,27 +54,32 @@ local function OnCharacterClick(self, character, btn, up)
 		end
 	elseif IsControlKeyDown() then
 		-- edit notes
-		--[[ if i_type == "guild" and CanEditPublicNote() then
-			SetGuildRosterSelection(guild_name_to_index(toon_name))
-			StaticPopup_Show("SET_GUILDPLAYERNOTE")
-			return
+		if contactType == 'guild' then
+			for index = 1, select(3, GetNumGuildMembers()) do
+				local name = GetGuildRosterInfo(index)
+				if name == contactInfo then
+					SetGuildRosterSelection(index)
+					break
+				end
+			end
+			if btn == 'RightButton' and CanEditOfficerNote() then
+				StaticPopup_Show("SET_GUILDOFFICERNOTE")
+			elseif CanEditPublicNote() then
+				StaticPopup_Show("SET_GUILDPLAYERNOTE")
+			end
+		elseif contactType == 'friend' then
+			for index = 1, select(2, GetNumFriends()) do
+				local name = GetFriendInfo(index)
+				if name == contactInfo then
+					FriendsFrame.NotesID = index
+					break
+				end
+			end
+			StaticPopup_Show("SET_FRIENDNOTE", GetFriendInfo(FriendsFrame.NotesID))
+		elseif contactType == 'bnet' then
+			FriendsFrame.NotesID = contactInfo
+			StaticPopup_Show("SET_BNFRIENDNOTE")
 		end
-		if i_type == "guild" and btn == "RightButton" and CanEditOfficerNote() then
-			SetGuildRosterSelection(guild_name_to_index(toon_name))
-			StaticPopup_Show("SET_GUILDOFFICERNOTE")
-		end
-
-		if i_type == "friends" then
-			FriendsFrame.NotesID = player_name_to_index(toon_name)
-				StaticPopup_Show("SET_FRIENDNOTE", GetFriendInfo(FriendsFrame.NotesID))
-				return
-		end
-
-		if i_type == "realid" then
-			FriendsFrame.NotesID = presence_id
-			StaticPopup_Show("SET_BNFRIENDNOTE", full_name)
-			return
-		end --]]
 	else
 		-- whisper and /who
 		local prefix = 'player:'
