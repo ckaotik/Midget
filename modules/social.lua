@@ -1,7 +1,8 @@
 local addonName, ns, _ = ...
 
--- GLOBALS: _G, LibStub, RED_FONT_COLOR_CODE, BATTLENET_FONT_COLOR_CODE, RAID_CLASS_COLORS, CHAT_FLAG_AFK, CHAT_FLAG_DND
--- GLOBALS: BNGetNumFriends, BNGetFriendInfo, BNGetNumFriendToons, BNGetFriendToonInfo, GetQuestDifficultyColor, GetNumFriends, GetFriendInfo, GetNumGuildMembers, GetGuildRosterInfo
+-- GLOBALS: _G, LibStub, RED_FONT_COLOR_CODE, BATTLENET_FONT_COLOR_CODE, RAID_CLASS_COLORS, CHAT_FLAG_AFK, CHAT_FLAG_DND, BNET_CLIENT_WOW, REMOTE_CHAT, HIGHLIGHT_FONT_COLOR_CODE, GREEN_FONT_COLOR_CODE, NORMAL_FONT_COLOR, FriendsFrame
+-- GLOBALS: FillLocalizedClassList, BNGetNumFriends, BNGetFriendInfo, BNGetNumFriendToons, BNGetFriendToonInfo, BNGetFriendIndex, BNGetNumFriendInvites, GetQuestDifficultyColor, GetGuildInfo, GetGuildRosterMOTD, CanEditPublicNote, CanEditOfficerNote, SetGuildRosterSelection, SortGuildRoster, GetNumFriends, GetFriendInfo, GetNumGuildMembers, GetGuildRosterInfo, UnitFactionGroup, UnitInParty, UnitPlayerOrPetInRaid, SetItemRef, StaticPopup_Show, InviteUnit, IsAltKeyDown, IsControlKeyDown, ToggleFriendsFrame, ToggleGuildFrame
+-- GLOBALS: pairs, ipairs, tonumber, strsplit, select
 
 local LDB     = LibStub('LibDataBroker-1.1')
 local LibQTip = LibStub('LibQTip-1.0')
@@ -215,31 +216,33 @@ function OnLDBEnter(self)
 		tooltip:SetCellScript(lineNum, 6, 'OnMouseUp', SortGuildList, 'note')
 		tooltip:AddSeparator(2)
 
-		local _, numOnline, numOnlineAndMobile = GetNumGuildMembers()
-		for index = 1, numOnlineAndMobile do
+		local numGuildMembers = GetNumGuildMembers()
+		for index = 1, numGuildMembers do
 			local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, canSoR, _ = GetGuildRosterInfo(index)
 
-			isMobile = isMobile and not online
-			status = status == 1 and CHAT_FLAG_AFK or status == 2 and CHAT_FLAG_DND or ''
-			status = icons[status] or (isMobile and icons['REMOTE']) or ''
-			zone = isMobile and REMOTE_CHAT or zone
-			local levelColor = GetQuestDifficultyColor(level)
-			local classColor = RAID_CLASS_COLORS[classFileName]
-			local inMyGroup  = UnitInParty(name) or UnitPlayerOrPetInRaid(name)
+			if online or isMobile then
+				isMobile = isMobile and not online
+				status = status == 1 and CHAT_FLAG_AFK or status == 2 and CHAT_FLAG_DND or ''
+				status = icons[status] or (isMobile and icons['REMOTE']) or ''
+				zone = isMobile and REMOTE_CHAT or zone
+				local levelColor = GetQuestDifficultyColor(level)
+				local classColor = RAID_CLASS_COLORS[classFileName]
+				local inMyGroup  = UnitInParty(name) or UnitPlayerOrPetInRaid(name) -- TODO: check if this still works with "char-realm"
 
-			note        = note and note ~= '' and (HIGHLIGHT_FONT_COLOR_CODE .. note .. '|r') or ''
-			officernote = officernote and officernote ~= '' and (GREEN_FONT_COLOR_CODE .. officernote .. '|r') or nil
-			local noteText = note .. (officernote and ' '..officernote or '')
+				note        = note and note ~= '' and (HIGHLIGHT_FONT_COLOR_CODE .. note .. '|r') or ''
+				officernote = officernote and officernote ~= '' and (GREEN_FONT_COLOR_CODE .. officernote .. '|r') or nil
+				local noteText = note .. (officernote and ' '..officernote or '')
 
-			lineNum = tooltip:AddLine(
-				(inMyGroup and '|TInterface\\Buttons\\UI-CheckBox-Check:0|t ' or '') .. status,
-				colorFormat:format(levelColor.r*255, levelColor.g*255, levelColor.b*255, level),
-				colorFormat:format(classColor.r*255, classColor.g*255, classColor.b*255, name),
-				rank,
-				zone,
-				noteText
-			)
-			tooltip:SetLineScript(lineNum, "OnMouseUp", OnCharacterClick, ("guild:%s"):format(name))
+				lineNum = tooltip:AddLine(
+					(inMyGroup and '|TInterface\\Buttons\\UI-CheckBox-Check:0|t ' or '') .. status,
+					colorFormat:format(levelColor.r*255, levelColor.g*255, levelColor.b*255, level),
+					colorFormat:format(classColor.r*255, classColor.g*255, classColor.b*255, (strsplit("-", name))),
+					rank,
+					zone,
+					noteText
+				)
+				tooltip:SetLineScript(lineNum, "OnMouseUp", OnCharacterClick, ("guild:%s"):format(name))
+			end
 		end
 	end
 
@@ -248,7 +251,53 @@ function OnLDBEnter(self)
 end
 
 local function OnLDBClick(self, btn, up)
-	-- body
+	if btn == 'RightButton' then
+		-- TODO: config
+	else
+		local _, numFriendsOnline = GetNumFriends()
+		local _, _, numGuildMembers = GetNumGuildMembers()
+
+		if numGuildMembers > 0 or numFriendsOnline == 0 then
+			ToggleGuildFrame()
+		else
+			ToggleFriendsFrame(1)
+		end
+	end
+end
+
+local function OnLDBUpdate(self, event)
+	local ldb = LDB:GetDataObjectByName(addonName..'Social')
+	-- print('OnLDBUpdate', self, event, ldb)
+	if ldb then
+		local text = ''
+
+		local numFriends, numFriendsOnline = GetNumFriends()
+		local numBNFriends, numBNFriendsOnline = BNGetNumFriends()
+		local numInvites = BNGetNumFriendInvites()
+		numFriends = numFriends + numBNFriends
+		numFriendsOnline = numFriendsOnline + numBNFriendsOnline
+
+		if numFriends > 0 or numInvites > 0 then
+			text = text .. BATTLENET_FONT_COLOR_CODE
+				.. numFriendsOnline .. (numInvites > 0 and '+'..numInvites or '')
+				.. '/' .. numFriends .. '|r'
+		end
+
+		local numGuildMembers, numOnline, numOnlineAndMobile = GetNumGuildMembers()
+		if numGuildMembers and numGuildMembers > 0 then
+			-- show guild info
+			text = (text ~= '' and text..' ' or '') .. GREEN_FONT_COLOR_CODE
+				.. numOnline .. (numOnlineAndMobile > numOnline and '+'..(numOnlineAndMobile - numOnline) or '')
+				.. '/' .. numGuildMembers .. '|r'
+		end
+
+		ldb.text = text
+	end
+
+	-- update tooltip, if shown
+	if LibQTip:IsAcquired(addonName..'Social') then
+		OnLDBEnter(self)
+	end
 end
 
 local function initialize(frame, event, arg1)
@@ -273,6 +322,13 @@ local function initialize(frame, event, arg1)
 		for class, localizedName in pairs(classes) do
 			classColors[localizedName] = RAID_CLASS_COLORS[class]
 		end --]]
+
+		for _, event in ipairs({'GUILD_ROSTER_UPDATE', 'FRIENDLIST_UPDATE', -- 'IGNORELIST_UPDATE', 'MUTELIST_UPDATE',
+			'BN_CONNECTED', 'BN_DISCONNECTED', 'BN_FRIEND_LIST_SIZE_CHANGED',
+			'BN_FRIEND_TOON_ONLINE', 'BN_FRIEND_TOON_OFFLINE', 'BN_FRIEND_ACCOUNT_ONLINE', 'BN_FRIEND_ACCOUNT_OFFLINE',
+			'BATTLETAG_INVITE_SHOW', 'BN_FRIEND_INVITE_LIST_INITIALIZED', 'BN_FRIEND_INVITE_ADDED', 'BN_FRIEND_INVITE_REMOVED'}) do
+			ns.RegisterEvent(event, OnLDBUpdate, 'social_'..event)
+		end
 
 		ns.UnregisterEvent('ADDON_LOADED', 'social')
 	end
