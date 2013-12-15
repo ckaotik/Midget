@@ -126,7 +126,7 @@ function OnLDBEnter(self)
 		          tooltip:SetLineScript(lineNum, "OnMouseUp", OnCharacterClick, ("bnet:%s"):format(presenceID))
 		--]]
 
-		local numToons = BNGetNumFriendToons(friendIndex)
+		local numToons = 1 -- TODO: FIXME: won't work :( BNGetNumFriendToons(friendIndex)
 		for toonIndex = 1, numToons do
 			local _, toonName, client, realmName, _, faction, race, class, _, zoneName, level, gameText = BNGetFriendToonInfo(friendIndex, toonIndex)
 			local levelColor = GetQuestDifficultyColor(tonumber(level or '') or 0)
@@ -218,7 +218,8 @@ function OnLDBEnter(self)
 
 		local numGuildMembers = GetNumGuildMembers()
 		for index = 1, numGuildMembers do
-			local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, canSoR, _ = GetGuildRosterInfo(index)
+			local fullName, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, canSoR, _ = GetGuildRosterInfo(index)
+			local name = strsplit("-", fullName)
 
 			if online or isMobile then
 				isMobile = isMobile and not online
@@ -236,12 +237,12 @@ function OnLDBEnter(self)
 				lineNum = tooltip:AddLine(
 					(inMyGroup and '|TInterface\\Buttons\\UI-CheckBox-Check:0|t ' or '') .. status,
 					colorFormat:format(levelColor.r*255, levelColor.g*255, levelColor.b*255, level),
-					colorFormat:format(classColor.r*255, classColor.g*255, classColor.b*255, (strsplit("-", name))),
+					colorFormat:format(classColor.r*255, classColor.g*255, classColor.b*255, name),
 					rank,
 					zone,
 					noteText
 				)
-				tooltip:SetLineScript(lineNum, "OnMouseUp", OnCharacterClick, ("guild:%s"):format(name))
+				tooltip:SetLineScript(lineNum, "OnMouseUp", OnCharacterClick, ("guild:%s"):format(fullName))
 			end
 		end
 	end
