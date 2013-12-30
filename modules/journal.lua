@@ -106,69 +106,40 @@ local function UpdateBossButtons()
 	end
 end
 
+-- we store the last started encounter, so if the player makes manual changes after a pull, we don't revert
 local lastEncounter
-local function CheckUpdateLootSpec()
-	-- print('encounter started/changed/finished', UnitName('target'), UnitName('boss1'), UnitName('boss2'), UnitName('boss3'), UnitName('boss4'))
+local function CheckUpdateLootSpec(self, event, id, name, difficulty, groupSize)
+	if lastEncounter and lastEncounter == id then return end
+	lastEncounter = id
 
 	local instanceID = EJ_GetCurrentInstance()
-	local _, _, difficultyID = GetInstanceInfo() -- EJ_GetDifficulty()
+	if not instanceID or instanceID == 0 then return end
 
-	-- instanceID only works if EJ is loaded, but if it isn't it's set to current instance, anyway
-	local encounterIndex = 1
-	local encounter, _, encounterID = EJ_GetEncounterInfoByIndex(encounterIndex, instanceID)
-	local targetName, bossName = UnitName('target'), nil
-	local matched = false
-	while encounterID do
-		local creatureIndex = 1
-		local _, creature = EJ_GetCreatureInfo(creatureIndex, encounterID)
-		while creature do
-			if targetName and targetName == creature then
-				-- print('target is boss', creature)
-				matched = true
-			else
-				for i=1,10 do
-					bossName = UnitName('boss'..i)
-					if bossName and bossName == creature then
-						-- print('boss', i, 'is boss', creature)
-						matched = true
-						break
-					end
-				end
-			end
-			-- don't need to check other creatures in this encounter
-			if matched then break end
+	local encounterIndex, encounterID, encounterName = 1, nil, nil
+	while true do
+		encounterIndex = (encounterIndex or 0) + 1
+		encounterName, _, encounterID = EJ_GetEncounterInfoByIndex(encounterIndex, instanceID)
 
-			creatureIndex = creatureIndex + 1
-			_, creature = EJ_GetCreatureInfo(creatureIndex, encounterID)
-		end
-
-		if matched then
-			if not lastEncounter or lastEncounter ~= encounterID then
-				lastEncounter = encounterID
-				break
-			else
-				return
-			end
-		end
-		encounterIndex = encounterIndex + 1
-		encounter, _, encounterID = EJ_GetEncounterInfoByIndex(encounterIndex, instanceID)
-	end
-
-	if matched then
-		local currentLoot = GetLootSpecialization()
-		local currentSpec = GetSpecializationInfo(GetSpecialization())
-		local specPreference = MidgetLocalDB.LFRLootSpecs and MidgetLocalDB.LFRLootSpecs[ encounterID ] or 0
-			  specPreference = GetSpecializationInfo(specPreference)
-		-- don't change if we have no preference set
-		if specPreference and ((currentLoot == 0 and currentSpec ~= specPreference) or currentLoot ~= specPreference) then
-			local _, specName, _, specIcon = GetSpecializationInfoByID(specPreference)
-			ns.Print('Changing loot spec to |T%1$s:0|t%2$s', specIcon, specName)
-			SetLootSpecialization(specPreference)
-		else
-			-- ns.Print('already in correct spec')
+		if not encounterName then
+			return
+		elseif encounterName == name then
+			break
 		end
 	end
-	-- ns.UnregisterEvent("INSTANCE_ENCOUNTER_ENGAGE_UNIT", "encounter_start")
+
+	local currentLoot = GetLootSpecialization()
+	local currentSpec = GetSpecializationInfo(GetSpecialization())
+	local specPreference = MidgetLocalDB.LFRLootSpecs and MidgetLocalDB.LFRLootSpecs[ encounterID ] or 0
+		  specPreference = GetSpecializationInfo(specPreference)
+
+	-- don't change if we have no preference set
+	if not specPreference or currentLoot == specPreference or (currentLoot == 0 and currentSpec == specPreference) then
+		ns.Print('Correct loot specialization is already selected')
+	else
+		local _, specName, _, specIcon = GetSpecializationInfoByID(specPreference)
+		ns.Print('Changing loot spec to |T%1$s:0|t%2$s', specIcon, specName)
+		SetLootSpecialization(specPreference)
+	end
 end
 
 local function initialize(frame, event, arg1)
@@ -211,16 +182,10 @@ local function initialize(frame, event, arg1)
 			initTooltips = true
 		end)
 
+		ns.RegisterEvent('ENCOUNTER_START', CheckUpdateLootSpec, 'encounter_start')
+		-- ns.RegisterEvent('ENCOUNTER_END', CheckUpdateLootSpec, 'encounter_end')
+
 		ns.UnregisterEvent('ADDON_LOADED', 'journal')
 	end
 end
 ns.RegisterEvent('ADDON_LOADED', initialize, 'journal')
-
-ns.RegisterEvent("INSTANCE_ENCOUNTER_ENGAGE_UNIT", CheckUpdateLootSpec, "encounter_start")
-ns.RegisterEvent("PLAYER_REGEN_ENABLED", function() lastEncounter = nil end, "encounter_end")
---[[ if BigWigsLoader then
-	BigWigsLoader:RegisterMessage("BigWigs_OnBossEngage", function( ... )
-		print('bigwigs boss enabled', ...)
-		CheckUpdateLootSpec()
-	end)
-end --]]
