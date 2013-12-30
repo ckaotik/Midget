@@ -145,7 +145,7 @@ end
 
 function ns.GetLinkData(link)
 	if not link or type(link) ~= "string" then return end
-	local linkType, id, data = link:match("(%l+):([^:]*):?([^\124]*)")
+	local linkType, id, data = link:match("(%l+):([^:\124]*):?([^\124]*)")
 	return linkType, tonumber(id), data
 end
 

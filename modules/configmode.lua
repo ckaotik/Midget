@@ -5,14 +5,26 @@ if not CONFIGMODE_CALLBACKS then
 	CONFIGMODE_CALLBACKS = {}
 end
 
-if IsAddOnLoaded("Dominos") then -- Dominos_Config
+if IsAddOnLoaded("Dominos") then
 	CONFIGMODE_CALLBACKS["Dominos"] = function(action)
 		Dominos:ToggleLockedFrames()
 	end
 end
 
-if IsAddOnLoaded("BigWigs") then -- BigWigs_Options
-	-- options:BigWigs_StartConfigureMode(nil, true) / options:BigWigs_StopConfigureMode()
+if IsAddOnLoaded("BigWigs") then
+	CONFIGMODE_CALLBACKS["BigWigs"] = function(action)
+		if not IsAddOnLoaded("BigWigs_Options") then
+			LoadAddOn("BigWigs_Options")
+		end
+
+		local options = BigWigs:GetModule("Options")
+		if action == "ON" then
+			options:SendMessage("BigWigs_StartConfigureMode", true)
+			options:SendMessage("BigWigs_SetConfigureTarget", BigWigs:GetPlugin("Bars"))
+		elseif action == "OFF" then
+			options:SendMessage("BigWigs_StopConfigureMode")
+		end
+	end
 end
 
 --[[

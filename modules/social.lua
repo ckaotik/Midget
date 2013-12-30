@@ -126,7 +126,7 @@ function OnLDBEnter(self)
 		          tooltip:SetLineScript(lineNum, "OnMouseUp", OnCharacterClick, ("bnet:%s"):format(presenceID))
 		--]]
 
-		local numToons = 1 -- TODO: FIXME: won't work :( BNGetNumFriendToons(friendIndex)
+		local numToons = BNGetNumFriendToons(friendIndex) or 0 -- TODO: FIXME: won't work :(
 		for toonIndex = 1, numToons do
 			local _, toonName, client, realmName, _, faction, race, class, _, zoneName, level, gameText = BNGetFriendToonInfo(friendIndex, toonIndex)
 			local levelColor = GetQuestDifficultyColor(tonumber(level or '') or 0)
@@ -136,7 +136,8 @@ function OnLDBEnter(self)
 				or noteText and noteText ~= '' and icons['NOTE']..noteText
 				or icons['CONTACT']..presenceName
 
-			if gameText and gameText ~= '' then
+			if (not realmName or realmName == '') and (not zoneName or zoneName == '')
+				and gameText and gameText ~= '' then
 				zoneName, realmName = strsplit('-', gameText)
 				zoneName, realmName = zoneName and zoneName:trim(), realmName and realmName:trim()
 			end
@@ -268,7 +269,6 @@ end
 
 local function OnLDBUpdate(self, event)
 	local ldb = LDB:GetDataObjectByName(addonName..'Social')
-	-- print('OnLDBUpdate', self, event, ldb)
 	if ldb then
 		local text = ''
 
