@@ -95,7 +95,7 @@ local function OnCharacterClick(self, character, btn, up)
 end
 
 local tooltip
-function OnLDBEnter(self)
+OnLDBEnter = function(self)
 	local numColumns = 6
 	if LibQTip:IsAcquired(addonName..'Social') then
 		tooltip:Clear()
@@ -189,6 +189,7 @@ function OnLDBEnter(self)
 			area,
 			note
 		)
+		tooltip:SetLineScript(lineNum, "OnMouseUp", OnCharacterClick, ("friend:%s"):format(name))
 	end
 
 	-- guild roster
@@ -218,6 +219,7 @@ function OnLDBEnter(self)
 		tooltip:AddSeparator(2)
 
 		local numGuildMembers = GetNumGuildMembers()
+		GuildRoster() -- need this so GetGuildRosterInfo returns live data
 		for index = 1, numGuildMembers do
 			local fullName, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, canSoR, _ = GetGuildRosterInfo(index)
 			local name = strsplit("-", fullName)
@@ -319,10 +321,10 @@ local function initialize(frame, event, arg1)
 		for class, localizedName in pairs(classes) do
 			classColors[localizedName] = RAID_CLASS_COLORS[class]
 		end
-		--[[ FillLocalizedClassList(classes, true) -- female names
+		FillLocalizedClassList(classes, true) -- female names
 		for class, localizedName in pairs(classes) do
 			classColors[localizedName] = RAID_CLASS_COLORS[class]
-		end --]]
+		end
 
 		for _, event in ipairs({'GUILD_ROSTER_UPDATE', 'FRIENDLIST_UPDATE', -- 'IGNORELIST_UPDATE', 'MUTELIST_UPDATE',
 			'BN_CONNECTED', 'BN_DISCONNECTED', 'BN_FRIEND_LIST_SIZE_CHANGED',
