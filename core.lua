@@ -564,3 +564,211 @@ function ns.Initialize()
 	-- expose us to the world
 	Midget = ns
 end
+
+-- GLOBALS: bit, strsplit, GREEN_FONT_COLOR_CODE, GRAY_FONT_COLOR_CODE, GetAchievementInfo, GetAchievementCategory, GetCategoryInfo, GetAchievementNumCriteria, GetAchievementCriteriaInfo
+local function AddCriteriaInfo(fontString, achievementID, criteriaIndex, alignRight)
+	local _, _, selfCompleted, quantity, requiredQuantity, _, _, _, quantityString = GetAchievementCriteriaInfo(achievementID, criteriaIndex)
+
+	local progress
+	local text = '%s'
+	if not selfCompleted and requiredQuantity and requiredQuantity > 1 then
+		progress = quantityString:gsub(' ', '')
+		text = text .. ' '..GRAY_FONT_COLOR_CODE..'(%s)|r'
+	end
+
+	local indicator = (selfCompleted and GREEN_FONT_COLOR_CODE or RED_FONT_COLOR_CODE) .. '*|r'
+	if alignRight then
+		text = text .. ' ' .. indicator
+	else
+		text = indicator .. ' ' .. text
+	end
+	fontString:SetFormattedText(text, fontString:GetText(), progress)
+
+	return selfCompleted, quantity, requiredQuantity
+end
+
+local playerGUID
+local function TooltipAchievementExtras(tooltip, hyperlink)
+	local linkType, linkID, linkData = ns.GetLinkData(hyperlink)
+	if linkType ~= 'achievement' then return end
+
+	local tooltipName, tooltipLines = tooltip:GetName(), tooltip:NumLines()
+	local _, title, _, _, month, day, year, _, _, _, _, _, wasEarnedByMe, earnedBy = GetAchievementInfo(linkID)
+	local guid, completed, _, _, _, crit1, crit2, crit3, crit4 = strsplit(':', linkData)
+	-- local criteriaCompleted = bit.band(crit1, 2^(criteriaIndex - 1)) > 0
+	-- numCompleted = numCompleted + (criteriaCompleted and 1 or 0)
+
+	-- category this achievement belongs to
+	local categoryID = GetAchievementCategory(linkID)
+	local category, parent = GetCategoryInfo(categoryID)
+	local categoryString = category
+	while parent > 0 do
+		category, parent = GetCategoryInfo(parent)
+		categoryString = categoryString .. ' - ' .. category
+	end
+	_G[tooltipName..'TextLeft2']:SetFormattedText('<%s>', categoryString)
+
+	if not playerGUID then playerGUID = UnitGUID('player') end
+	local isPlayer = guid == playerGUID:sub(3)
+	local numCriteria, numSelfCompleted = GetAchievementNumCriteria(linkID), 0
+	if not isPlayer and not earnedBy then
+		-- show our own achievement progress comparison
+		local lineNum, critNum = 6, 0
+		while critNum < numCriteria and lineNum <= tooltipLines do
+			local left, right = _G[tooltipName..'TextLeft'..lineNum], _G[tooltipName..'TextRight'..lineNum]
+
+			local leftText = left and left:GetText()
+			if leftText and leftText:trim() ~= '' then
+				critNum = critNum + 1
+				local selfCompleted = AddCriteriaInfo(left, linkID, critNum)
+				if selfCompleted then
+					numSelfCompleted = numSelfCompleted + (selfCompleted and 1 or 0)
+				end
+			end
+
+			local rightText = right and right:GetText()
+			if rightText and rightText:trim() ~= '' and right:IsShown() then
+				critNum = critNum + 1
+				local selfCompleted = AddCriteriaInfo(right, linkID, critNum, true)
+				if selfCompleted then
+					numSelfCompleted = numSelfCompleted + (selfCompleted and 1 or 0)
+				end
+			end
+
+			-- this line is full, continue with next line
+			lineNum = lineNum + 1
+		end
+	elseif not earnedBy then
+		for criteriaIndex = 1, numCriteria do
+			local _, _, selfCompleted = GetAchievementCriteriaInfo(linkID, criteriaIndex)
+			numSelfCompleted = (numSelfCompleted or 0) + (selfCompleted and 1 or 0)
+		end
+	end
+
+	if earnedBy then
+		-- we have completed this achievement
+		_G[tooltipName..'TextLeft1']:SetFormattedText('%s (%s%s)',
+			title, wasEarnedByMe and '' or (earnedBy..' '), string.format(_G.SHORTDATE, day, month, year))
+	else -- if not isPlayer then
+		-- we are still working on this achievement
+		_G[tooltipName..'TextLeft1']:SetFormattedText('%s (%s/%s)',
+			title, numSelfCompleted, numCriteria)
+	end
+end
+hooksecurefunc(GameTooltip, 'SetHyperlink', TooltipAchievementExtras)
+
+
+local unitCache = setmetatable({}, {
+	__mode = "kv",
+	--[[ __index = function(self, guid)
+		self[guid] = {
+			-- spec = 0,
+			-- ilevel = 0,
+		}
+		return self[guid]
+	end, --]]
+})
+local function TooltipUnitExtras(tooltip, ...)
+	local unitName, unit = tooltip:GetUnit()
+
+	if not unit or not UnitIsPlayer(unit) or UnitLevel(unit) < 10 then return end
+	local guid = UnitGUID(unit)
+
+	if unitCache[guid] then
+		-- show in tooltip
+	elseif CanInspect(unit) and not IsInspectFrameOpen() then
+		-- self:RegisterEvent("INSPECT_READY")
+		-- self:RegisterEvent("UNIT_INVENTORY_CHANGED")
+		NotifyInspect(unit)
+	end
+
+	-- GetInspectSpecialization()
+	-- GetSpecializationInfoByID(spec)
+	-- local link = GetInventoryItemLink("unit", slot)
+end
+-- GameTooltip:HookScript('OnTooltipSetUnit', TooltipUnitExtras)
+
+-- ================================
+--[[
+-- link,linkToken,id,guid,completed,month,day,year,unknown1,unknown2,unknown3,unknown4
+if (cfg.if_modifyAchievementTips) then
+	completed = (tonumber(completed) == 1);
+	local tipName = self:GetName();
+	local isPlayer = (UnitGUID("player"):sub(3) == guid);
+	-- Get category
+	local catId = GetAchievementCategory(id);
+	local category, catParent = GetCategoryInfo(catId);
+	local catName;
+	while (catParent > 0) do
+		catName, catParent = GetCategoryInfo(catParent);
+		category = catName.." - "..category;
+	end
+	-- Get Criteria
+	wipe(criteriaList);
+	local criteriaComplete = 0;
+	local count = GetAchievementNumCriteria(id)
+	for i = 6, 6 - 1 + count do -- self:NumLines() do
+		local left = _G[tipName.."TextLeft"..i];
+		local right = _G[tipName.."TextRight"..i];
+		local leftText = left and left:GetText();
+		local rightText = right and right:GetText();
+		if (leftText and leftText ~= " ") then
+			criteriaList[#criteriaList + 1] = { label = leftText, done = left:GetTextColor() < 0.5 };
+			if (criteriaList[#criteriaList].done) then
+				criteriaComplete = (criteriaComplete + 1);
+			end
+		end
+		if (rightText and rightText ~= " ") then
+			criteriaList[#criteriaList + 1] = { label = rightText, done = right:GetTextColor() < 0.5 };
+			if (criteriaList[#criteriaList].done) then
+				criteriaComplete = (criteriaComplete + 1);
+			end
+		end
+	end
+
+	-- Cache Info
+	local progressText = _G[tipName.."TextLeft3"]:GetText() or "";
+	local _, title, points, _, _, _, _, description, _, icon, reward = GetAchievementInfo(id);
+	-- Rebuild Tip
+	self:ClearLines();
+	local stat = isPlayer and GetStatistic(id);
+	self:AddDoubleLine(title,(stat ~= "0" and stat ~= "--" and stat),nil,nil,nil,1,1,1);
+	self:AddLine("<"..category..">");
+	if (reward) then
+		self:AddLine(reward,unpack(cfg.if_infoColor));
+	end
+	self:AddLine(description,1,1,1,1);
+	self:AddLine(BoolCol(completed)..progressText);
+	if (#criteriaList > 0) then
+		self:AddLine(" ");
+		self:AddLine("Achievement Criteria |cffffffff"..criteriaComplete.."|r of |cffffffff"..#criteriaList);
+		local r1, g1, b1, r2, g2, b2;
+		local myDone1, myDone2;
+		for i = 1, #criteriaList, 2 do
+			r1, g1, b1 = unpack(criteriaList[i].done and COLOR_COMPLETE or COLOR_INCOMPLETE);
+			if (criteriaList[i + 1]) then
+				r2, g2, b2 = unpack(criteriaList[i + 1].done and COLOR_COMPLETE or COLOR_INCOMPLETE);
+			end
+			if (not isPlayer) then
+				myDone1 = select(3,GetAchievementCriteriaInfo(id,i));
+				if (i + 1 <= #criteriaList) then
+					myDone2 = select(3,GetAchievementCriteriaInfo(id,i + 1));
+				end
+			end
+			myDone1 = (isPlayer and "" or BoolCol(myDone1).."*|r")..criteriaList[i].label;
+			myDone2 = criteriaList[i + 1] and criteriaList[i + 1].label..(isPlayer and "" or BoolCol(myDone2).."*");
+			self:AddDoubleLine(myDone1,myDone2,r1,g1,b1,r2,g2,b2);
+		end
+	end
+	-- ID + Category
+	if (cfg.if_showAchievementIdAndCategory) then
+		self:AddLine(format("AchievementID: %d, CategoryID: %d",id or 0,catId or 0),unpack(cfg.if_infoColor));
+	end
+	-- Icon
+	if (self.SetIconTextureAndText) then
+		self:SetIconTextureAndText(icon,points);
+	end
+	-- Show
+	self:Show();
+end
+--]]
