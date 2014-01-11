@@ -627,7 +627,7 @@ local function TooltipAchievementExtras(tooltip, hyperlink)
 			end
 
 			local rightText = right and right:GetText()
-			if rightText and rightText:trim() ~= '' and right:IsShown() then
+			if rightText and rightText:trim() ~= '' and right:IsShown()  and critNum < numCriteria then
 				critNum = critNum + 1
 				local selfCompleted = AddCriteriaInfo(right, linkID, critNum, true)
 				if selfCompleted then
