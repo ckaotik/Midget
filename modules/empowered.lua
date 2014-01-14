@@ -258,6 +258,13 @@ local function Initialize(self, event, addon)
 	ns.RegisterEvent('PLAYER_DAMAGE_DONE_MODS', UpdateValues, 'dmg_mods')
 	ns.RegisterEvent('PLAYER_REGEN_ENABLED', PruneStoredValues, 'dmg_mods_prune')
 
+	--[[
+	["SPELL_AURA_APPLIED"] = 1,
+	["SPELL_AURA_REMOVED"] = 1,
+	["SPELL_AURA_REFRESH"] = 1,
+	["SPELL_AURA_APPLIED_DOSE"] = 1,
+	--]]
+
 	ns.UnregisterEvent('ADDON_LOADED', 'empowered')
 end
 
