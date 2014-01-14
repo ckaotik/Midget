@@ -261,7 +261,7 @@ local function OnLDBClick(self, btn, up)
 		local _, numFriendsOnline = GetNumFriends()
 		local _, _, numGuildMembers = GetNumGuildMembers()
 
-		if numGuildMembers > 0 or numFriendsOnline == 0 then
+		if numGuildMembers > 1 or numFriendsOnline == 0 then
 			ToggleGuildFrame()
 		else
 			ToggleFriendsFrame(1)

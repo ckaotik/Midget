@@ -1,12 +1,8 @@
 local addonName, ns, _ = ...
 
--- GLOBALS: _G, LibStub, Midget, MidgetDB, MidgetLocalDB, TipTac, UIParent, CorkFrame, MainMenuBar, InterfaceOptionsFrameAddOnsList, SLASH_ROLECHECK1, DEFAULT_CHAT_FRAME, CHAT_CONFIG_CHAT_LEFT, WHISPER, SlashCmdList, UnitPopupMenus, UIDROPDOWNMENU_INIT_MENU, StaticPopupDialogs, STATICPOPUP_NUMDIALOGS
--- GLOBALS: GameTooltip, PlaySound, GetScreenHeight, ToggleChatMessageGroup, PetBattleFrame, GetLocale, IsListeningForMessageType, CreateFrame, IsAddOnLoaded, ScrollFrameTemplate_OnMouseWheel, hooksecurefunc, InitiateRolePoll, GetItemIcon, ChatFrame_AddMessageEventFilter, IsShiftKeyDown, UnitPopupShown, StaticPopup_Hide, UnitIsBattlePet
--- GLOBALS: table, string, math
-
-local split, find, gmatch, lower, join, gsub, length, tonumber, tostringall, format = string.split, string.find, string.gmatch, string.lower, string.join, string.gsub, string.len, tonumber, tostringall, string.format
-local abs = math.abs
-local assert, type, pairs, ipairs, select, print = assert, type, pairs, ipairs, select, print
+-- GLOBALS: _G, Midget, MidgetDB, MidgetLocalDB, DEFAULT_CHAT_FRAME, C_PetJournal
+-- GLOBALS: GameTooltip, CreateFrame, GetItemInfo
+-- GLOBALS: table, string, math, strsplit, type, tonumber, pairs, assert, tostring, tostringall
 
 -- settings -- TODO: put into ns. so modules can have settings, too
 local globalDefaults = {
@@ -68,11 +64,19 @@ end
 
 function ns:GetName() return addonName end
 
+local function Initialize()
+	UpdateDatabase()
+
+	-- expose us to the world
+	_G.Midget = ns
+end
+
 local frame, eventHooks = CreateFrame("Frame", "MidgetEventHandler"), {}
 local function eventHandler(frame, event, arg1, ...)
 	if event == 'ADDON_LOADED' and arg1 == addonName then
 		-- make sure we always init before any other module
-		ns.Initialize()
+		Initialize()
+
 		if not eventHooks[event] or ns.Count(eventHooks[event]) < 1 then
 			frame:UnregisterEvent(event)
 		end
@@ -88,12 +92,12 @@ frame:SetScript("OnEvent", eventHandler)
 frame:RegisterEvent("ADDON_LOADED")
 
 function ns.RegisterEvent(event, callback, id, silentFail)
-	assert(callback and event and id, format("Usage: RegisterEvent(event, callback, id[, silentFail])"))
+	assert(callback and event and id, string.format("Usage: RegisterEvent(event, callback, id[, silentFail])"))
 	if not eventHooks[event] then
 		eventHooks[event] = {}
 		frame:RegisterEvent(event)
 	end
-	assert(silentFail or not eventHooks[event][id], format("Event %s already registered by id %s.", event, id))
+	assert(silentFail or not eventHooks[event][id], string.format("Event %s already registered by id %s.", event, id))
 
 	eventHooks[event][id] = callback
 end
@@ -111,16 +115,16 @@ end
 -- ================================================
 function ns.Print(text, ...)
 	if ... and text:find("%%") then
-		text = format(text, ...)
+		text = string.format(text, ...)
 	elseif ... then
-		text = join(", ", tostringall(text, ...))
+		text = string.join(", ", tostringall(text, ...))
 	end
 	DEFAULT_CHAT_FRAME:AddMessage("|cff22CCDDMidget|r "..text)
 end
 
 function ns.Debug(...)
   if true then
-	ns.Print("! "..join(", ", tostringall(...)))
+	ns.Print("! "..string.join(", ", tostringall(...)))
   end
 end
 
@@ -139,7 +143,7 @@ end
 
 function ns.GetItemID(itemLink)
 	if not itemLink or type(itemLink) ~= "string" then return end
-	local itemID = gsub(itemLink, ".-Hitem:([0-9]*):.*", "%1")
+	local itemID = string.gsub(itemLink, ".-Hitem:([0-9]*):.*", "%1")
 	return tonumber(itemID)
 end
 
@@ -159,7 +163,7 @@ function ns.GetItemInfo(link)
 		local level, quality, health, attack, speed = strsplit(':', data or '')
 
 		-- including some static values for battle pets
-		return name, trim(link), tonumber(quality), tonumber(level), 0, BATTLEPET, tonumber(subClass), 1, "", texture, nil, companionID, tonumber(health), tonumber(attack), tonumber(speed)
+		return name, string.trim(link), tonumber(quality), tonumber(level), 0, BATTLEPET, tonumber(subClass), 1, "", texture, nil, companionID, tonumber(health), tonumber(attack), tonumber(speed)
 	elseif linkType == "item" then
 		return GetItemInfo( itemID )
 	end
@@ -180,6 +184,7 @@ function string.explode(str, seperator, plain, useTable)
 	t[nexti] = str:sub(pos) -- Attach chars right of last divider
 	return t
 end
+
 -- counts table entries. for numerically indexed tables, use #table
 function ns.Count(table)
 	if not table then return 0 end
@@ -189,586 +194,3 @@ function ns.Count(table)
 	end
 	return i
 end
-
--- ================================================
--- Shared Media insertions
--- ================================================
-local LSM = LibStub("LibSharedMedia-3.0", true)
-local function AddMoreSharedMedia()
-	if not MidgetDB.moreSharedMedia or not LSM then return end
-	LSM:Register("border", "Glow", "Interface\\Addons\\Midget\\media\\glow.tga")
-	LSM:Register("font", "Paralucent", "Interface\\Addons\\Midget\\media\\Paralucent.ttf")
-	LSM:Register("font", "Andika", "Interface\\Addons\\Midget\\media\\Andika.ttf")
-	LSM:Register("font", "Andika Compact", "Interface\\Addons\\Midget\\media\\Andika-Compact.ttf")
-	LSM:Register("font", "Cibreo", "Interface\\Addons\\Midget\\media\\Cibreo.ttf")
-	LSM:Register("font", "Futura Medium", "Interface\\Addons\\Midget\\media\\FuturaMedium.ttf")
-	LSM:Register("font", "Avant Garde", "Interface\\Addons\\Midget\\media\\AvantGarde.ttf")
-	LSM:Register("font", "Accidental Presidency", "Interface\\Addons\\Midget\\media\\AccidentalPresidency.ttf")
-	LSM:Register("statusbar", "TukTex", "Interface\\Addons\\Midget\\media\\TukTexture.tga")
-	LSM:Register("statusbar", "Smooth", "Interface\\Addons\\Midget\\media\\Smooth.tga")
-end
-
--- ================================================
---  Interface Options Scrolling
--- ================================================
-local function InterfaceOptionsScrolling()
-	if not MidgetDB.InterfaceOptionsScrolling then return end
-
-	local f
-	for i = 1, 31 do
-		f = _G["InterfaceOptionsFrameAddOnsButton"..i]
-		f:EnableMouseWheel()
-		f:SetScript("OnMouseWheel", function(self, val)
-			ScrollFrameTemplate_OnMouseWheel(InterfaceOptionsFrameAddOnsList, val)
-		end)
-	end
-end
-
--- ================================================
---  Tooltip item/spell/achievement ids
--- ================================================
-local function AddTooltipID(tooltip, hyperlink)
-	if not hyperlink then -- OnTooltipSetItem
-		_, hyperlink = tooltip:GetItem()
-	end
-	if not hyperlink then -- OnTooltipSetSpell
-		_, _, hyperlink = tooltip:GetSpell()
-		hyperlink = hyperlink and 'spell:'..hyperlink
-	end
-	if not hyperlink then return end
-	local linkType, id, data = hyperlink:match("(%l+):([^:]*):?([^\124]*)")
-
-	--[[ local search
-	if linkType == 'item' then
-		-- search = ITEM_LEVEL
-		search = ITEM_UPGRADE_TOOLTIP_FORMAT
-	end
-	search = search and search:gsub('%%d', '(%%d+)'):gsub('%%s', '(%%s+)') --]]
-
-	local left, right = tooltip:GetName() .. 'TextLeft', tooltip:GetName() .. 'TextRight'
-	local added
-	for i = 1, tooltip:NumLines() do
-		local text = _G[left..i] and _G[left..i]:GetText()
-		if not text or text == CURRENTLY_EQUIPPED then
-			-- nothing
-		elseif not added then
-			local lineRight = _G[right..i]
-			lineRight:SetText(id)
-			lineRight:SetTextColor(0.55, 0.55, 0.55, 0.5)
-			lineRight:Show()
-			added = true
-		end
-	end
-end
-
--- ================================================
---  Cork
--- ================================================
-local function CreateCorkButton()
-	if not MidgetDB.CorkButton or not IsAddOnLoaded("Cork") then return end
-
-	local buffButton = _G["CorkFrame"]
-
-	buffButton.texture = buffButton:CreateTexture(buffButton:GetName().."Icon")
-	buffButton.texture:SetTexture("Interface\\Icons\\Achievement_BG_winSOA")
-	buffButton.texture:SetAllPoints()
-	buffButton.dragHandle = buffButton:CreateTitleRegion()
-	buffButton.dragHandle:SetPoint("TOPLEFT", buffButton)
-	buffButton.dragHandle:SetPoint("BOTTOMRIGHT", buffButton, "TOPRIGHT", 0, -6)
-
-	buffButton:SetWidth(37); buffButton:SetHeight(37)
-	buffButton:SetPoint("CENTER")
-	buffButton:SetMovable(true)
-
-	-- LibButtonFacade support
-	local LBF = LibStub("LibButtonFacade", true)
-	if LBF then
-		LBF:Group("Cork"):Skin()
-		LBF:Group("Cork"):AddButton(buffButton)
-	end
-	hooksecurefunc("CameraZoomIn", function() CorkFrame:Click() end)
-	hooksecurefunc("CameraZoomOut", function() CorkFrame:Click() end)
-end
-
--- ================================================
--- 	Whisper (outgoing) Color
--- ================================================
-local function OutgoingWhisperColor()
-	if not MidgetDB.outgoingWhisperColor then return end
-	local list = CHAT_CONFIG_CHAT_LEFT
-	for i = #list, 1, -1 do
-		if list[i].type == "WHISPER" then
-			list[i+1] = {
-				text = WHISPER .. (GetLocale() == "deDE" and " (ausgehend)" or " (outgoing)"),
-				type = "WHISPER_INFORM",
-				checked = function() return IsListeningForMessageType("WHISPER") end,
-				func = function(self, checked) ToggleChatMessageGroup(checked, "WHISPER") end,
-			}
-			break
-		else
-			list[i+1] = list[i]
-		end
-	end
-end
-
--- ================================================
--- Raid Finder texts are too long!
--- ================================================
-local function ShortenLFRNames()
-	if not MidgetDB.shortenLFRNames then return end
-	hooksecurefunc("LFGRewardsFrame_UpdateFrame", function(frame, raidID, background)
-		local title = frame.title:GetText()
-		if length(title) > 25 then
-			frame.title:SetText(gsub(title, "%s?(.[\128-\191]*)%S+%s", "%1. "))
-		end
-	end)
-end
-
--- ================================================
--- Chat link icons
--- ================================================
-local function AddLootIcons(self, event, message, ...)
-	local function Icon(link)
-		local texture = GetItemIcon(link)
-		return "\124T" .. texture .. ":" .. 12 .. "\124t" .. link
-	end
-	message = message:gsub("(\124c%x+\124Hitem:.-\124h\124r)", Icon)
-	return false, message, ...
-end
-
--- ================================================
--- add show in journal entry to unit dropdowns
--- ================================================
-local function CustomizeDropDowns()
-	local dropDown = UIDROPDOWNMENU_INIT_MENU
-	local which = dropDown.which
-	if which then
-		for index, value in ipairs(UnitPopupMenus[which]) do
-			if value == "PET_SHOW_IN_JOURNAL" and not (dropDown.unit and UnitIsBattlePet(dropDown.unit)) then
-				UnitPopupShown[1][index] = 0
-				break
-			end
-		end
-	end
-end
-
--- ================================================
---  move pet battle frame down a little
--- ================================================
-local function MovePetBatteFrame(offset)
-	if not MidgetDB.movePetBattleFrame then return end
-	PetBattleFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 0, offset)
-end
-
--- ================================================
--- ValidateFramePosition with no menu bar
--- ================================================
-local function FixMenuBarHeight()
-	if not MidgetDB.menuBarHeight then return end
-	hooksecurefunc("ValidateFramePosition", function(frame, offscreenPadding, returnOffscreen)
-		if not offscreenPadding then
-			if abs(frame:GetBottom() - MainMenuBar:GetHeight()) < 1 then
-				local newAnchorY = frame:GetHeight() - GetScreenHeight()
-				frame:SetPoint("TOPLEFT", nil, "TOPLEFT", frame:GetLeft(), newAnchorY)
-				-- ValidateFramePosition(frame, -1*MainMenuBar:GetHeight(), returnOffscreen)
-			end
-		end
-	end)
-end
-
--- ================================================
--- Apply TipTac styling to other frames as well
--- ================================================
-local function AddTipTacStyles()
-	if not MidgetDB.TipTacStyles then return end
-	if IsAddOnLoaded("TipTac") then
-		-- "Corkboard", "ReagentMaker_tooltipRecipe", "FloatingBattlePetTooltip", "BattlePetTooltip",
-		hooksecurefunc("CreateFrame", function(type, name, parent, template)
-			-- if template == "GameTooltipTemplate" then
-			if name == "ReagentMaker_tooltipRecipe" then
-				TipTac:AddModifiedTip(_G[name])
-			end
-		end)
-	end
-end
-
--- ================================================
--- Hide unusable item comparison
--- ================================================
-local function HideUnusableCompareTips()
-	if not MidgetDB.hideUnusableCompareTips then return end
-	local function HookCompareItems(shoppingtip)
-		local old = shoppingtip.SetHyperlinkCompareItem
-		shoppingtip.SetHyperlinkCompareItem = function(self, link, level, shift, main, ...)
-			main = nil
-			return old(self, link, level, shift, main, ...)
-		end
-	end
-
-	HookCompareItems(ShoppingTooltip1)
-	HookCompareItems(ShoppingTooltip2)
-	HookCompareItems(ShoppingTooltip3)
-	HookCompareItems(ItemRefShoppingTooltip1)
-	HookCompareItems(ItemRefShoppingTooltip2)
-	HookCompareItems(ItemRefShoppingTooltip3)
-end
-
--- ================================================
--- Undress button on models!
--- ================================================
-function ns.AddUndressButton(frame)
-	local undressButton = CreateFrame("Button", "$parentUndressButton", frame.controlFrame, "ModelControlButtonTemplate")
-	undressButton:SetPoint("LEFT", "$parentRotateResetButton", "RIGHT", 0, 0)
-	undressButton:RegisterForClicks("AnyUp")
-	undressButton:SetScript("OnClick", function(self)
-		self:GetParent():GetParent():Undress()
-		PlaySound("igInventoryRotateCharacter");
-	end)
-
-	undressButton.tooltip = "Undress"
-	undressButton.tooltipText = "Click to completely undress this character!"
-
-	frame.controlFrame:SetWidth(frame.controlFrame:GetWidth() + undressButton:GetWidth())
-	frame.controlFrame.undressButton = undressButton
-end
-
-
-local function AddUndressButtons()
-	if not MidgetDB.undressButton then return end
-	-- these models are create before we can hook
-	for _, name in pairs({"DressUpModel", "SideDressUpModel"}) do
-		if not _G[name.."ControlFrameUndressButton"] then
-			ns.AddUndressButton(_G[name])
-		end
-	end
-	hooksecurefunc('Model_OnLoad', function(self)
-		if self.controlFrame and not self.controlFrame.undressButton then
-			ns.AddUndressButton(self)
-		end
-	end)
-end
-local function FixModelLighting()
-	if not MidgetDB.modelLighting then return end
-	for _, name in pairs({"DressUpModel", "CharacterModelFrame", "SideDressUpModel", "InspectModelFrame"}) do
-		local frame = _G[name]
-		if frame then
-			frame:SetLight(1, 0, 1, 1, -1, 1)
-			frame:SetFacing(0)
-			if name == "SideDressUpModel" then
-				frame:SetModelScale(2)
-				frame:SetPosition(0, 0.1, -0.5)
-			end
-		end
-	end
-end
-
--- ================================================
--- Accept popups on SHIFT
--- ================================================
-local openPopup
-local function AutoAcceptPopup(which, arg1, arg2, data)
-	if type(which) == 'table' then
-		data  = which.data
-		which = which.which
-	end
-	local info = StaticPopupDialogs[which]
-
-	if info and which ~= 'DEATH' and MidgetDB.SHIFTAcceptPopups and IsShiftKeyDown() then
-		if info.OnAccept then
-			info.OnAccept(nil, data)
-		end
-		StaticPopup_Hide(which, data)
-	end
-end
---[[ local function AutoAcceptPopup(self)
-	local popup = self or openPopup
-	if not MidgetDB.SHIFTAcceptPopups or type(popup) ~= "table" then return end
-	if IsShiftKeyDown() and popup.which ~= "DEATH" then
-		if popup.which == "GOSSIP_CONFIRM" and not popup.data then
-			-- delay
-			openPopup = popup
-		else
-			StaticPopup_OnClick(popup, 1)
-			openPopup = nil
-		end
-	end
-end --]]
-
--- ================================================
---  Fancy BigWigs pull timer, like those in challenge modes
--- ================================================
-local function InitBigWigsFancyPullTimer()
-	if not IsAddOnLoaded("BigWigs_Plugins") then
-		ns.RegisterEvent("ADDON_LOADED", function(self, event, addon)
-			if addon == "BigWigs_Plugins" then
-				ns.UnregisterEvent("ADDON_LOADED", "bigwigs_fancypull")
-				InitBigWigsFancyPullTimer()
-			end
-		end, "bigwigs_fancypull")
-
-		return
-	end
-
-	local L = LibStub("AceLocale-3.0"):GetLocale("Big Wigs: Plugins")
-	BigWigsLoader:RegisterMessage("BigWigs_StartBar", function(_, plugin, _, text, timeLeft)
-		if text == ('Pull' or L['Pull']) then
-			TimerTracker_OnEvent(TimerTracker, "START_TIMER", TIMER_TYPE_CHALLENGE_MODE, timeLeft, timeLeft)
-		end
-	end)
-	BigWigsLoader:RegisterMessage("BigWigs_StopBar", function(event, plugin, text)
-		if text == ('Pull' or L['Pull']) then
-			TimerTracker_OnEvent(TimerTracker, "PLAYER_ENTERING_WORLD")
-		end
-	end)
-end
-
--- ================================================
-function ns.Initialize()
-	UpdateDatabase()
-
-	CreateCorkButton()
-	MovePetBatteFrame(MidgetDB.PetBattleFrameOffset)
-	AddUndressButtons()
-	FixModelLighting()
-	FixMenuBarHeight()
-	ShortenLFRNames()
-	AddTipTacStyles()
-	OutgoingWhisperColor()
-	InterfaceOptionsScrolling()
-	AddMoreSharedMedia()
-	HideUnusableCompareTips()
-	InitBigWigsFancyPullTimer()
-
-	-- SLASH_ROLECHECK1 = "/rolecheck"
-	-- SlashCmdList.ROLECHECK = InitiateRolePoll
-
-	ChatFrame_AddMessageEventFilter("CHAT_MSG_LOOT", AddLootIcons)
-
-	-- hooksecurefunc('SelectGossipOption', AutoAcceptPopup)
-	hooksecurefunc('StaticPopup_Show', AutoAcceptPopup)
-	-- for i=1,4 do _G["StaticPopup"..i]:HookScript("OnShow", AutoAcceptPopup) end
-
-	--[[ for _, tooltip in pairs({ GameTooltip, ItemRefTooltip,
-		ShoppingTooltip1, ShoppingTooltip2, ShoppingTooltip3,
-		ItemRefShoppingTooltip1, ItemRefShoppingTooltip2, ItemRefShoppingTooltip3 }) do
-
-		hooksecurefunc(tooltip, "SetHyperlink", AddTooltipID)
-		tooltip:HookScript("OnTooltipSetItem",  AddTooltipID)
-		tooltip:HookScript("OnTooltipSetSpell", AddTooltipID)
-	end --]]
-
-	-- add "Show in pet journal" dropdown entry
-	-- hooksecurefunc("UnitPopup_HideButtons", CustomizeDropDowns)
-	-- table.insert(UnitPopupMenus["TARGET"], #UnitPopupMenus["TARGET"], "PET_SHOW_IN_JOURNAL")
-
-	-- expose us to the world
-	Midget = ns
-end
-
--- GLOBALS: bit, strsplit, GREEN_FONT_COLOR_CODE, GRAY_FONT_COLOR_CODE, GetAchievementInfo, GetAchievementCategory, GetCategoryInfo, GetAchievementNumCriteria, GetAchievementCriteriaInfo
-local function AddCriteriaInfo(fontString, achievementID, criteriaIndex, alignRight)
-	local _, _, selfCompleted, quantity, requiredQuantity, _, _, _, quantityString = GetAchievementCriteriaInfo(achievementID, criteriaIndex)
-
-	local progress
-	local text = '%s'
-	if not selfCompleted and requiredQuantity and requiredQuantity > 1 then
-		progress = quantityString:gsub(' ', '')
-		text = text .. ' '..GRAY_FONT_COLOR_CODE..'(%s)|r'
-	end
-
-	local indicator = (selfCompleted and GREEN_FONT_COLOR_CODE or RED_FONT_COLOR_CODE) .. '*|r'
-	if alignRight then
-		text = text .. ' ' .. indicator
-	else
-		text = indicator .. ' ' .. text
-	end
-	fontString:SetFormattedText(text, fontString:GetText(), progress)
-
-	return selfCompleted, quantity, requiredQuantity
-end
-
-local playerGUID
-local function TooltipAchievementExtras(tooltip, hyperlink)
-	local linkType, linkID, linkData = ns.GetLinkData(hyperlink)
-	if linkType ~= 'achievement' then return end
-
-	local tooltipName, tooltipLines = tooltip:GetName(), tooltip:NumLines()
-	local _, title, _, _, month, day, year, _, _, _, _, _, wasEarnedByMe, earnedBy = GetAchievementInfo(linkID)
-	local guid, completed, _, _, _, crit1, crit2, crit3, crit4 = strsplit(':', linkData)
-	-- local criteriaCompleted = bit.band(crit1, 2^(criteriaIndex - 1)) > 0
-	-- numCompleted = numCompleted + (criteriaCompleted and 1 or 0)
-
-	-- category this achievement belongs to
-	local categoryID = GetAchievementCategory(linkID)
-	local category, parent = GetCategoryInfo(categoryID)
-	local categoryString = category
-	while parent > 0 do
-		category, parent = GetCategoryInfo(parent)
-		categoryString = categoryString .. ' - ' .. category
-	end
-	_G[tooltipName..'TextLeft2']:SetFormattedText('<%s>', categoryString)
-
-	if not playerGUID then playerGUID = UnitGUID('player') end
-	local isPlayer = guid == playerGUID:sub(3)
-	local numCriteria, numSelfCompleted = GetAchievementNumCriteria(linkID), 0
-	if not isPlayer and not earnedBy then
-		-- show our own achievement progress comparison
-		local lineNum, critNum = 6, 0
-		while critNum < numCriteria and lineNum <= tooltipLines do
-			local left, right = _G[tooltipName..'TextLeft'..lineNum], _G[tooltipName..'TextRight'..lineNum]
-
-			local leftText = left and left:GetText()
-			if leftText and leftText:trim() ~= '' then
-				critNum = critNum + 1
-				local selfCompleted = AddCriteriaInfo(left, linkID, critNum)
-				if selfCompleted then
-					numSelfCompleted = numSelfCompleted + (selfCompleted and 1 or 0)
-				end
-			end
-
-			local rightText = right and right:GetText()
-			if rightText and rightText:trim() ~= '' and right:IsShown()  and critNum < numCriteria then
-				critNum = critNum + 1
-				local selfCompleted = AddCriteriaInfo(right, linkID, critNum, true)
-				if selfCompleted then
-					numSelfCompleted = numSelfCompleted + (selfCompleted and 1 or 0)
-				end
-			end
-
-			-- this line is full, continue with next line
-			lineNum = lineNum + 1
-		end
-	elseif not earnedBy then
-		for criteriaIndex = 1, numCriteria do
-			local _, _, selfCompleted = GetAchievementCriteriaInfo(linkID, criteriaIndex)
-			numSelfCompleted = (numSelfCompleted or 0) + (selfCompleted and 1 or 0)
-		end
-	end
-
-	if earnedBy then
-		-- we have completed this achievement
-		_G[tooltipName..'TextLeft1']:SetFormattedText('%s (%s%s)',
-			title, wasEarnedByMe and '' or (earnedBy..' '), string.format(_G.SHORTDATE, day, month, year))
-	else -- if not isPlayer then
-		-- we are still working on this achievement
-		_G[tooltipName..'TextLeft1']:SetFormattedText('%s (%s/%s)',
-			title, numSelfCompleted, numCriteria)
-	end
-end
-hooksecurefunc(GameTooltip, 'SetHyperlink', TooltipAchievementExtras)
-
-
-local unitCache = setmetatable({}, {
-	__mode = "kv",
-	--[[ __index = function(self, guid)
-		self[guid] = {
-			-- spec = 0,
-			-- ilevel = 0,
-		}
-		return self[guid]
-	end, --]]
-})
-local function TooltipUnitExtras(tooltip, ...)
-	local unitName, unit = tooltip:GetUnit()
-
-	if not unit or not UnitIsPlayer(unit) or UnitLevel(unit) < 10 then return end
-	local guid = UnitGUID(unit)
-
-	if unitCache[guid] then
-		-- show in tooltip
-	elseif CanInspect(unit) and not IsInspectFrameOpen() then
-		-- self:RegisterEvent("INSPECT_READY")
-		-- self:RegisterEvent("UNIT_INVENTORY_CHANGED")
-		NotifyInspect(unit)
-	end
-
-	-- GetInspectSpecialization()
-	-- GetSpecializationInfoByID(spec)
-	-- local link = GetInventoryItemLink("unit", slot)
-end
--- GameTooltip:HookScript('OnTooltipSetUnit', TooltipUnitExtras)
-
--- ================================
---[[
--- link,linkToken,id,guid,completed,month,day,year,unknown1,unknown2,unknown3,unknown4
-if (cfg.if_modifyAchievementTips) then
-	completed = (tonumber(completed) == 1);
-	local tipName = self:GetName();
-	local isPlayer = (UnitGUID("player"):sub(3) == guid);
-	-- Get category
-	local catId = GetAchievementCategory(id);
-	local category, catParent = GetCategoryInfo(catId);
-	local catName;
-	while (catParent > 0) do
-		catName, catParent = GetCategoryInfo(catParent);
-		category = catName.." - "..category;
-	end
-	-- Get Criteria
-	wipe(criteriaList);
-	local criteriaComplete = 0;
-	local count = GetAchievementNumCriteria(id)
-	for i = 6, 6 - 1 + count do -- self:NumLines() do
-		local left = _G[tipName.."TextLeft"..i];
-		local right = _G[tipName.."TextRight"..i];
-		local leftText = left and left:GetText();
-		local rightText = right and right:GetText();
-		if (leftText and leftText ~= " ") then
-			criteriaList[#criteriaList + 1] = { label = leftText, done = left:GetTextColor() < 0.5 };
-			if (criteriaList[#criteriaList].done) then
-				criteriaComplete = (criteriaComplete + 1);
-			end
-		end
-		if (rightText and rightText ~= " ") then
-			criteriaList[#criteriaList + 1] = { label = rightText, done = right:GetTextColor() < 0.5 };
-			if (criteriaList[#criteriaList].done) then
-				criteriaComplete = (criteriaComplete + 1);
-			end
-		end
-	end
-
-	-- Cache Info
-	local progressText = _G[tipName.."TextLeft3"]:GetText() or "";
-	local _, title, points, _, _, _, _, description, _, icon, reward = GetAchievementInfo(id);
-	-- Rebuild Tip
-	self:ClearLines();
-	local stat = isPlayer and GetStatistic(id);
-	self:AddDoubleLine(title,(stat ~= "0" and stat ~= "--" and stat),nil,nil,nil,1,1,1);
-	self:AddLine("<"..category..">");
-	if (reward) then
-		self:AddLine(reward,unpack(cfg.if_infoColor));
-	end
-	self:AddLine(description,1,1,1,1);
-	self:AddLine(BoolCol(completed)..progressText);
-	if (#criteriaList > 0) then
-		self:AddLine(" ");
-		self:AddLine("Achievement Criteria |cffffffff"..criteriaComplete.."|r of |cffffffff"..#criteriaList);
-		local r1, g1, b1, r2, g2, b2;
-		local myDone1, myDone2;
-		for i = 1, #criteriaList, 2 do
-			r1, g1, b1 = unpack(criteriaList[i].done and COLOR_COMPLETE or COLOR_INCOMPLETE);
-			if (criteriaList[i + 1]) then
-				r2, g2, b2 = unpack(criteriaList[i + 1].done and COLOR_COMPLETE or COLOR_INCOMPLETE);
-			end
-			if (not isPlayer) then
-				myDone1 = select(3,GetAchievementCriteriaInfo(id,i));
-				if (i + 1 <= #criteriaList) then
-					myDone2 = select(3,GetAchievementCriteriaInfo(id,i + 1));
-				end
-			end
-			myDone1 = (isPlayer and "" or BoolCol(myDone1).."*|r")..criteriaList[i].label;
-			myDone2 = criteriaList[i + 1] and criteriaList[i + 1].label..(isPlayer and "" or BoolCol(myDone2).."*");
-			self:AddDoubleLine(myDone1,myDone2,r1,g1,b1,r2,g2,b2);
-		end
-	end
-	-- ID + Category
-	if (cfg.if_showAchievementIdAndCategory) then
-		self:AddLine(format("AchievementID: %d, CategoryID: %d",id or 0,catId or 0),unpack(cfg.if_infoColor));
-	end
-	-- Icon
-	if (self.SetIconTextureAndText) then
-		self:SetIconTextureAndText(icon,points);
-	end
-	-- Show
-	self:Show();
-end
---]]
