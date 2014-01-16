@@ -109,22 +109,25 @@ end
 -- we store the last started encounter, so if the player makes manual changes after a pull, we don't revert
 local lastEncounter
 local function CheckUpdateLootSpec(self, event, id, name, difficulty, groupSize)
+	-- print('starting encounter', id, name, difficulty, groupSize, 'last was', lastEncounter)
 	if lastEncounter and lastEncounter == id then return end
 	lastEncounter = id
 
 	local instanceID = EJ_GetCurrentInstance()
-	if not instanceID or instanceID == 0 then return end
+	if not instanceID then return end
+	EncounterJournal_DisplayInstance(instanceID)
 
 	local encounterIndex, encounterID, encounterName = 1, nil, nil
 	while true do
-		encounterIndex = (encounterIndex or 0) + 1
 		encounterName, _, encounterID = EJ_GetEncounterInfoByIndex(encounterIndex, instanceID)
-
 		if not encounterName then
+			print('could not find encounter', encounterIndex, 'of', instanceID, '(', id, name, ")\n",
+				EJ_GetEncounterInfoByIndex(encounterIndex, instanceID))
 			return
 		elseif encounterName == name then
 			break
 		end
+		encounterIndex = encounterIndex + 1
 	end
 
 	local currentLoot = GetLootSpecialization()
