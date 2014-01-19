@@ -125,7 +125,7 @@ end
 
 local function ParseOption(key, option)
 	-- in Midget, we don't like nested tables
-	if type(key) ~= 'string' or type(option) == 'table' then return end
+	if type(key) ~= 'string' --[[or type(option) == 'table'--]] then return end
 	local widget = Widget(key, option)
 	if widget then
 		widget.name = widget.name or key
