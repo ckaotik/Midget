@@ -42,7 +42,7 @@ local function TooltipAchievementExtras(tooltip, hyperlink)
 	local categoryString = category
 	while parent > 0 do
 		category, parent = GetCategoryInfo(parent)
-		categoryString = categoryString .. ' - ' .. category
+		categoryString = category .. ' - ' .. categoryString -- .. ' - ' .. category
 	end
 	_G[tooltipName..'TextLeft2']:SetFormattedText('<%s>', categoryString)
 

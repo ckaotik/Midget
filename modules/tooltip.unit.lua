@@ -52,6 +52,7 @@ local function INSPECT_READY(self, event, guid)
 		-- add gathered data to tooltip
 		unitTooltip:AddDoubleLine(talentString or '', levelString or '')
 		unitTooltip.talentsAdded = true
+		unitTooltip:Show()
 	end
 end
 ns.RegisterEvent('INSPECT_READY', INSPECT_READY, 'unit_inspect')
@@ -72,6 +73,7 @@ local function TooltipUnitInfo(tooltip)
 		-- show in tooltip
 		tooltip:AddDoubleLine(unitCache[guid].talents or '', unitCache[guid].levels or '')
 		tooltip.talentsAdded = true
+		tooltip:Show()
 	elseif CanInspect(unit) and (not _G.InspectFrame or not _G.InspectFrame:IsShown()) then
 		unitTooltip = tooltip
 		unitID = unit
