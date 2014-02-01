@@ -28,7 +28,7 @@ local function INSPECT_READY(self, event, guid)
 			-- apply main hand level if two hand and offhand empty
 			if slot == _G.INVSLOT_MAINHAND and itemLink then
 				local _, _, _, _, _, class, subclass, _, equipSlot = GetItemInfo(itemLink)
-				if equipSlot == 'INVTYPE_2HWEAPON' then -- and not IsDualWielding() then
+				if equipSlot == 'INVTYPE_2HWEAPON' or equipSlot == 'INVTYPE_RANGEDRIGHT' then -- and not IsDualWielding() then
 					mainHandLevel = itemLevel
 				end
 			elseif slot == _G.INVSLOT_OFFHAND and not itemLink and mainHandLevel then
@@ -38,7 +38,7 @@ local function INSPECT_READY(self, event, guid)
 		end
 	end
 
-	local talentString = role and string.format('%s|T%s:0|t %s', _G['INLINE_'..role..'_ICON'], icon, name)
+	local talentString = role and string.format('%s|T%s:0|t %s', _G['INLINE_'.. role ..'_ICON'], icon, name)
 	local levelString = (not isIncomplete and itemLevels > 0) and string.format('%d |T%s:0|t', itemLevels/numSlots, 'Interface\\GROUPFRAME\\UI-GROUP-MAINTANKICON')
 
 	if not unitCache[guid] then unitCache[guid] = {} end
@@ -66,18 +66,33 @@ end
 
 local function TooltipUnitInfo(tooltip)
 	local _, unit = tooltip:GetUnit()
-	if not unit or not UnitIsPlayer(unit) or UnitLevel(unit) < 10 or tooltip.talentsAdded then return end
+	if not unit or not UnitIsPlayer(unit) then return end
 
-	local guid = UnitGUID(unit)
-	if unitCache[guid] and unitCache[guid].talents then
-		-- show in tooltip
-		tooltip:AddDoubleLine(unitCache[guid].talents or '', unitCache[guid].levels or '')
-		tooltip.talentsAdded = true
-		tooltip:Show()
-	elseif CanInspect(unit) and (not _G.InspectFrame or not _G.InspectFrame:IsShown()) then
-		unitTooltip = tooltip
-		unitID = unit
-		NotifyInspect(unit)
+	-- move faction text up one line
+	local faction = _G[tooltip:GetName()..'TextLeft4']
+	local factionText = faction and faction:GetText()
+	if faction and factionText and factionText ~= '' then
+		local factionColor = (select(2, UnitFactionGroup(unit))) == 'Horde' and RED_FONT_COLOR_CODE or BATTLENET_FONT_COLOR_CODE
+		local newFaction = _G[tooltip:GetName()..'TextRight3']
+		      newFaction:SetText(factionColor .. faction:GetText() .. '|r')
+		      newFaction:Show()
+		faction:SetText(nil)
+	end
+
+	-- add talent and equipment info
+	if UnitLevel(unit) >= 10 and not tooltip.talentsAdded then
+		local guid = UnitGUID(unit)
+		if unitCache[guid] and unitCache[guid].talents then
+			-- show in tooltip
+			tooltip:AddDoubleLine(unitCache[guid].talents or '', unitCache[guid].levels or '')
+			tooltip.talentsAdded = true
+			tooltip:Show()
+		elseif (UnitInParty(unit) or UnitInRaid(unit) or IsShiftKeyDown())
+			and CanInspect(unit) and (not _G.InspectFrame or not _G.InspectFrame:IsShown()) then
+			unitTooltip = tooltip
+			unitID = unit
+			NotifyInspect(unit)
+		end
 	end
 end
 GameTooltip:HookScript('OnTooltipSetUnit', TooltipUnitInfo)
