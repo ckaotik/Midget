@@ -96,4 +96,8 @@ local function TooltipUnitInfo(tooltip)
 	end
 end
 GameTooltip:HookScript('OnTooltipSetUnit', TooltipUnitInfo)
-GameTooltip:HookScript('OnTooltipCleared', function(self) self.talentsAdded = nil end)
+GameTooltip:HookScript('OnTooltipCleared', function(self)
+	self.talentsAdded = nil
+	unitID = nil
+	unitTooltip = nil
+end)
