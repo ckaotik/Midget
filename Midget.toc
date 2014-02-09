@@ -31,8 +31,10 @@ modules\configmode.lua
 modules\journal.lua
 modules\learner.lua
 modules\mail.lua
+modules\reforge.lua
 modules\social.lua
 modules\spellbook.lua
 modules\tooltip.achievement.lua
 modules\tooltip.unit.lua
 modules\tradeskill.lua
+modules\upgrade.lua
