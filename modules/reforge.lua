@@ -96,5 +96,10 @@ local function DisplayReforgingFrameInfo()
 		end
 	end
 end
+ns.RegisterEvent('UNIT_INVENTORY_CHANGED', function(self, event, unit)
+	if unit == 'player' and ReforgingFrame and ReforgingFrame:IsShown() then
+		DisplayReforgingFrameInfo()
+	end
+end, 'reforge_update')
 ns.RegisterEvent('FORGE_MASTER_OPENED', DisplayReforgingFrameInfo, 'reforge_open')
 ns.RegisterEvent('FORGE_MASTER_SET_ITEM', DisplayReforgingFrameInfo, 'reforge_item')

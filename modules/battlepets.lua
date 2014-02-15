@@ -2,97 +2,9 @@ local addonName, ns, _ = ...
 local plugin = {}
 -- local ns.battlepets = plugin
 
--- GLOBALS: _G, MidgetDB, C_PetJournal, C_PetBattles, GameTooltip, ITEM_QUALITY_COLORS, PET_TYPE_SUFFIX, ADD_ANOTHER, GREEN_FONT_COLOR_CODE, GRAY_FONT_COLOR_CODE, NORMAL_FONT_COLOR, CreateFrame, PlaySound, IsShiftKeyDown, PetJournal_UpdatePetLoadOut
+-- GLOBALS: _G, UIParent, MidgetDB, PetBattleFrame, C_PetJournal, C_PetBattles, GameTooltip, ITEM_QUALITY_COLORS, PET_TYPE_SUFFIX, ADD_ANOTHER, GREEN_FONT_COLOR_CODE, GRAY_FONT_COLOR, NORMAL_FONT_COLOR, UIDROPDOWNMENU_INIT_MENU, UnitPopupMenus, UnitPopupShown, UnitIsBattlePet
+-- GLOBALS: CreateFrame, PlaySound, IsShiftKeyDown, IsModifiedClick, PetJournal_UpdatePetLoadOut, IsAddOnLoaded, ChatEdit_GetActiveWindow
 -- GLOBALS: math, string, table, ipairs, hooksecurefunc, type, wipe, select
-
---[[
-	local function GetBattlePetOwnedStatus(speciesID) -- , level, quality)
-		if not speciesID then return end
-
-		local maxLevel, maxLevelRarity
-		local maxRarity, maxRarityLevel
-		for index = 1, C_PetJournal.GetNumPets() do
-			local petID, petSpecies, owned, _, level = C_PetJournal.GetPetInfoByIndex(index)
-
-			if owned and petSpecies == speciesID then
-				local _, _, _, _, rarity = C_PetJournal.GetPetStats(petID)
-				rarity = rarity - 1
-
-				if not maxRarity or rarity > maxRarity then
-					maxRarity = rarity
-					maxRarityLevel = level
-				end
-				if not maxLevel or level > maxLevel then
-					maxLevel = level
-					maxLevelRarity = rarity
-				end
-			end
-		end
-
-		local rarityInfo = maxRarity and string.format('%s%d|r', ITEM_QUALITY_COLORS[maxRarity].hex, maxRarityLevel)
-		local levelInfo  = maxLevel and string.format('%s%d|r', ITEM_QUALITY_COLORS[maxLevelRarity].hex, maxLevel)
-
-		local owned = C_PetJournal.GetOwnedBattlePetString(speciesID)
-		if not owned then return end
-
-		-- comparing to ITEM_PET_KNOWN
-		-- local current, max 	= owned:match('%((%d+)/(%d+)%)')
-		-- local collected 	= owned:gsub('%((%d+)/(%d+)%)', '')
-
-		local newInfo = string.format('%s|r: %s', owned, rarityInfo)
-		-- don't show twice if identical
-		if not (maxLevel == maxRarityLevel and maxRarity == maxLevelRarity) then
-			newInfo = newInfo .. ', ' .. levelInfo
-		end
-
-		return newInfo
-	end
-
-	local function UpdateBattlePetTooltip(speciesID, level, quality)
-		local newInfo = GetBattlePetOwnedStatus(speciesID, level, quality)
-		if not newInfo then return end
-		if BattlePetTooltip:IsVisible() then
-			BattlePetTooltip.Owned:SetText(newInfo)
-		end
-		if FloatingBattlePetTooltip:IsVisible() then
-			FloatingBattlePetTooltip.Owned:SetText(newInfo)
-		end
-	end
-
-	local function UpdateEnemyBattlePetUnitTooltip(self, petOwner, petIndex)
-		if self.CollectedText:IsVisible() then
-			local speciesID = C_PetBattles.GetPetSpeciesID(petOwner, petIndex)
-			local level = C_PetBattles.GetLevel(petOwner, petIndex)
-			local quality = C_PetBattles.GetBreedQuality(petOwner, petIndex)
-			local newInfo = GetBattlePetOwnedStatus(speciesID, level, quality)
-			if not newInfo then return end
-
-			self.CollectedText:SetText(newInfo)
-			self.CollectedText:Show()
-		end
-	end
-
-	local function UpdateBattlePetUnitTooltip(self)
-		local _, unit = self:GetUnit()
-
-		if unit then
-			if UnitIsWildBattlePet(unit) then
-				local speciesID = UnitBattlePetSpeciesID(unit)
-				local level = UnitLevel(unit)
-				local newInfo = GetBattlePetOwnedStatus(speciesID, level, -1)
-				if not newInfo then return end
-				local owned = C_PetJournal.GetOwnedBattlePetString(speciesID):gsub('|c........', '')
-
-				for line = 1, self:NumLines() do
-					local lineText = _G['GameTooltipTextLeft'..line]:GetText()
-					if lineText == owned then
-						_G['GameTooltipTextLeft'..line]:SetText(newInfo)
-					end
-				end
-			end
-		end
-	end
---]]
 
 local MAX_PET_LEVEL = 25
 local MAX_ACTIVE_PETS = 3
@@ -333,13 +245,6 @@ end
 
 local function initialize(frame, event, arg1)
 	if (arg1 == addonName or arg1 == 'Blizzard_PetJournal') and IsAddOnLoaded('Blizzard_PetJournal') then
-		--[[
-			hooksecurefunc('BattlePetToolTip_Show', UpdateBattlePetTooltip)
-			hooksecurefunc('FloatingBattlePet_Show', UpdateBattlePetTooltip)
-			hooksecurefunc('PetBattleUnitTooltip_UpdateForUnit', UpdateEnemyBattlePetUnitTooltip)
-			GameTooltip:HookScript('OnTooltipSetUnit', UpdateBattlePetUnitTooltip)
-		--]]
-
 		if not MidgetDB.petBattleTeams then MidgetDB.petBattleTeams = {} end
 		hooksecurefunc("PetJournal_UpdatePetLoadOut", plugin.Update)
 
@@ -362,3 +267,40 @@ local function initialize(frame, event, arg1)
 end
 ns.RegisterEvent('ADDON_LOADED', initialize, 'battlepet')
 
+-- ================================================
+--  move pet battle frame down a little
+-- ================================================
+local function MovePetBatteFrame()
+	local offset = MidgetDB.PetBattleFrameOffset
+	if not MidgetDB.movePetBattleFrame or offset == 0 then return end
+	PetBattleFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 0, offset)
+end
+
+-- ================================================
+-- add show in journal entry to unit dropdowns
+-- ================================================
+local function CustomizeDropDowns()
+	local dropDown = UIDROPDOWNMENU_INIT_MENU
+	local which = dropDown.which
+	if which then
+		for index, value in ipairs(UnitPopupMenus[which]) do
+			if value == "PET_SHOW_IN_JOURNAL" and not (dropDown.unit and UnitIsBattlePet(dropDown.unit)) then
+				UnitPopupShown[1][index] = 0
+				break
+			end
+		end
+	end
+end
+
+-- ================================================
+--  loading ...
+-- ================================================
+ns.RegisterEvent('ADDON_LOADED', function(self, event, arg1)
+	if arg1 ~= addonName then return end
+
+	MovePetBatteFrame()
+	-- hooksecurefunc("UnitPopup_HideButtons", CustomizeDropDowns)
+	-- table.insert(UnitPopupMenus["TARGET"], #UnitPopupMenus["TARGET"], "PET_SHOW_IN_JOURNAL")
+
+	ns.UnregisterEvent('ADDON_LOADED', 'init_battlepet')
+end, 'init_battlepet')

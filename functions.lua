@@ -39,43 +39,6 @@ local function InterfaceOptionsScrolling()
 end
 
 -- ================================================
---  Tooltip item/spell/achievement ids
--- ================================================
-local function AddTooltipID(tooltip, hyperlink)
-	if not hyperlink then -- OnTooltipSetItem
-		_, hyperlink = tooltip:GetItem()
-	end
-	if not hyperlink then -- OnTooltipSetSpell
-		_, _, hyperlink = tooltip:GetSpell()
-		hyperlink = hyperlink and 'spell:'..hyperlink
-	end
-	if not hyperlink then return end
-	local linkType, id, data = hyperlink:match("(%l+):([^:]*):?([^\124]*)")
-
-	--[[ local search
-	if linkType == 'item' then
-		-- search = ITEM_LEVEL
-		search = ITEM_UPGRADE_TOOLTIP_FORMAT
-	end
-	search = search and search:gsub('%%d', '(%%d+)'):gsub('%%s', '(%%s+)') --]]
-
-	local left, right = tooltip:GetName() .. 'TextLeft', tooltip:GetName() .. 'TextRight'
-	local added
-	for i = 1, tooltip:NumLines() do
-		local text = _G[left..i] and _G[left..i]:GetText()
-		if not text or text == CURRENTLY_EQUIPPED then
-			-- nothing
-		elseif not added then
-			local lineRight = _G[right..i]
-			lineRight:SetText(id)
-			lineRight:SetTextColor(0.55, 0.55, 0.55, 0.5)
-			lineRight:Show()
-			added = true
-		end
-	end
-end
-
--- ================================================
 --  Cork
 -- ================================================
 local function CreateCorkButton()
@@ -151,30 +114,6 @@ local function AddLootIcons(self, event, message, ...)
 end
 
 -- ================================================
--- add show in journal entry to unit dropdowns
--- ================================================
-local function CustomizeDropDowns()
-	local dropDown = UIDROPDOWNMENU_INIT_MENU
-	local which = dropDown.which
-	if which then
-		for index, value in ipairs(UnitPopupMenus[which]) do
-			if value == "PET_SHOW_IN_JOURNAL" and not (dropDown.unit and UnitIsBattlePet(dropDown.unit)) then
-				UnitPopupShown[1][index] = 0
-				break
-			end
-		end
-	end
-end
-
--- ================================================
---  move pet battle frame down a little
--- ================================================
-local function MovePetBatteFrame(offset)
-	if not MidgetDB.movePetBattleFrame then return end
-	PetBattleFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 0, offset)
-end
-
--- ================================================
 -- ValidateFramePosition with no menu bar
 -- ================================================
 local function FixMenuBarHeight()
@@ -197,8 +136,8 @@ local function AddTipTacStyles()
 	if not MidgetDB.TipTacStyles then return end
 	if IsAddOnLoaded("TipTac") then
 		-- "Corkboard", "ReagentMaker_tooltipRecipe", "FloatingBattlePetTooltip", "BattlePetTooltip",
-		hooksecurefunc("CreateFrame", function(type, name, parent, template)
-			-- if template == "GameTooltipTemplate" then
+		hooksecurefunc("CreateFrame", function(objectType, name, parent, template)
+			if objectType ~= 'GameTooltip' then return end
 			if name == "ReagentMaker_tooltipRecipe" then
 				TipTac:AddModifiedTip(_G[name])
 			end
@@ -225,59 +164,6 @@ local function HideUnusableCompareTips()
 	HookCompareItems(ItemRefShoppingTooltip1)
 	HookCompareItems(ItemRefShoppingTooltip2)
 	HookCompareItems(ItemRefShoppingTooltip3)
-end
-
--- ================================================
--- Add further info to lfg tooltips
--- ================================================
-local function AddLFREntryInfo(button, index)
-	local name, level, areaName, className, comment, partyMembers, status, class, encountersTotal, encountersComplete, isIneligible, isLeader, isTank, isHealer, isDamage, bossKills, specID, isGroupLeader, armor, spellDamage, plusHealing, CritMelee, CritRanged, critSpell, mp5, mp5Combat, attackPower, agility, maxHealth, maxMana, gearRating, avgILevel, defenseRating, dodgeRating, BlockRating, ParryRating, HasteRating, expertise = SearchLFGGetResults(index)
-
-	if button.type == 'individual' then
-		if isDamage and spellDamage > attackPower then
-			-- caster dps shown in green, otherwise regular (red)
-			button.damageIcon:SetTexture('Interface\\LFGFRAME\\LFGRole_Green')
-		end
-
-		if level == 90 then
-			button.level:SetFormattedText('%d', avgILevel)
-		end
-		button.tankCount:SetText('')
-		button.healerCount:SetText('')
-		button.damageCount:SetText('')
-	else
-		if level == 90 then
-			local _, _, _, _, _, partyMembers = SearchLFGGetResults(button.index)
-			local numTanks, numHeals, numDPS = isTank and 1 or 0, isHealer and 1 or 0, isDamage and 1 or 0
-			local itemLevels = avgILevel
-			for i = 1, partyMembers do
-				local name, level, relationship, className, areaName, comment, isLeader, isTank, isHealer, isDamage, bossKills, specID, isGroupLeader, _, _, _, _, _, _, _, _, _, _, _, _, _, avgILevel = SearchLFGGetPartyResults(button.index, i)
-				numTanks = numTanks + (isTank   and 1 or 0)
-				numHeals = numHeals + (isHealer and 1 or 0)
-				numDPS   = numDPS   + (isDamage and 1 or 0)
-				itemLevels = (itemLevels or 0) + (avgILevel or 0)
-			end
-
-			button.level:SetFormattedText('%d', itemLevels/(partyMembers+1))
-			button.tankCount:SetText(numTanks)
-			button.healerCount:SetText(numHeals)
-			button.damageCount:SetText(numDPS)
-		end
-	end
-end
-
-local function ShowLFREntryTooltip(button)
-	if button.type ~= 'individual' then return end
-
-	local _, _, _, _, _, partyMembers = SearchLFGGetResults(button.index)
-	local numTanks, numHeals, numDPS, itemLevels
-	for i = 1, partyMembers do
-		local name, level, relationship, className, areaName, comment, isLeader, isTank, isHealer, isDamage, bossKills, specID, isGroupLeader, _, _, _, _, _, _, _, _, _, _, _, _, _, avgILevel = SearchLFGGetPartyResults(button.index, i)
-		numTanks = (numTanks or 0) + (isTank   and 1 or 0)
-		numHeals = (numHeals or 0) + (isHealer and 1 or 0)
-		numDPS   = (numDPS   or 0) + (isDamage and 1 or 0)
-		itemLevels = (itemLevels or 0) + avgILevel
-	end
 end
 
 -- ================================================
@@ -347,19 +233,6 @@ local function AutoAcceptPopup(which, arg1, arg2, data)
 		StaticPopup_Hide(which, data)
 	end
 end
---[[ local function AutoAcceptPopup(self)
-	local popup = self or openPopup
-	if not MidgetDB.SHIFTAcceptPopups or type(popup) ~= "table" then return end
-	if IsShiftKeyDown() and popup.which ~= "DEATH" then
-		if popup.which == "GOSSIP_CONFIRM" and not popup.data then
-			-- delay
-			openPopup = popup
-		else
-			StaticPopup_OnClick(popup, 1)
-			openPopup = nil
-		end
-	end
-end --]]
 
 -- ================================================
 --  Fancy BigWigs pull timer, like those in challenge modes
@@ -394,7 +267,6 @@ ns.RegisterEvent('ADDON_LOADED', function(self, event, arg1)
 	if arg1 ~= addonName then return end
 
 	CreateCorkButton()
-	MovePetBatteFrame(MidgetDB.PetBattleFrameOffset)
 	AddUndressButtons()
 	FixModelLighting()
 	FixMenuBarHeight()
@@ -406,42 +278,11 @@ ns.RegisterEvent('ADDON_LOADED', function(self, event, arg1)
 	HideUnusableCompareTips()
 	InitBigWigsFancyPullTimer()
 
-	hooksecurefunc('LFRBrowseFrameListButton_SetData', AddLFREntryInfo)
-	for i = 1, 19 do
-		local button = _G['LFRBrowseFrameListButton'..i]
-		-- button:HookScript('OnEnter', ShowLFREntryTooltip)
-		local tankCount = button:CreateFontString(nil, nil, 'GameFontHighlight')
-		      tankCount:SetAllPoints(button.tankIcon)
-		button.tankCount = tankCount
-		local healerCount = button:CreateFontString(nil, nil, 'GameFontHighlight')
-		      healerCount:SetAllPoints(button.healerIcon)
-		button.healerCount = healerCount
-		local damageCount = button:CreateFontString(nil, nil, 'GameFontHighlight')
-		      damageCount:SetAllPoints(button.damageIcon)
-		button.damageCount = damageCount
-	end
-
 	-- SLASH_ROLECHECK1 = "/rolecheck"
 	-- SlashCmdList.ROLECHECK = InitiateRolePoll
 
 	ChatFrame_AddMessageEventFilter("CHAT_MSG_LOOT", AddLootIcons)
-
-	-- hooksecurefunc('SelectGossipOption', AutoAcceptPopup)
 	hooksecurefunc('StaticPopup_Show', AutoAcceptPopup)
-	-- for i=1,4 do _G["StaticPopup"..i]:HookScript("OnShow", AutoAcceptPopup) end
-
-	--[[ for _, tooltip in pairs({ GameTooltip, ItemRefTooltip,
-		ShoppingTooltip1, ShoppingTooltip2, ShoppingTooltip3,
-		ItemRefShoppingTooltip1, ItemRefShoppingTooltip2, ItemRefShoppingTooltip3 }) do
-
-		hooksecurefunc(tooltip, "SetHyperlink", AddTooltipID)
-		tooltip:HookScript("OnTooltipSetItem",  AddTooltipID)
-		tooltip:HookScript("OnTooltipSetSpell", AddTooltipID)
-	end --]]
-
-	-- add "Show in pet journal" dropdown entry
-	-- hooksecurefunc("UnitPopup_HideButtons", CustomizeDropDowns)
-	-- table.insert(UnitPopupMenus["TARGET"], #UnitPopupMenus["TARGET"], "PET_SHOW_IN_JOURNAL")
 
 	ns.UnregisterEvent('ADDON_LOADED', 'init_functions')
 end, 'init_functions')

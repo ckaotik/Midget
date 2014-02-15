@@ -79,6 +79,7 @@ local function DisplayItemUpgradeInfo()
 				line.Icon:SetSize(15, 15)
 				line:EnableMouse(true)
 				line:HookScript('OnEnter', ns.ShowTooltip)
+				line:HookScript('OnLeave', ns.HideTooltip)
 				line.slotID = slotID
 				line:HookScript('OnMouseUp', SetItemForUpgrade)
 			end
@@ -89,5 +90,11 @@ local function DisplayItemUpgradeInfo()
 		end
 	end
 end
+
+ns.RegisterEvent('UNIT_INVENTORY_CHANGED', function(self, event, unit)
+	if unit == 'player' and ItemUpgradeFrame and ItemUpgradeFrame:IsShown() then
+		DisplayItemUpgradeInfo()
+	end
+end, 'upgrade_update')
 ns.RegisterEvent('ITEM_UPGRADE_MASTER_OPENED', DisplayItemUpgradeInfo, 'upgrade_open')
 ns.RegisterEvent('ITEM_UPGRADE_MASTER_SET_ITEM', DisplayItemUpgradeInfo, 'upgrade_item')
