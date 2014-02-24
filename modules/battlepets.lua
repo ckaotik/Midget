@@ -201,7 +201,7 @@ function plugin.DumpTeam(index)
 	local team = MidgetDB.petBattleTeams[index]
 	for i = 1, MAX_ACTIVE_PETS do
 		if team[i] and team[i].petID then
-			output = output .. GetPetLink(team[i].petID)
+			output = output .. C_PetJournal.GetBattlePetLink(team[i].petID) -- GetPetLink(team[i].petID)
 		end
 	end
 	-- output = (team.name or 'Team '..index) .. ' ' .. output
