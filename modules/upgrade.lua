@@ -47,6 +47,10 @@ local function DisplayItemUpgradeInfo()
 			local itemLink = GetInventoryItemLink('player', slotID)
 			if itemLink then
 				local currentUpgrade, maxUpgrade, ilevelUpgrade = LibItemUpgrade:GetItemUpgradeInfo(itemLink)
+				if not currentUpgrade and not maxUpgrade then
+					currentUpgrade, maxUpgrade = 0, 0
+				end
+
 				local itemLevel = LibItemUpgrade:GetUpgradedItemLevel(itemLink) or 0
 
 				local color = ''
