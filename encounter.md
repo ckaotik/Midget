@@ -1,6 +1,6 @@
 ---
 title: Encounter Journal tweaks
-layout: minimal
+layout: default
 ---
 
 This is merely a *test*!
