@@ -27,7 +27,9 @@ local function DisplayItemUpgradeInfo()
 		for index = 1, numRows do
 			local left, right = ItemUpgradeFrame_GetStatRow(index)
 			if left.Icon then left.Icon:Hide() end
+			left.hyperlink = nil
 			if right.Icon then right.Icon:Hide() end
+			right.hyperlink = nil
 		end
 		return
 	end
