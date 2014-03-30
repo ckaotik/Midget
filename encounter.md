@@ -1,7 +1,7 @@
 ---
 title: Encounter Journal tweaks
-layout: default
+layout: minimal
 ---
 
 This is merely a *test*!
-However, using GitHub's themes would be great...
+However, using GitHub's themes would be great... for example, https://github.com/orderedlist/minimal!
