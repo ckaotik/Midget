@@ -46,8 +46,8 @@ ns.RegisterEvent('ADDON_LOADED', function(self, event, arg1)
 	if arg1 ~= addonName then return end
 
 	hooksecurefunc('LFRBrowseFrameListButton_SetData', AddLFREntryInfo)
-	for i = 1, 19 do
-		local button = _G['LFRBrowseFrameListButton'..i]
+	local i, button = 1, _G['LFRBrowseFrameListButton1']
+	while button do
 		local tankCount = button:CreateFontString(nil, nil, 'GameFontHighlight')
 		      tankCount:SetAllPoints(button.tankIcon)
 		button.tankCount = tankCount
@@ -57,6 +57,9 @@ ns.RegisterEvent('ADDON_LOADED', function(self, event, arg1)
 		local damageCount = button:CreateFontString(nil, nil, 'GameFontHighlight')
 		      damageCount:SetAllPoints(button.damageIcon)
 		button.damageCount = damageCount
+
+		i = i + 1
+		button = _G['LFRBrowseFrameListButton'..i]
 	end
 
 	ns.UnregisterEvent('ADDON_LOADED', 'init_groupfinder')
