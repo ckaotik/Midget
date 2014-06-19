@@ -95,15 +95,15 @@ local function DisplayItemUpgradeInfo()
 					color = YELLOW_FONT_COLOR_CODE
 				end
 
+				local _, _, quality, _, _, _, _, _, equipSlot = GetItemInfo(itemLink)
+				local r, g, b, qColor = GetItemQualityColor(quality)
+
 				if line.ItemIncText then
 					line.ItemIncText:SetText('')
 				end
-				line.ItemLevelText:SetFormattedText("%s%d/%d|r", color, currentUpgrade, maxUpgrade)
-				-- line.ItemText:SetText(itemLink)
 
-				local _, _, quality, _, _, _, _, _, equipSlot = GetItemInfo(itemLink)
-				local r, g, b, color = GetItemQualityColor(quality)
-				line.ItemText:SetText('|c'..color..itemLevel..' '..slotNames[slotByInvType[equipSlot]]..'|r')
+				line.ItemLevelText:SetText('|c'..qColor..itemLevel..'|r')
+				line.ItemText:SetFormattedText('%s%d/%d %s', color, currentUpgrade, maxUpgrade, slotNames[slotByInvType[equipSlot]])
 			else
 				if line.Icon then line.Icon:Hide() end
 				line.ItemLevelText:SetText('')
