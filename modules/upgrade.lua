@@ -10,6 +10,33 @@ local addonName, ns, _ = ...
 local LibItemUpgrade = LibStub('LibItemUpgradeInfo-1.0')
 local numRows, upgradesHooked = 8 -- _G.ITEM_UPGRADE_MAX_STATS_SHOWN
 
+local slotNames = {_G['HEADSLOT'], _G['NECKSLOT'], _G['SHOULDERSLOT'], _G['SHIRTSLOT'], _G['CHESTSLOT'], _G['WAISTSLOT'], _G['LEGSSLOT'], _G['FEETSLOT'], _G['WRISTSLOT'], _G['HANDSSLOT'], _G['FINGER0SLOT'], _G['FINGER1SLOT'], _G['TRINKET0SLOT'], _G['TRINKET1SLOT'], _G['BACKSLOT'], _G['MAINHANDSLOT'], _G['SECONDARYHANDSLOT'], _G['RANGEDSLOT'], _G['TABARDSLOT'] }
+local slotByInvType = {
+	['INVTYPE_HEAD'] = 1,
+	['INVTYPE_NECK'] = 2,
+	['INVTYPE_SHOULDER'] = 3,
+	['INVTYPE_BODY'] = 4,
+	['INVTYPE_CHEST'] = 5,
+	['INVTYPE_ROBE'] = 5,
+	['INVTYPE_WAIST'] = 6,
+	['INVTYPE_LEGS'] = 7,
+	['INVTYPE_FEET'] = 8,
+	['INVTYPE_WRIST'] = 9,
+	['INVTYPE_HAND'] = 10,
+	['INVTYPE_FINGER'] = 11,
+	['INVTYPE_TRINKET'] = 13,
+	['INVTYPE_CLOAK'] = 15,
+	['INVTYPE_WEAPON'] = 16,
+	['INVTYPE_SHIELD'] = 17,
+	['INVTYPE_2HWEAPON'] = 16,
+	['INVTYPE_WEAPONMAINHAND'] = 16,
+	['INVTYPE_RANGED'] = 16,
+	['INVTYPE_RANGEDRIGHT'] = 16,
+	['INVTYPE_WEAPONOFFHAND'] = 17,
+	['INVTYPE_HOLDABLE'] = 17,
+	['INVTYPE_TABARD'] = 19,
+}
+
 local function SetItemForUpgrade(self)
 	if not GetItemUpgradeItemInfo() then
 		PickupInventoryItem(self.slotID)
@@ -72,7 +99,11 @@ local function DisplayItemUpgradeInfo()
 					line.ItemIncText:SetText('')
 				end
 				line.ItemLevelText:SetFormattedText("%s%d/%d|r", color, currentUpgrade, maxUpgrade)
-				line.ItemText:SetText(itemLink)
+				-- line.ItemText:SetText(itemLink)
+
+				local _, _, quality, _, _, _, _, _, equipSlot = GetItemInfo(itemLink)
+				local r, g, b, color = GetItemQualityColor(quality)
+				line.ItemText:SetText('|c'..color..itemLevel..' '..slotNames[slotByInvType[equipSlot]]..'|r')
 			else
 				if line.Icon then line.Icon:Hide() end
 				line.ItemLevelText:SetText('')
