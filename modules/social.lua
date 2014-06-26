@@ -222,7 +222,6 @@ local function TooltipAddGuildMembers(tooltip, needsSeparator)
 		tooltip:AddSeparator(2)
 
 		local numGuildMembers = GetNumGuildMembers()
-		GuildRoster() -- need this so GetGuildRosterInfo returns live data
 		for index = 1, numGuildMembers do
 			local fullName, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, canSoR, _ = GetGuildRosterInfo(index)
 			local name = strsplit("-", fullName)
@@ -256,7 +255,8 @@ local function TooltipAddGuildMembers(tooltip, needsSeparator)
 end
 
 local tooltip
-OnLDBEnter = function(self)
+-- OnLDBEnter = function(self)
+local function OnLDBEnter(self)
 	local numColumns = 6
 	if LibQTip:IsAcquired(addonName..'Social') then
 		tooltip:Clear()
@@ -280,6 +280,7 @@ OnLDBEnter = function(self)
 	local numFriendsOnline = TooltipAddContacts(tooltip, numBNetOnline > 0)
 
 	-- guild roster
+	GuildRoster() -- need this so GetGuildRosterInfo returns live data
 	local numGuildOnline = TooltipAddGuildMembers(tooltip, numFriendsOnline == 0 or numBNetOnline > 0)
 
 	tooltip:Show()
@@ -318,6 +319,7 @@ local function OnLDBUpdate(self, event)
 				.. '/' .. numFriends .. '|r'
 		end
 
+		GuildRoster() -- need this so GetGuildRosterInfo returns live data
 		local numGuildMembers, numOnline, numOnlineAndMobile = GetNumGuildMembers()
 		if numGuildMembers and numGuildMembers > 0 then
 			-- show guild info
