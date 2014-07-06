@@ -282,6 +282,10 @@ ns.RegisterEvent('ADDON_LOADED', function(self, event, arg1)
 	-- SLASH_ROLECHECK1 = "/rolecheck"
 	-- SlashCmdList.ROLECHECK = InitiateRolePoll
 
+	-- move the options panel!
+	InterfaceOptionsFrame:SetMovable(true)
+	InterfaceOptionsFrame:CreateTitleRegion():SetAllPoints(InterfaceOptionsFrameHeaderText)
+
 	ChatFrame_AddMessageEventFilter("CHAT_MSG_LOOT", AddLootIcons)
 	hooksecurefunc('StaticPopup_Show', AutoAcceptPopup)
 
