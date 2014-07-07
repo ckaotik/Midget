@@ -19,7 +19,7 @@ libs\LibFlash\LibFlash.lua
 libs\LibQTip-1.0\LibQTip-1.0-lua
 #@end-no-lib-strip@
 
-core.lua
+Midget.lua
 functions.lua
 config.lua
 
@@ -32,6 +32,7 @@ modules\groupfinder.lua
 modules\journal.lua
 modules\learner.lua
 modules\mail.lua
+modules\openraid.lua
 modules\reforge.lua
 modules\social.lua
 modules\spellbook.lua
