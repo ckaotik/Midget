@@ -11,6 +11,8 @@ local LSM = LibStub("LibSharedMedia-3.0", true)
 local function AddMoreSharedMedia()
 	if not MidgetDB.moreSharedMedia or not LSM then return end
 	LSM:Register("border", "Glow", "Interface\\Addons\\Midget\\media\\glow.tga")
+	LSM:Register("border", "Double", "Interface\\Addons\\Midget\\media\\double_border.tga")
+	LSM:Register("border", "Single Gray", "Interface\\Addons\\Midget\\media\\grayborder.tga")
 	LSM:Register("font", "Accidental Presidency", "Interface\\Addons\\Midget\\media\\AccidentalPresidency.ttf")
 	LSM:Register("font", "Andika Compact", "Interface\\Addons\\Midget\\media\\Andika-Compact.ttf")
 	LSM:Register("font", "Andika", "Interface\\Addons\\Midget\\media\\Andika.ttf")
@@ -236,20 +238,21 @@ local function AutoAcceptPopup(which, arg1, arg2, data)
 end
 
 -- ================================================
---  Fancy BigWigs pull timer, like those in challenge modes
+--  BigWigs customization
 -- ================================================
-local function InitBigWigsFancyPullTimer()
+local function SetupBigWigs()
 	if not IsAddOnLoaded("BigWigs_Plugins") then
 		ns.RegisterEvent("ADDON_LOADED", function(self, event, addon)
 			if addon == "BigWigs_Plugins" then
 				ns.UnregisterEvent("ADDON_LOADED", "bigwigs_fancypull")
-				InitBigWigsFancyPullTimer()
+				SetupBigWigs()
 			end
 		end, "bigwigs_fancypull")
 
 		return
 	end
 
+	-- Fancy BigWigs pull timer, like those in challenge modes
 	local L = LibStub("AceLocale-3.0"):GetLocale("Big Wigs: Plugins")
 	BigWigsLoader:RegisterMessage("BigWigs_StartBar", function(_, plugin, _, text, timeLeft)
 		if text == ('Pull' or L['Pull']) then
@@ -261,6 +264,102 @@ local function InitBigWigsFancyPullTimer()
 			TimerTracker_OnEvent(TimerTracker, "PLAYER_ENTERING_WORLD")
 		end
 	end)
+
+	-- Custom BigWigs bar style
+	local bars = BigWigs:GetPlugin("Bars", true)
+	if bars then
+		local inset = 0
+		local backdropBorder = {
+			bgFile = "Interface\\Buttons\\WHITE8X8",
+			edgeFile = "Interface\\Buttons\\WHITE8X8",
+			-- edgeFile = LSM:Fetch('border', 'Single Gray'),
+			tile = false, tileSize = 0, edgeSize = 1,
+			insets = {left = inset, right = inset, top = inset, bottom = inset}
+		}
+
+		local conf = bars.db.profile
+		bars:RegisterBarStyle('ckaotik', {
+			apiVersion = 1,
+			version = 1,
+			GetSpacing = function(bar) return 20 end,
+			ApplyStyle = function(bar)
+				if conf.icon then
+					local icon = bar.candyBarIconFrame
+					local iconTexture = icon.icon
+					bar:Set("bigwigs:restoreicon", iconTexture)
+					bar:SetIcon(nil)
+
+					icon:SetTexture(iconTexture)
+					icon:ClearAllPoints()
+					icon:SetPoint('BOTTOMRIGHT', bar, 'BOTTOMLEFT', -4, 0)
+					icon:SetSize(18, 18)
+					icon:Show()
+
+					local iconBd = bar.candyBarIconFrameBackdrop
+					iconBd:SetBackdrop(backdropBorder)
+					iconBd:SetBackdropColor(0.1, 0.1, 0.1, 0.5)
+					iconBd:SetBackdropBorderColor(0, 0, 0, 1)
+
+					iconBd:ClearAllPoints()
+					iconBd:SetPoint('TOPLEFT', icon, 'TOPLEFT', -1, 1)
+					iconBd:SetPoint('BOTTOMRIGHT', icon, 'BOTTOMRIGHT', 1, -1)
+					iconBd:Show()
+				end
+
+				bar:SetTexture(LSM:Fetch('statusbar', conf.texture))
+				bar:SetHeight(4)
+
+				local duration = bar.candyBarDuration
+				if conf.time then
+					duration:SetJustifyH('RIGHT')
+					duration:ClearAllPoints()
+					duration:SetPoint('BOTTOMRIGHT', bar, 'TOPRIGHT', 0, 2)
+				end
+
+				local label = bar.candyBarLabel
+				label:SetJustifyH(conf.align)
+				label:ClearAllPoints()
+				label:SetPoint('BOTTOMLEFT', bar, 'TOPLEFT', 0, 2)
+				if conf.time then
+					label:SetPoint('BOTTOMRIGHT', duration, 'BOTTOMLEFT', -2, 0)
+				else
+					label:SetPoint('BOTTOMRIGHT', bar, 'TOPRIGHT', -2, 2)
+				end
+
+				local bd = bar.candyBarBackdrop
+				bd:ClearAllPoints()
+				bd:SetPoint('TOPLEFT', -1, 1)
+				bd:SetPoint('BOTTOMRIGHT', 1, -1)
+				bd:SetBackdrop(backdropBorder)
+				bd:SetBackdropColor(0.1, 0.1, 0.1, 0.5)
+				bd:SetBackdropBorderColor(0, 0, 0, 1)
+				bd:Show()
+			end,
+			BarStopped = function(bar)
+				bar:SetHeight(14)
+				bar.candyBarBackdrop:Hide()
+
+				local tex = bar:Get("bigwigs:restoreicon")
+				if tex then
+					local icon = bar.candyBarIconFrame
+					icon:ClearAllPoints()
+					icon:SetPoint("TOPLEFT")
+					icon:SetPoint("BOTTOMLEFT")
+					bar:SetIcon(tex)
+
+					bar.candyBarIconFrameBackdrop:Hide()
+				end
+
+				bar.candyBarDuration:ClearAllPoints()
+				bar.candyBarDuration:SetPoint("RIGHT", bar.candyBarBar, "RIGHT", -2, 0)
+
+				bar.candyBarLabel:ClearAllPoints()
+				bar.candyBarLabel:SetPoint("LEFT", bar.candyBarBar, "LEFT", 2, 0)
+				bar.candyBarLabel:SetPoint("RIGHT", bar.candyBarBar, "RIGHT", -2, 0)
+			end,
+			GetStyleName = function() return 'ckaotik' end,
+		})
+	end
 end
 
 -- ================================================
@@ -277,7 +376,7 @@ ns.RegisterEvent('ADDON_LOADED', function(self, event, arg1)
 	InterfaceOptionsScrolling()
 	AddMoreSharedMedia()
 	HideUnusableCompareTips()
-	InitBigWigsFancyPullTimer()
+	SetupBigWigs()
 
 	-- SLASH_ROLECHECK1 = "/rolecheck"
 	-- SlashCmdList.ROLECHECK = InitiateRolePoll
