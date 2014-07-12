@@ -62,5 +62,13 @@ ns.RegisterEvent('ADDON_LOADED', function(self, event, arg1)
 		button = _G['LFRBrowseFrameListButton'..i]
 	end
 
+	--[[ ns.RegisterEvent('UPDATE_LFG_LIST', function()
+		local sortOrder = {3, 6, 5, 4, 1} -- class, dps, heal, tank, group
+		for _, index in ipairs(sortOrder) do
+			_G['LFRBrowseFrameColumnHeader'..index]:Click()
+		end
+		ns.UnregisterEvent('UPDATE_LFG_LIST', 'init_groupfinder')
+	end, 'sort_groupfinder') --]]
+
 	ns.UnregisterEvent('ADDON_LOADED', 'init_groupfinder')
 end, 'init_groupfinder')
