@@ -4,7 +4,7 @@
 ## Version: dev
 ## OptionalDeps: Cork, TipTac, BigWigs, Dominos
 ## Dependencies: Blizzard_TradeSkillUI
-## SavedVariables: MidgetDB
+## SavedVariables: MidgetDB, StufferDB
 ## SavedVariablesPerCharacter: MidgetLocalDB
 
 ## X-ConfigMode: true
@@ -36,6 +36,7 @@ modules\openraid.lua
 modules\reforge.lua
 modules\social.lua
 modules\spellbook.lua
+modules\stuffer.lua
 modules\tooltip.achievement.lua
 modules\tooltip.unit.lua
 modules\tradeskill.lua
