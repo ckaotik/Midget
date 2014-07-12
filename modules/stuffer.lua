@@ -15,13 +15,29 @@ local scopes = {
 	-- this assigns 'SCOPE_VOIDSTORAGE' = 3
 	SCOPE_INVENTORY = SCOPE_INVENTORY,
 	[SCOPE_INVENTORY] = {
-		GetLink = function(container, slot) return GetContainerItemLink(container, slot) end,
-		GetNumSlots = GetContainerNumSlots,
+		GetLink      = function(container, slot) return GetContainerItemLink(container, slot) end,
+		GetNumSlots  = GetContainerNumSlots,
+		IsSlotLocked = function(container, slot) return select(3, GetContainerItemInfo(container, slot)) end,
+		PickupSlot   = function(container, slot, amount)
+			if amount and amount > 0 then
+				SplitContainerItem(container, slot, amount)
+			else
+				PickupContainerItem(container, slot)
+			end
+		end,
 	},
 	SCOPE_GUILDBANK = SCOPE_GUILDBANK,
 	[SCOPE_GUILDBANK] = {
-		GetLink = function(tab, slot) return GetGuildBankItemLink(tab, slot) end,
-		GetNumSlots = function(tab) return tab <= GetNumGuildBankTabs() and _G.MAX_GUILDBANK_SLOTS_PER_TAB or 0 end,
+		GetLink      = function(tab, slot) return GetGuildBankItemLink(tab, slot) end,
+		GetNumSlots  = function(tab) return tab <= GetNumGuildBankTabs() and _G.MAX_GUILDBANK_SLOTS_PER_TAB or 0 end,
+		IsSlotLocked = function(tab, slot) return select(3, GetGuildBankItemInfo(tab, slot)) end,
+		PickupSlot   = function(tab, slot, amount)
+			if amount and amount > 0 then
+				SplitGuildBankItem(tab, slot, amount)
+			else
+				PickupGuildBankItem(tab, slot)
+			end
+		end,
 	},
 	SCOPE_VOIDSTORAGE = SCOPE_VOIDSTORAGE,
 	[SCOPE_VOIDSTORAGE] = {
@@ -31,7 +47,12 @@ local scopes = {
 			return itemID and select(2, GetItemInfo(itemID)) or nil
 		end,
 		-- VOID_STORAGE_MAX defined in Blizzard_VoidStorageUI.lua
-		GetNumSlots = function(tab) return tab == 1 and 80 or 0 end,
+		GetNumSlots  = function(tab) return tab == 1 and 80 or 0 end,
+		IsSlotLocked = function(_, slot) return select(3, GetVoidItemInfo(slot)) end,
+		PickupSlot   = function(_, slot, amount)
+			-- note: void storage can't ever contain stackable items
+			ClickVoidStorageSlot(slot)
+		end,
 	},
 }
 
@@ -49,9 +70,9 @@ function addon:OnInitialize()
 end
 
 function addon:OnEnable()
-	self:AddCriteria('itemID', function(itemLink, scope, container, slot) return ns.GetItemID(itemLink) end)
+	self:AddCriteria('itemID',    function(itemLink, scope, container, slot) return ns.GetItemID(itemLink) end)
 	self:AddCriteria('container', function(itemLink, scope, container, slot) return container end)
-	self:AddCriteria('slot', function(itemLink, scope, container, slot) return slot end)
+	self:AddCriteria('slot',      function(itemLink, scope, container, slot) return slot end)
 
 	--[[ local frame = CreateFrame('Frame', addonName..'Frame', UIParent, "ButtonFrameTemplate")
 	      frame:EnableMouse()
@@ -154,9 +175,10 @@ local function ItemSort(aKey, bKey)
 end
 
 function addon:Run(scope, ...)
-	assert(..., 'Missing container argument.')
-	wipe(items)
 	scope = scope or SCOPE_INVENTORY
+	assert(..., 'Missing container argument.')
+
+	wipe(items)
 	local index, container = 1, select(1, ...)
 	while container do
 		local numSlots = scopes[scope or SCOPE_INVENTORY].GetNumSlots(container)
@@ -213,7 +235,7 @@ function addon:GetCriteria(identifier)
 	return addon.criteria[identifier]
 end
 
--- addon:AddCriteria('myCriteria', function(itemLink, scope, container, slot) return true end)
+-- addon:AddCriteria('myCriteria', function(itemLink, scope, container, slot) return 'aValueToSortBy' end)
 function addon:AddCriteria(identifier, criteriaFunc, silent)
 	assert(identifier and type(identifier) == 'string' and criteriaFunc and type(criteriaFunc) == 'function',
 		'Usage: '..addonName..':AddCriteria("identifier", criteriaFunc)')
