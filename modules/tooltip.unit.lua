@@ -110,3 +110,28 @@ GameTooltip:HookScript('OnTooltipCleared', function(self)
 	unitID = nil
 	unitTooltip = nil
 end)
+
+-- display item specs
+local itemSpecs = {}
+local function TooltipItemInfo(self)
+	local specs
+	local _, itemLink = self:GetItem()
+	if not itemLink then return end
+
+	wipe(itemSpecs)
+	GetItemSpecInfo(itemLink, itemSpecs)
+	for i, specID in ipairs(itemSpecs) do
+		local _, _, _, icon, _, role, class = GetSpecializationInfoByID(specID)
+		specs = (specs and specs..' ' or '') .. '|T'..icon..':0|t'
+	end
+	if not specs then return end
+
+	local text = _G[self:GetName()..'TextRight'..(self:GetName():find('^ShoppingTooltip') and 2 or 1)]
+	      text:SetText(specs)
+	      text:Show()
+end
+GameTooltip:HookScript('OnTooltipSetItem', TooltipItemInfo)
+ItemRefTooltip:HookScript('OnTooltipSetItem', TooltipItemInfo)
+ShoppingTooltip1:HookScript('OnTooltipSetItem', TooltipItemInfo)
+ShoppingTooltip2:HookScript('OnTooltipSetItem', TooltipItemInfo)
+ShoppingTooltip3:HookScript('OnTooltipSetItem', TooltipItemInfo)

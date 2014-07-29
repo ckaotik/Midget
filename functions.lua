@@ -363,6 +363,33 @@ local function SetupBigWigs()
 end
 
 -- ================================================
+--  Extend LibItemSearch
+-- ================================================
+local function ExtendLibItemSearch()
+	local Search = LibStub('CustomSearch-1.0', true)
+	local ItemSearch = LibStub('LibItemSearch-1.2', true)
+	if not ItemSearch or not Search then return end
+
+	local itemSpecs = {}
+	ItemSearch.Filters.spec = {
+		tags = {'s', 'spec', 'specialization'},
+
+		canSearch = function(self, _, search)
+			return search
+		end,
+
+		match = function(self, link, operator, search)
+			wipe(itemSpecs)
+			GetItemSpecInfo(link, itemSpecs)
+			for i, specID in ipairs(itemSpecs) do
+				local specID, name, description, icon, bgTex, role, class = GetSpecializationInfoByID(specID)
+				if Search:Find(search, name, class, role, tostring(specID)) then return true end
+			end
+		end
+	}
+end
+
+-- ================================================
 ns.RegisterEvent('ADDON_LOADED', function(self, event, arg1)
 	if arg1 ~= addonName then return end
 
@@ -377,6 +404,7 @@ ns.RegisterEvent('ADDON_LOADED', function(self, event, arg1)
 	AddMoreSharedMedia()
 	HideUnusableCompareTips()
 	SetupBigWigs()
+	ExtendLibItemSearch()
 
 	-- SLASH_ROLECHECK1 = "/rolecheck"
 	-- SlashCmdList.ROLECHECK = InitiateRolePoll
