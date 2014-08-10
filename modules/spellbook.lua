@@ -3,6 +3,9 @@ local addonName, ns, _ = ...
 -- GLOBALS: IsAddOnLoaded, IsAltKeyDown, CreateFrame, PlaySound, ToggleSpellBook, FindSpellBookSlotBySpellID, SpellBookTabFlashFrame, SpellBookFrame_Update, SpellBook_GetCurrentPage, SpellBook_GetAutoCastShine, AutoCastShine_AutoCastStart, GetNumSpellTabs, GetSpellInfo, GetSpellTabInfo, GetSpellBookItemInfo, GetSpellBookItemName, GetSpellDescription, GetSpellLink, IsSpellKnown, IsPassiveSpell, GetUnitName, GetRealmName, GetMacroBody, GetFlyoutInfo, GetFlyoutSlotInfo, GetActionInfo, GetShapeshiftFormInfo, GetNumShapeshiftForms, SecureCmdOptionParse
 -- GLOBALS: hooksecurefunc, string, math, select, ipairs, tonumber, wipe, type
 
+-- local Spellbook = LibStub('LibSpellbook-1.0')
+-- for id, name in LibSpellbook:IterateSpells(BOOKTYPE_SPELL) do
+
 local function GetSpellButtonByID(index)
 	-- recalculate proper button offset, as counting is column-wise but display is per row
 	index = index == 0 and 12 or (index - 6) * 2
