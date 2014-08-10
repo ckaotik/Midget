@@ -2,13 +2,28 @@ local addonName, ns, _ = ...
 local plugin = {}
 -- local ns.battlepets = plugin
 
--- GLOBALS: _G, UIParent, MidgetDB, PetBattleFrame, C_PetJournal, C_PetBattles, GameTooltip, ITEM_QUALITY_COLORS, PET_TYPE_SUFFIX, ADD_ANOTHER, GREEN_FONT_COLOR_CODE, GRAY_FONT_COLOR, NORMAL_FONT_COLOR, UIDROPDOWNMENU_INIT_MENU, UnitPopupMenus, UnitPopupShown, UnitIsBattlePet
+-- GLOBALS: _G, UIParent, MidgetDB, PetBattleFrame, C_PetJournal, C_PetBattles, GameTooltip, ITEM_QUALITY_COLORS, PET_TYPE_SUFFIX, ADD_ANOTHER, GREEN_FONT_COLOR_CODE, YELLOW_FONT_COLOR_CODE, GRAY_FONT_COLOR, NORMAL_FONT_COLOR, UIDROPDOWNMENU_INIT_MENU, UnitPopupMenus, UnitPopupShown, UnitIsBattlePet
 -- GLOBALS: CreateFrame, PlaySound, IsShiftKeyDown, IsModifiedClick, PetJournal_UpdatePetLoadOut, IsAddOnLoaded, ChatEdit_GetActiveWindow
--- GLOBALS: math, string, table, ipairs, hooksecurefunc, type, wipe, select
+-- GLOBALS: math, string, table, ipairs, hooksecurefunc, type, wipe, select, coroutine, strjoin, unpack, print
 
 local MAX_PET_LEVEL = 25
 local MAX_ACTIVE_PETS = 3
 local strongTypes, weakTypes = {}, {}
+
+local scanner
+local updateFrame = CreateFrame('Frame')
+      updateFrame:Hide()
+local timer = 0
+updateFrame:SetScript('OnUpdate', function(self, elapsed)
+	timer = timer + elapsed
+	if timer > 2 then
+		timer = 0
+		if not scanner or not coroutine.resume(scanner) then
+			self:SetScript('OnUpdate', nil)
+			self:Hide()
+		end
+	end
+end)
 
 local function OnLeave(tab) GameTooltip:Hide() end
 local function OnEnter(tab)
@@ -68,12 +83,13 @@ end
 
 local abilities, abilityLevels = {}, {}
 local function GetPetLink(petID)
-	local _, maxHealth, power, speed, quality = C_PetJournal.GetPetStats(petID)
+	return C_PetJournal.GetBattlePetLink(petID)
+	--[[ local _, maxHealth, power, speed, quality = C_PetJournal.GetPetStats(petID)
 	local speciesID, customName, level, _, _, _, _, name, icon, petType = C_PetJournal.GetPetInfoByPetID(petID)
 	-- name = name:len() > 10 and name:gsub("%s?(.[\128-\191]*)%S+%s", "%1·") or name
 
 	local petLink = ("%1$s|Hbattlepet:%2$s:%3$s:%4$s:%5$s:%6$s:%7$s:%8$s|h[%9$s]|h|r"):format(ITEM_QUALITY_COLORS[quality - 1].hex, speciesID, level, quality-1, maxHealth, power, speed, petID, name)
-	return petLink
+	return petLink--]]
 end
 
 local function GetPetTypeStrength(petType, seperator)
@@ -124,10 +140,10 @@ local function SetTeamTooltip(tab, tooltip)
 		tooltip:AddDoubleLine(
 			string.format("%3$d %1$s %5$s%2$s|r%4$s",
 				GetPetTypeIcon(petType),
-				customName or name,
-				level,
-				level < MAX_PET_LEVEL and ' ('..math.floor(xp/maxXp*100)..'%)' or '',
-				ITEM_QUALITY_COLORS[quality - 1].hex
+				customName or name or '',
+				level or 0,
+				level and level < MAX_PET_LEVEL and ' ('..math.floor(xp/maxXp*100)..'%)' or '',
+				ITEM_QUALITY_COLORS[(quality or 1) - 1].hex
 			),
 			string.format("|TInterface\\PetBattles\\BattleBar-AbilityBadge-Strong:20|t %1$s%2$s%3$s",
 				GetPetTypeStrength(ability1),
@@ -208,10 +224,76 @@ function plugin.DumpTeam(index)
 	ChatEdit_GetActiveWindow():Insert(output)
 end
 
+local battlepets = LibStub('AceAddon-3.0'):NewAddon(addonName..'BattlePets', 'AceEvent-3.0')
+local scanSlot = 1
+local function CompareSlotPet(scanSlot)
+	local petID, ability1, ability2, ability3 = C_PetJournal.GetPetLoadOutInfo(scanSlot)
+	local _, _, _, _, _, _, _, name = C_PetJournal.GetPetInfoByPetID(petID)
+	print(YELLOW_FONT_COLOR_CODE..name, '|rwith skills', ability1, ability2, ability3)
+
+	for teamIndex, team in ipairs(MidgetDB.petBattleTeams) do
+		local teamDesc = teamIndex
+		for slotIndex = 1, MAX_ACTIVE_PETS do
+			local pet = team[slotIndex]
+			if pet and pet.petID and not (C_PetJournal.GetPetInfoByPetID(pet.petID)) then
+				local skill1, skill2, skill3 = unpack(pet)
+				teamDesc = teamDesc .. ' / ' .. strjoin(' ', skill1, skill2, skill3)
+				if ability1 == skill1 and ability2 == skill2 and ability3 == skill3 then
+					-- note: this will not work correctly when using multiple pets with the same skill set
+					-- since we don't have level or quality info to compare
+					print(GREEN_FONT_COLOR_CODE, 'Matched!|r', teamIndex, slotIndex, 'with skills', skill1, skill2, skill3)
+					pet.petID = petID
+				end
+			end
+		end
+		-- print('comparing against', teamDesc)
+	end
+end
+
+-- TODO: we could also scan the other way around: find missing petIDs and scan journal for pets that may learn those skills. Then, set that pet and check if we were correct
+local function CheckPetIDs()
+	local scanSlotPetID, _, _, _, isLocked = C_PetJournal.GetPetLoadOutInfo(scanSlot)
+	if isLocked then
+		print('Can\'t scan pet IDs because slot is locked')
+		return
+	end
+
+	for index = 1, C_PetJournal.GetNumPets() do
+		local petID, _, owned, _, _, _, revoked, name, _, _, _, _, _, _, canBattle = C_PetJournal.GetPetInfoByIndex(index)
+		if owned and not revoked and canBattle then
+			-- /script C_PetJournal.SetPetLoadOutInfo(2, "0x000000000308B99D", true)
+			C_PetJournal.SetPetLoadOutInfo(scanSlot, petID, true)
+			PetJournal_UpdatePetLoadOut()
+
+			updateFrame:Show()
+			coroutine.yield(scanner)
+
+			local scanSlotPetID = C_PetJournal.GetPetLoadOutInfo(scanSlot)
+			CompareSlotPet(scanSlot)
+		end
+	end
+	-- restore previous pet
+	C_PetJournal.SetPetLoadOutInfo(scanSlot, scanSlotPetID, true)
+end
+
+StaticPopupDialogs['MIDGET_PETID_SCAN'] = {
+  text = 'It seems some of your pet IDs are outdated. Would you like me to try and fix them?|nThis will take quite some time.',
+  button1 = _G.OKAY,
+  button2 = _G.CANCEL,
+  OnAccept = function()
+    scanner = coroutine.create(CheckPetIDs)
+	coroutine.resume(scanner)
+  end,
+  timeout = 0,
+  whileDead = true,
+  hideOnEscape = true,
+  preferredIndex = 3,
+}
+
 function plugin.UpdateTabs()
 	local selected = MidgetDB.petBattleTeams.selected
 	for index, team in ipairs(MidgetDB.petBattleTeams) do
-		local _, _, _, _, _, _, _, _, icon = C_PetJournal.GetPetInfoByPetID(team[1].petID)
+		local speciesID, _, _, _, _, _, _, _, icon = C_PetJournal.GetPetInfoByPetID(team[1].petID)
 		local tab = GetTab(index)
 		tab:SetChecked(index == selected)
 		tab:GetNormalTexture():SetTexture(icon)
@@ -219,6 +301,9 @@ function plugin.UpdateTabs()
 
 		tab.teamIndex = index
 		tab.tooltip = SetTeamTooltip
+		if not speciesID then
+			StaticPopup_Show('MIDGET_PETID_SCAN')
+		end
 	end
 
 	local numTeams = #MidgetDB.petBattleTeams + 1
