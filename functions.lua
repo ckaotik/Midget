@@ -389,6 +389,91 @@ local function ExtendLibItemSearch()
 	}
 end
 
+-- apply basic Masque styles to LibSpellWidget frames
+local function AddMasque()
+	local LibMasque       = LibStub('Masque', true)
+	local LibSpellWidget  = LibStub('LibSpellWidget-1.0', true)
+	local LibPlayerSpells = LibStub('LibPlayerSpells-1.0', true)
+	if not LibMasque or not LibSpellWidget then return end
+
+	local COOLDOWN, IMPORTANT = LibPlayerSpells.constants.COOLDOWN, LibPlayerSpells.constants.IMPORTANT
+	local SURVIVAL, BURST = LibPlayerSpells.constants.SURVIVAL, LibPlayerSpells.constants.BURST
+	local MANA_REGEN, POWER_REGEN = LibPlayerSpells.constants.MANA_REGEN, LibPlayerSpells.constants.POWER_REGEN
+
+	hooksecurefunc(LibSpellWidget.proto, 'SetSpell', function(self, spell)
+		if not spell then return end
+
+		if LibPlayerSpells then
+			local flags = LibPlayerSpells:GetSpellInfo(spell)
+			if not flags then
+				self.Border:Hide()
+			elseif bit.band(flags, BURST) > 0 then
+				self.Border:SetVertexColor(0, 1, 0, 1)
+				self.Border:Show()
+			elseif bit.band(flags, SURVIVAL) > 0 then
+				self.Border:SetVertexColor(1, 0, 0, 1)
+				self.Border:Show()
+			elseif bit.band(flags, MANA_REGEN) > 0 or bit.band(flags, POWER_REGEN) > 0 then
+				self.Border:SetVertexColor(0, 0, 1, 1)
+				self.Border:Show()
+			elseif bit.band(flags, COOLDOWN) > 0 or bit.band(flags, IMPORTANT) > 0 then
+				self.Border:SetVertexColor(.5, 0, .5, 1)
+				self.Border:Show()
+			end
+		end
+
+		LibMasque:Group('LibSpellWidget'):ReSkin()
+	end)
+	LibSpellWidget.proto.SetNormalTexture = function(self) end
+	LibSpellWidget.proto.GetNormalTexture = function(self) return self.Normal end
+
+	local Create = LibSpellWidget.Create
+	function LibSpellWidget:Create()
+		-- create widget as usual
+		local widget = Create(self)
+
+		local border = widget:CreateTexture(nil, 'OVERLAY')
+		      border:SetTexture('Interface\\Buttons\\UI-ActionButton-Border')
+		      border:SetAllPoints()
+		      border:Hide()
+		widget.Border = border
+
+		local normal = widget:CreateTexture(nil, 'BACKGROUND')
+		      normal:SetTexture('Interface\\Buttons\\UI-Quickslot2')
+		      normal:SetAllPoints()
+		widget.Normal = normal
+
+		-- now apply Masque to it
+		LibMasque:Group('LibSpellWidget'):AddButton(widget, {
+			Icon         = widget.Icon,
+			Cooldown     = widget.Cooldown,
+			Count        = widget.Count,
+			Normal       = widget.Normal,
+			Border       = widget.Border,
+
+			-- don't try to find these textures
+			Pushed       = false,
+			Disabled     = false,
+			Checked      = false,
+			FloatingBG   = false,
+			Flash        = false,
+			AutoCastable = false,
+			Highlight    = false,
+			HotKey       = false,
+			Name         = false,
+		    Duration     = false,
+			AutoCast     = false,
+		})
+
+		-- fix blown-up texture size
+		local settings = AdiSpellHUD.db:GetNamespace('Auras')
+		local iconSize = settings.profile.size
+		-- widget.Icon:SetSize(iconSize - 2, iconSize - 4)
+
+		return widget
+	end
+end
+
 -- ================================================
 ns.RegisterEvent('ADDON_LOADED', function(self, event, arg1)
 	if arg1 ~= addonName then return end
@@ -405,6 +490,7 @@ ns.RegisterEvent('ADDON_LOADED', function(self, event, arg1)
 	HideUnusableCompareTips()
 	SetupBigWigs()
 	ExtendLibItemSearch()
+	AddMasque()
 
 	-- SLASH_ROLECHECK1 = "/rolecheck"
 	-- SlashCmdList.ROLECHECK = InitiateRolePoll
