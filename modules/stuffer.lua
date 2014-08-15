@@ -2,6 +2,11 @@ local _, ns, _ = ...
 local addonName, addon, _ = 'Stuffer', {}
 _G[addonName] = LibStub('AceAddon-3.0'):NewAddon(addon, addonName, 'AceEvent-3.0')
 
+-- GLOBALS: _G, LibStub
+-- GLOBALS: ClearCursor, GetItemInfo, GetContainerItemInfo, GetContainerItemLink, PickupContainerItem, GetGuildBankItemInfo, GetGuildBankItemLink, SplitContainerItem, PickupGuildBankItem, SplitGuildBankItem, GetNumGuildBankTabs, GetVoidItemInfo, ClickVoidStorageSlot
+-- GLOBALS: assert, type, wipe, select, ipairs, tonumber, table, string
+local strsplit, strjoin = strsplit, strjoin
+
 --[[ Feature Wishlist
 	- assign items to bags
 	- arrange in patterns
@@ -69,6 +74,7 @@ function addon:OnInitialize()
 			ignoreItem = { ['*'] = false, },
 			-- TODO: maybe we should split these by scope?
 			criteria = {},
+			emptyFirst = false,
 		},
 	}
 	self.db = LibStub('AceDB-3.0'):New(addonName..'DB', defaults, true)
@@ -168,18 +174,26 @@ local aParts, bParts = {}, {}
 local function ExplodeA(part) table.insert(aParts, part) end
 local function ExplodeB(part) table.insert(bParts, part) end
 local function ItemSort(aKey, bKey)
-	local aData = strsplit(META_DELIMITER, aKey, 2)
-	wipe(aParts); string.gsub(aData, '([^'..KEY_DELIMITER..']*)'..KEY_DELIMITER..'?', ExplodeA)
-	local bData = strsplit(META_DELIMITER, bKey, 2)
-	wipe(bParts); string.gsub(bData, '([^'..KEY_DELIMITER..']*)'..KEY_DELIMITER..'?', ExplodeB)
+	local aData, aMeta = strsplit(META_DELIMITER, aKey, 2)
+	local bData, bMeta = strsplit(META_DELIMITER, bKey, 2)
+	-- empty slots have no data
+	if aData == '' and bData == '' then return aMeta < bMeta
+	elseif aData == '' then return addon.db.profile.emptyFirst
+	elseif bData == '' then return not addon.db.profile.emptyFirst
+	end
 	-- all generated keys use the same number of parts (each part represents a criteria)
+	wipe(aParts); string.gsub(aData, '([^'..KEY_DELIMITER..']*)'..KEY_DELIMITER..'?', ExplodeA)
+	wipe(bParts); string.gsub(bData, '([^'..KEY_DELIMITER..']*)'..KEY_DELIMITER..'?', ExplodeB)
 	for i = 1, #aParts do
 		local aValue, bValue = tonumber(aParts[i]) or aParts[i], tonumber(bParts[i]) or bParts[i]
 		if aValue ~= bValue then
-			-- TODO: allow descending order, too!
 			return aValue < bValue
 		end
 	end
+end
+local function ItemSortReverse(aKey, bKey)
+	local sorted = ItemSort(aKey, bKey)
+	return (sorted == aKey) and bKey or aKey
 end
 
 function addon:Run(scope, ...)
@@ -199,19 +213,19 @@ function addon:Run(scope, ...)
 	end
 
 	table.sort(items, ItemSort)
-	-- FOO = items
-	-- SlashCmdList['SPEW']('FOO')
 	addon:ApplySort(items, scope, ...)
 end
 
 function addon:GenerateSortKey(scope, container, slot)
 	local itemLink = scopes[scope or SCOPE_INVENTORY].GetLink(container, slot)
 	local itemID   = ns.GetItemID(itemLink)
-	if not itemLink or addon:IsSlotIgnored(scope, container, slot) or addon:IsItemIgnored(itemID) then return end
+	if addon:IsSlotIgnored(scope, container, slot) or addon:IsItemIgnored(itemID) then return end
 
 	local key
-	for identifier, criteriaFunc in addon:IterateCriteria(scope) do
-		key = (key and key..KEY_DELIMITER or '') .. (criteriaFunc(itemLink, scope, container, slot) or '')
+	if itemLink then
+		for identifier, criteriaFunc in addon:IterateCriteria(scope) do
+			key = (key and key..KEY_DELIMITER or '') .. (criteriaFunc(itemLink, scope, container, slot) or '')
+		end
 	end
 	-- add our id last, even when already used in criteria
 	key = (key or '') .. META_DELIMITER .. scope..META_DELIMITER..container..META_DELIMITER..slot
@@ -224,13 +238,14 @@ function addon:IterateCriteria(scope)
 	return function()
 		index = index + 1
 
-		local identifier, criteriaFunc
+		local identifier, criteriaFunc, label
 		for i = index, #(addon.db.profile.criteria) do
 			identifier = addon.db.profile.criteria[i]
 			-- this way we can easily skip non-available criteria
 			if addon.criteria[identifier] then
 				index = i
 				criteriaFunc = addon.criteria[identifier].func
+				label = addon.criteria[identifier].label
 				break
 			else
 				identifier = nil
@@ -293,7 +308,7 @@ local function MoveItem(fromContainer, fromSlot, toContainer, toSlot, amount)
 	local handler = scopes[scope]
 
 	if not handler.IsSlotLocked(fromContainer, fromSlot) and not handler.IsSlotLocked(toContainer, toSlot) then
-		print('Moving item from', fromContainer..'.'..fromSlot, 'to', toContainer..'.'..toSlot)
+		-- print('Moving item from', fromContainer..'.'..fromSlot, 'to', toContainer..'.'..toSlot)
 		ClearCursor()
 		handler.PickupSlot(fromContainer, fromSlot, amount)
 		handler.PickupSlot(toContainer, toSlot)
@@ -335,29 +350,43 @@ function addon:ApplySort(sortedItems, scope, ...)
 			if not addon:IsSlotIgnored(scope, container, slot) and not addon:IsItemIgnored(itemID) then
 				local currentItem = addon:GenerateSortKey(scope, container, slot)
 				local currentData = strsplit(META_DELIMITER, currentItem)
-				local wantedData, _, fromContainer, fromSlot = strsplit(META_DELIMITER, wantedItem)
+				local wantedData, fromScope, fromContainer, fromSlot = strsplit(META_DELIMITER, wantedItem)
 
 				if currentData ~= wantedData then
 					-- move the item that's supposed to be here into this slot
-					print('wanted item', wantedItem, 'current item', currentItem)
+					-- print('wanted item', wantedItem, 'current item', currentItem)
 					local success = MoveItem(tonumber(fromContainer), tonumber(fromSlot), container, slot)
-					if not success then isDone = false end
+					if success then
+						-- update location information since items were swapped
+						sortedItems[listIndex] = strjoin(META_DELIMITER, wantedData, scope, container, slot)
+						for index, item in ipairs(sortedItems) do
+							if item == currentItem then -- TODO: what happens when slot is empty?
+								sortedItems[index] = strjoin(META_DELIMITER, currentData, fromScope, fromContainer, fromSlot)
+								break
+							end
+						end
+					else
+						isDone = false
+					end
 				end
 				listIndex = listIndex + 1
 			end
 		end
 	end
 
-	print('iteration done. ----------------')
+	-- print('iteration done. ----------------')
 	if isDone then
 		sorting.items = nil
 		sorting.scope = nil
 		wipe(sorting.containers)
 		addon:UnregisterEvent('BAG_UPDATE_DELAYED')
+		print('|cff49DEB1'..addonName..'|r Completed moving items')
 	else
 		addon:RegisterEvent('BAG_UPDATE_DELAYED', addon.ApplySort)
 	end
 end
 
---[[ /script Stuffer:Run(nil, 0)
---]]
+-- /script Stuffer:Run(nil, 0)
+-- /script Stuffer:Run(nil, 0,1,2,3,4)
+-- FOO = items
+-- SlashCmdList['SPEW']('FOO')
