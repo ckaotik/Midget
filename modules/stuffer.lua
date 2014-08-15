@@ -300,18 +300,17 @@ function addon:AddFilter(criteriaIdentifier, value, operator)
 	end)
 end
 
-local function MoveItem(fromContainer, fromSlot, toContainer, toSlot, amount)
+local function MoveItem(fromScope, fromContainer, fromSlot, toScope, toContainer, toSlot, amount)
 	if not (fromContainer and fromSlot and toContainer and toSlot) then return nil end
 
-	-- TODO: get correct scope
-	local scope = SCOPE_INVENTORY
-	local handler = scopes[scope]
+	local fromHandler = scopes[fromScope or SCOPE_INVENTORY]
+	local toHandler   = scopes[toScope or SCOPE_INVENTORY]
 
-	if not handler.IsSlotLocked(fromContainer, fromSlot) and not handler.IsSlotLocked(toContainer, toSlot) then
+	if not fromHandler.IsSlotLocked(fromContainer, fromSlot) and not toHandler.IsSlotLocked(toContainer, toSlot) then
 		-- print('Moving item from', fromContainer..'.'..fromSlot, 'to', toContainer..'.'..toSlot)
 		ClearCursor()
-		handler.PickupSlot(fromContainer, fromSlot, amount)
-		handler.PickupSlot(toContainer, toSlot)
+		fromHandler.PickupSlot(fromContainer, fromSlot, amount)
+		toHandler.PickupSlot(toContainer, toSlot)
 		ClearCursor()
 
 		return true
@@ -320,8 +319,6 @@ local function MoveItem(fromContainer, fromSlot, toContainer, toSlot, amount)
 	end
 end
 
--- matches returns foo, bar from a.b.c.foo.bar
--- local container_slot = '([^'..KEY_DELIMITER..']*)'..KEY_DELIMITER..'([^'..KEY_DELIMITER..']*)$'
 local sorting = { containers = {} }
 function addon:ApplySort(sortedItems, scope, ...)
 	-- store sort parameters
@@ -355,7 +352,7 @@ function addon:ApplySort(sortedItems, scope, ...)
 				if currentData ~= wantedData then
 					-- move the item that's supposed to be here into this slot
 					-- print('wanted item', wantedItem, 'current item', currentItem)
-					local success = MoveItem(tonumber(fromContainer), tonumber(fromSlot), container, slot)
+					local success = MoveItem(tonumber(fromScope), tonumber(fromContainer), tonumber(fromSlot), scope, container, slot)
 					if success then
 						-- update location information since items were swapped
 						sortedItems[listIndex] = strjoin(META_DELIMITER, wantedData, scope, container, slot)
