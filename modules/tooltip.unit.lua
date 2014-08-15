@@ -1,4 +1,5 @@
-local addonName, ns, _ = ...
+local addonName, addon, _ = ...
+local plugin = addon:NewModule('UnitTooltip', 'AceEvent-3.0')
 
 -- GLOBALS: _G, UnitIsPlayer, UnitLevel, UnitGUID, CanInspect, GetInspectSpecialization, GetSpecializationInfoByID, GetInventoryItemLink, GetItemInfo, NotifyInspect, string
 -- TODO: fix heirloom item levels
@@ -10,7 +11,7 @@ local unitCache = setmetatable({}, {
 })
 
 local unitTooltip, unitID = nil, nil
-local function INSPECT_READY(self, event, guid)
+local function INSPECT_READY(event, guid)
 	if not unitID or not UnitExists(unitID) or UnitGUID(unitID) ~= guid then
 		unitCache[guid] = nil
 		return
@@ -66,7 +67,10 @@ local function INSPECT_READY(self, event, guid)
 		unitTooltip:Show()
 	end
 end
-ns.RegisterEvent('INSPECT_READY', INSPECT_READY, 'unit_inspect')
+
+function plugin:OnEnable()
+	self:RegisterEvent('INSPECT_READY', INSPECT_READY)
+end
 
 local function TooltipUnitInfo(tooltip)
 	local _, unit = tooltip:GetUnit()

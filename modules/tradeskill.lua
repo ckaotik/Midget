@@ -1,4 +1,5 @@
-local addonName, ns, _ = ...
+local addonName, addon, _ = ...
+local plugin = addon:NewModule('Tradeskill', 'AceEvent-3.0')
 local LPT = LibStub("LibPeriodicTable-3.1", true)
 
 -- GLOBALS: _G, Auctional, MidgetDB, GameTooltip, CURRENT_TRADESKILL, TRADE_SKILLS_DISPLAYED, Atr_ShowTipWithPricing, TradeSkillListScrollFrame, TradeSkillSkillName, TradeSkillFilterBar
@@ -12,7 +13,7 @@ local function AddTradeSkillLevels(id)
 	if not MidgetDB.tradeskillLevels then return end
 
 	local tradeskill = CURRENT_TRADESKILL
-		  tradeskill = ns.GetTradeSkill(tradeskill)
+		  tradeskill = plugin.GetTradeSkill(tradeskill)
 	local recipe = GetTradeSkillItemLink(id)
 		  recipe = tonumber(select(3, string.find(recipe or "", "-*:(%d+)[:|].*")) or "")
 	if not recipe then return end
@@ -21,7 +22,7 @@ local function AddTradeSkillLevels(id)
 	if LPT and LPT.sets[setName] then
 		for item, value, set in LPT:IterateSet(setName) do
 			if item == recipe or item == -1 * recipe then
-				local newText = ( GetTradeSkillInfo(id) ) .. "\n" .. ns.GetTradeSkillColoredString(string.split("/", value))
+				local newText = ( GetTradeSkillInfo(id) ) .. "\n" .. plugin.GetTradeSkillColoredString(string.split("/", value))
 				TradeSkillSkillName:SetText(newText)
 				break
 			end
@@ -36,8 +37,8 @@ local function AddTradeSkillInfoIcon(line)
 	button:SetPoint("TOPLEFT", 0, -2)
 	button:Hide()
 
-	button:SetScript("OnEnter", ns.ShowTooltip)
-	button:SetScript("OnLeave", ns.HideTooltip)
+	button:SetScript("OnEnter", addon.ShowTooltip)
+	button:SetScript("OnLeave", addon.HideTooltip)
 
 	line.infoIcon = button
 	return button
@@ -68,7 +69,7 @@ local function AddTradeSkillReagentCosts()
 			while GetTradeSkillReagentItemLink(skillIndex, reagentIndex) do
 				_, _, amount = GetTradeSkillReagentInfo(skillIndex, reagentIndex)
 				reagent = GetTradeSkillReagentItemLink(skillIndex, reagentIndex)
-				reagent = ns.GetItemID(reagent)
+				reagent = addon.GetItemID(reagent)
 
 				if reagent then
 					if LPT and LPT:ItemInSet(reagent, "Tradeskill.Mat.BySource.Vendor") then
@@ -179,7 +180,7 @@ local skillColors = {
 	[3] = "|cff40BF40",		-- green
 	[4] = "|cff808080", 	-- gray
 }
-function ns.GetTradeSkill(skill)
+function plugin.GetTradeSkill(skill)
 	if not skill then return end
 	if type(skill) == "number" then
 		skill = GetProfessionInfo(skill)
@@ -191,7 +192,7 @@ function ns.GetTradeSkill(skill)
 	end
 	return nil
 end
-function ns.GetTradeSkillColoredString(orange, yellow, green, gray)
+function plugin.GetTradeSkillColoredString(orange, yellow, green, gray)
 	return string.format("|cffFF8040%s|r/|cffFFFF00%s|r/|cff40BF40%s|r/|cff808080%s|r", orange or "", yellow or "", green or "", gray or "")
 end
 
@@ -308,7 +309,7 @@ local function ScanTradeSkill()
 	RestoreFilters()
 end
 
-function ns.ScanTradeSkills()
+function plugin.ScanTradeSkills()
 	-- Archaeology / Fishing have no recipes
 	for _, buttonName in ipairs({ 'PrimaryProfession1SpellButtonBottom', 'PrimaryProfession2SpellButtonBottom',
 						'SecondaryProfession3SpellButtonRight', 'SecondaryProfession4SpellButtonRight' }) do
@@ -317,7 +318,7 @@ function ns.ScanTradeSkills()
 		-- herbalism / skinning have no recipes
 		if profession.skillLine and profession.skillLine ~= 182 and profession.skillLine ~= 393 then
 			SpellButton_OnClick(button, 'LeftButton')
-			-- ns.Print('Scanning profession %s', profession.skillName)
+			-- addon:Print('Scanning profession %s', profession.skillName)
 			ScanTradeSkill()
 			CloseTradeSkill()
 		end
@@ -325,7 +326,7 @@ function ns.ScanTradeSkills()
 end
 
 -- http://www.wowpedia.org/TradeSkillLink string.byte, bit
-function ns.IsTradeSkillKnown(craftSpellID)
+function plugin.IsTradeSkillKnown(craftSpellID)
 	-- local professionLink = GetTradeSkillListLink()
 	-- if not professionLink then return end
 	-- local unitGUID, tradeSpellID, currentRank, maxRank, recipeList = professionLink:match("\124Htrade:([^:]+):([^:]+):([^:]+):([^:]+):([^:\124]+)")
@@ -343,7 +344,7 @@ local function ScanForReagents(index)
 		if id and MidgetDB.craftables[id] and playerReagentCount < reagentCount then
 			for spellID, data in pairs(MidgetDB.craftables[id]) do
 				local spellLink, tradeLink = GetSpellLink(spellID)
-				if ns.IsTradeSkillKnown(spellID) then
+				if plugin.IsTradeSkillKnown(spellID) then
 					-- print('could create', link, spellLink, tradeLink)
 				else
 					-- print(link, 'is craftable via', spellLink, tradeLink, "but you don't know/don't have materials")
@@ -415,45 +416,40 @@ local commonCraftables = {
 	[76734] = { [131776] = {1, 1, 90407, 10} }, -- Serpent's Eye
 }
 
--- events
-ns.RegisterEvent('ADDON_LOADED', function(self, event, arg1)
-	if arg1 == addonName then
-		hooksecurefunc("TradeSkillFrame_Update", AddTradeSkillReagentCosts)
-		hooksecurefunc("TradeSkillFrame_SetSelection", AddTradeSkillLevels)
-		hooksecurefunc("TradeSkillFrameButton_OnEnter", AddTradeSkillHoverLink)
-		hooksecurefunc("TradeSkillFrameButton_OnLeave", ns.HideTooltip)
+function plugin:OnEnable()
+	hooksecurefunc("TradeSkillFrame_Update", AddTradeSkillReagentCosts)
+	hooksecurefunc("TradeSkillFrame_SetSelection", AddTradeSkillLevels)
+	hooksecurefunc("TradeSkillFrameButton_OnEnter", AddTradeSkillHoverLink)
+	hooksecurefunc("TradeSkillFrameButton_OnLeave", addon.HideTooltip)
 
-		hooksecurefunc("TradeSkillFrame_SetSelection", ScanForReagents)
+	hooksecurefunc("TradeSkillFrame_SetSelection", ScanForReagents)
 
-		if not MidgetDB.craftables then MidgetDB.craftables = {} end
-		for crafted, crafts in pairs(commonCraftables) do
-			if not MidgetDB.craftables[crafted] then
-				MidgetDB.craftables[crafted] = {}
-			end
-			for craftSpell, data in pairs(crafts) do
-				MidgetDB.craftables[crafted][craftSpell] = data
-			end
+	if not MidgetDB.craftables then MidgetDB.craftables = {} end
+	for crafted, crafts in pairs(commonCraftables) do
+		if not MidgetDB.craftables[crafted] then
+			MidgetDB.craftables[crafted] = {}
 		end
-
-		if MidgetDB.autoScanProfessions then
-			-- load spellbook or we'll fail
-			ToggleSpellBook(BOOKTYPE_PROFESSION)
-			ToggleSpellBook(BOOKTYPE_PROFESSION)
-
-			local fullscreenTrigger = CreateFrame('Button', nil, nil, 'SecureActionButtonTemplate')
-			fullscreenTrigger:RegisterForClicks('AnyUp')
-			fullscreenTrigger:SetAllPoints()
-			fullscreenTrigger:SetAttribute('type', 'scanTradeSkills')
-			fullscreenTrigger:SetAttribute('_scanTradeSkills', function()
-				ns.ScanTradeSkills()
-				UnregisterStateDriver(fullscreenTrigger, 'visibility')
-				fullscreenTrigger:Hide()
-			end)
-			RegisterStateDriver(fullscreenTrigger, 'visibility', '[combat] hide; show')
-		else
-			hooksecurefunc('TradeSkillFrame_Show', ScanTradeSkill)
+		for craftSpell, data in pairs(crafts) do
+			MidgetDB.craftables[crafted][craftSpell] = data
 		end
-
-		ns.UnregisterEvent('ADDON_LOADED', 'trandeskill_init')
 	end
-end, 'trandeskill_init')
+
+	if MidgetDB.autoScanProfessions then
+		-- load spellbook or we'll fail
+		ToggleSpellBook(BOOKTYPE_PROFESSION)
+		ToggleSpellBook(BOOKTYPE_PROFESSION)
+
+		local fullscreenTrigger = CreateFrame('Button', nil, nil, 'SecureActionButtonTemplate')
+		fullscreenTrigger:RegisterForClicks('AnyUp')
+		fullscreenTrigger:SetAllPoints()
+		fullscreenTrigger:SetAttribute('type', 'scanTradeSkills')
+		fullscreenTrigger:SetAttribute('_scanTradeSkills', function()
+			plugin.ScanTradeSkills()
+			UnregisterStateDriver(fullscreenTrigger, 'visibility')
+			fullscreenTrigger:Hide()
+		end)
+		RegisterStateDriver(fullscreenTrigger, 'visibility', '[combat] hide; show')
+	else
+		hooksecurefunc('TradeSkillFrame_Show', ScanTradeSkill)
+	end
+end

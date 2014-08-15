@@ -1,4 +1,6 @@
-local addonName, ns, _ = ...
+local addonName, addon, _ = ...
+local plugin = addon:NewModule('Spellbook', 'AceEvent-3.0')
+
 -- GLOBALS: _G, CliqueDB3, MAX_SPELLS, SEARCH, BOOKTYPE_SPELL, SPELLBOOK_PAGENUMBERS, SPELLS_PER_PAGE, NUM_ACTIONBAR_PAGES, NUM_ACTIONBAR_BUTTONS, UIFrameFlash, UIFrameFlashStop, EditBox_ClearFocus, SpellBookFrame, SpellBookFrames, SpellBookPage1, SpellBookPage2
 -- GLOBALS: IsAddOnLoaded, IsAltKeyDown, CreateFrame, PlaySound, ToggleSpellBook, FindSpellBookSlotBySpellID, SpellBookTabFlashFrame, SpellBookFrame_Update, SpellBook_GetCurrentPage, SpellBook_GetAutoCastShine, AutoCastShine_AutoCastStart, GetNumSpellTabs, GetSpellInfo, GetSpellTabInfo, GetSpellBookItemInfo, GetSpellBookItemName, GetSpellDescription, GetSpellLink, IsSpellKnown, IsPassiveSpell, GetUnitName, GetRealmName, GetMacroBody, GetFlyoutInfo, GetFlyoutSlotInfo, GetActionInfo, GetShapeshiftFormInfo, GetNumShapeshiftForms, SecureCmdOptionParse
 -- GLOBALS: hooksecurefunc, string, math, select, ipairs, tonumber, wipe, type
@@ -30,39 +32,6 @@ local function ShineSlot(index)
 	AutoCastShine_AutoCastStart(slot.shine)
 end
 
-ns.RegisterEvent("ADDON_LOADED", function(self, event, arg1)
-	if arg1 ~= addonName then return end
-	hooksecurefunc("SetItemRef", function(link)
-		if not IsAltKeyDown() then return end
-
-		local spellID = link:match("^spell:([^:]+)")
-		spellID = spellID and tonumber(spellID)
-		if spellID and spellID > 0 then
-			local spellBookIndex = FindSpellBookSlotBySpellID(spellID)
-			if not spellBookIndex then return end
-
-			local tab = 1
-			local _, _, offset, tabMaxIndex = GetSpellTabInfo(tab)
-			while tabMaxIndex > 0 and spellBookIndex > tabMaxIndex+offset do
-				tab = tab + 1
-				_, _, offset, tabMaxIndex = GetSpellTabInfo(tab)
-			end
-
-			SpellBookFrame.selectedSkillLine = tab
-			SPELLBOOK_PAGENUMBERS[ tab ] = math.ceil((spellBookIndex - offset) / SPELLS_PER_PAGE)
-			SpellBookFrame_Update()
-			if not SpellBookFrame:IsVisible() then
-				ToggleSpellBook(BOOKTYPE_SPELL)
-			end
-			ShineSlot((spellBookIndex - offset) % SPELLS_PER_PAGE)
-
-			-- PickupSpell
-			-- if ( IsModifiedClick("PICKUPACTION") ) then
-			--	PickupSpellBookItem(spellBookIndex, BOOKTYPE_SPELL)
-		end
-	end)
-	ns.UnregisterEvent("ADDON_LOADED", "openSpellBook")
-end, "openSpellBook")
 
 -- ================================================
 -- SpellSearch
@@ -172,7 +141,7 @@ end
 local function NotifyUnusedSpell(spellID, ...)
 	local link = GetSpellLink(spellID)
 	local msg = string.format("Unused spell detected: %s", link or spellID)
-	ns.Print(msg)
+	addon:Print(msg)
 end
 
 local function ScanSpellBook()
@@ -214,10 +183,10 @@ local function ScanSpellBook()
 		end
 	end
 	if not hasMissing then
-		ns.Print("All spells are bound! Well done.")
+		addon:Print("All spells are bound! Well done.")
 	end
 end
-ns.ScanSpells = function()
+plugin.ScanSpells = function()
 	ScanActionButtons()
 	ScanSpellBook()
 end
@@ -255,7 +224,7 @@ end
 
 local LibFlash = LibStub("LibFlash")
 local flasher = nil
-function ns.SearchInSpellBook()
+function plugin.SearchInSpellBook()
 	if not flasher then
 		flasher = LibFlash:New(SpellBookTabFlashFrame)
 	end
@@ -301,12 +270,41 @@ function ns.SearchInSpellBook()
 	end
 end
 
-ns.RegisterEvent("ADDON_LOADED", function(frame, event, arg1)
-	if arg1 ~= addonName then return end
+function plugin:OnEnable()
+	hooksecurefunc("SetItemRef", function(link)
+		if not IsAltKeyDown() then return end
+
+		local spellID = link:match("^spell:([^:]+)")
+		spellID = spellID and tonumber(spellID)
+		if spellID and spellID > 0 then
+			local spellBookIndex = FindSpellBookSlotBySpellID(spellID)
+			if not spellBookIndex then return end
+
+			local tab = 1
+			local _, _, offset, tabMaxIndex = GetSpellTabInfo(tab)
+			while tabMaxIndex > 0 and spellBookIndex > tabMaxIndex+offset do
+				tab = tab + 1
+				_, _, offset, tabMaxIndex = GetSpellTabInfo(tab)
+			end
+
+			SpellBookFrame.selectedSkillLine = tab
+			SPELLBOOK_PAGENUMBERS[ tab ] = math.ceil((spellBookIndex - offset) / SPELLS_PER_PAGE)
+			SpellBookFrame_Update()
+			if not SpellBookFrame:IsVisible() then
+				ToggleSpellBook(BOOKTYPE_SPELL)
+			end
+			ShineSlot((spellBookIndex - offset) % SPELLS_PER_PAGE)
+
+			-- PickupSpell
+			-- if ( IsModifiedClick("PICKUPACTION") ) then
+			--	PickupSpellBookItem(spellBookIndex, BOOKTYPE_SPELL)
+		end
+	end)
+
 	local scanButton = CreateFrame("Button", "$parentScanButton", SpellBookFrame, "UIPanelButtonTemplate");
 	scanButton:SetText("Scan")
 	scanButton:SetPoint("LEFT", "$parentTutorialButton", "RIGHT", -20, 2)
-	scanButton:SetScript("OnClick", ns.ScanSpells)
+	scanButton:SetScript("OnClick", plugin.ScanSpells)
 
 	local searchbox = CreateFrame("EditBox", "$parentSearchBox", SpellBookFrame, "SearchBoxTemplate")
 	searchbox:SetPoint("TOPRIGHT", SpellBookFrame, "TOPRIGHT", -20, -1)
@@ -329,196 +327,21 @@ ns.RegisterEvent("ADDON_LOADED", function(frame, event, arg1)
 		end
 
 		if oldText ~= SpellBookFrame.searchString then
-			ns.SearchInSpellBook()
+			plugin.SearchInSpellBook()
 		end
 	end)
 	searchbox.clearFunc = function(self)
-		ns.SearchInSpellBook()
+		plugin.SearchInSpellBook()
 	end
 
 	hooksecurefunc("SpellBookFrame_Update", function()
 		if (SpellBookFrame.customBookType or SpellBookFrame.bookType) == BOOKTYPE_SPELL then
 			searchbox:Show()
 			scanButton:Show()
-			ns.SearchInSpellBook()
+			plugin.SearchInSpellBook()
 		else
 			searchbox:Hide()
 			scanButton:Hide()
 		end
 	end)
-
-	ns.UnregisterEvent("ADDON_LOADED", "searchSpellBook")
-end, "searchSpellBook")
-
--- ================================================
--- Manage action bar setups
--- ================================================
---[[
-LibStub('LibKeyBound-1.0').Binder:GetBindings(MultiBarBottomLeftButton6) => "SHIFT-6, SHIFT-G"
-
-hasAction = HasAction(slotID)
-autocastAllowed, autocastEnabled = GetActionAutocast(slotID)
-TogglePetAutocast(petSlotID) -- NUM_PET_ACTION_SLOTS
-PickupPetAction(petSlotID)
-PickupSpell(spellID)
-PickupMacro(index|name)
-PickupAction(slotID) -- puts onto cursor
-PlaceAction(slotID) -- takes from cursor
---]
-local function UpdateActionBarProfilesTab()
-	local panel = _G['ActionBarProfiles']
-	SpellBookPage1:SetDesaturated(false)
-	SpellBookPage2:SetDesaturated(false)
-
-	for row = 1, 10 do
-		for col = 1, NUM_ACTIONBAR_BUTTONS do
-			ActionButton_Update( _G['ActionBarProfilesBar'..row..'Button'..col] )
-		end
-	end
 end
-local function InitActionBarProfiles()
-	-- create a content panel
-	local frame = CreateFrame('Frame', 'ActionBarProfiles', SpellBookFrame)
-	frame:SetPoint('TOPLEFT')
-	frame:SetPoint('BOTTOMRIGHT')
-	table.insert(SpellBookFrames, frame:GetName())
-
-	local explain = frame:CreateFontString('$parentInfo', "ARTWORK", "GameFontNormal")
-	explain:SetPoint('TOPLEFT', 100, -46)
-	explain:SetWidth(360)
-	explain:SetWordWrap(true)
-	explain:SetJustifyH('LEFT')
-	explain:SetJustifyV('TOP')
-	explain:SetText([=[Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.]=])
-
-	local button
-	for row = 1, 10 do
-		for col = 1, NUM_ACTIONBAR_BUTTONS do
-			button = CreateFrame('CheckButton', '$parentBar'..row..'Button'..col, frame, 'ActionButtonTemplate')
-			button:SetScale(0.85)
-			button.action = (row-1)*12 + col
-
-			if col == 1 then
-				if row == 1 then
-					button:SetPoint('TOPLEFT', '$parentInfo', 'BOTTOMLEFT', 0, -10)
-				else
-					button:SetPoint('TOPLEFT', '$parentBar'..(row-1)..'Button1', 'BOTTOMLEFT', 0, -4)
-				end
-			else
-				button:SetPoint('LEFT', '$parentBar'..row..'Button'..(col-1), 'RIGHT', 2, 0)
-			end
-		end
-	end
-
-	local save = CreateFrame("Button", "$parentSaveButton", frame, "UIPanelButtonTemplate")
-	save:SetText("Save")
-	save:SetPoint('BOTTOMLEFT', 30, 22)
-	save:SetScript('OnClick', function(self, btn)
-		ns.Print('Saving current action bars', 'TODO')
-	end)
-	local load = CreateFrame("Button", "$parentLoadButton", frame, "UIPanelButtonTemplate")
-	load:SetText("Load")
-	load:SetPoint('BOTTOMLEFT', save, 'TOPLEFT', 0, 4)
-	load:SetScript('OnClick', function(self, btn)
-		ns.Print('Loading displayed action bar settings', 'TODO')
-	end)
-
-	-- create a tab to trigger display of our panel
-	local numTabs = 1
-	while _G['SpellBookFrameTabButton'..numTabs] do
-		numTabs = numTabs + 1
-	end
-	local tabButton = CreateFrame('Button', 'SpellBookFrameTabButton'..numTabs, SpellBookFrame, 'SpellBookFrameTabButtonTemplate')
-	tabButton:SetID(numTabs)
-	tabButton:SetText('Bars')
-	tabButton:Show()
-	tabButton:SetScript('OnClick', function(self, btn)
-		SpellBookFrame.bookType = self.customBookType
-		SpellBookFrame.customBookType = self.customBookType
-		SpellBookFrameTabButton_OnClick(self)
-	end)
-	tabButton.binding = ''
-	tabButton.bookType = BOOKTYPE_SPELL
-	-- we need a custom type as we can't interact with SpellBookInfo
-	tabButton.customBookType = 'actionbars'
-	tabButton.titleText = 'Action Bars'
-	tabButton.updateFunc = UpdateActionBarProfilesTab
-	tabButton.showFrames = { 'ActionBarProfiles' }
-end
-
-local function HookSpellBookFrame_Update()
-	local numTabs = 0
-	while _G['SpellBookFrameTabButton'..(numTabs+1)] do
-		numTabs = numTabs + 1
-	end
-
-	-- repositioning to fill gaps
-	local tabIndex, lastTabIndex = 1, 1
-	while _G['SpellBookFrameTabButton'..tabIndex] do
-		local tab = _G['SpellBookFrameTabButton'..tabIndex]
-		if tab:IsShown() then
-			if tabIndex > 1 then
-				tab:SetPoint('LEFT', _G['SpellBookFrameTabButton'..lastTabIndex], 'RIGHT', -15, 0)
-			end
-			lastTabIndex = tabIndex
-		end
-		tabIndex = tabIndex + 1
-	end
-
-	-- update spellbook metadata
-	local tab = SpellBookFrame.currentTab
-	if SpellBookFrame.customBookType then
-		SpellBookFrame.bookType = SpellBookFrame.customBookType or SpellBookFrame.bookType
-		SpellBookFrame.customBookType = nil
-		for i=1,numTabs do
-			tab = _G['SpellBookFrameTabButton'..i]
-			if (tab.customBookType or tab.bookType) == SpellBookFrame.bookType then
-				SpellBookFrame.currentTab = tab
-				break
-			end
-		end
-	end
-
-	-- display correct panel
-	if tab.showFrames then
-		for i, frame in ipairs(SpellBookFrames) do
-			local found = false
-			for j,frame2 in ipairs(tab.showFrames) do
-				if frame == frame2 then
-					_G[frame]:Show()
-					found = true
-					break
-				end
-			end
-			if not found then
-				_G[frame]:Hide()
-			end
-		end
-	end
-
-	-- activate correct tab
-	for i=1, numTabs do
-		local spellTab = _G["SpellBookFrameTabButton"..i]
-		if (spellTab.customBookType or spellTab.bookType) == SpellBookFrame.bookType then
-			PanelTemplates_SelectTab(spellTab)
-		else
-			PanelTemplates_DeselectTab(spellTab)
-		end
-		PanelTemplates_TabResize(spellTab, 0, nil, 40)
-	end
-
-	-- update panel if it's custom
-	if tab.titleText 	then SpellBookFrameTitleText:SetText(tab.titleText) end
-	if tab.bgFileL 		then SpellBookPage1:SetTexture(tab.bgFileL) end
-	if tab.bgFileR 		then SpellBookPage2:SetTexture(tab.bgFileR) end
-	if tab.updateFunc 	then tab.updateFunc() end
-end
-
-ns.RegisterEvent("ADDON_LOADED", function(frame, event, arg1)
-	if arg1 ~= addonName then return end
-	InitActionBarProfiles()
-	hooksecurefunc('SpellBookFrame_Update', HookSpellBookFrame_Update)
-
-	ns.UnregisterEvent("ADDON_LOADED", "actionbarprofiles")
-end, "actionbarprofiles")
---]]

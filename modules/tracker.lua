@@ -1,4 +1,6 @@
-local _, ns = ...
+local addonName, addon, _ = ...
+local plugin = addon:NewModule('Tracker', 'AceEvent-3.0')
+
 -- GLOBALS: MidgetLocalDB, CreateFrame, hooksecurefunc, UIDropDownMenu_AddButton, math, select
 -- GLOBALS: WatchFrame, WatchFrameHeaderDropDown, WatchFrame_AddObjectiveHandler, WatchFrame_Update, WatchFrame_SetLine, WATCHFRAME_QUEST_OFFSET, WATCHFRAME_TYPE_OFFSET, WATCHFRAME_INITIAL_OFFSET, WATCHFRAMELINES_FONTSPACING
 -- GLOBALS: TRADESKILLS, TRADESKILL_RANK, GetProfessions, GetProfessionInfo, C_PetJournal, BATTLE_PET_SOURCE_5, ITEM_QUALITY_COLORS
@@ -181,8 +183,8 @@ local function DisplayTeamTracker(lineFrame, nextAnchor, maxHeight, frameWidth)
 				button:SetAttribute("spell", spellName)
 
 				button.hyperlink = 'spell:'..HEAL_PETS
-				button:SetScript("OnEnter", ns.ShowTooltip)
-				button:SetScript("OnLeave", ns.HideTooltip)
+				button:SetScript("OnEnter", addon.ShowTooltip)
+				button:SetScript("OnLeave", addon.HideTooltip)
 
 				button.cooldown = CreateFrame("Cooldown", nil, button)
 				button.cooldown:SetAllPoints()
@@ -257,9 +259,9 @@ local function DisplayTeamTracker(lineFrame, nextAnchor, maxHeight, frameWidth)
 	return previousLine or nextAnchor, 0, previousLine and 1 or 0, 0
 end
 
-local function updateHandler(frame, event, ...)
+local function updateHandler(event, ...)
 	if event == "UNIT_SPELLCAST_SUCCEEDED" then
-		spellID = select(5, ...)
+		local spellID = select(5, ...)
 		if spellID ~= HEAL_PETS and spellID ~= 127841 then -- revive: visual
 			return
 		end
@@ -291,15 +293,14 @@ local function CreateSkillTrackingCheckboxes()
 	end
 end
 
-ns.RegisterEvent("ADDON_LOADED", function()
+function plugin:OnEnable()
 	WatchFrame_AddObjectiveHandler(DisplayTeamTracker)
 	WatchFrame_AddObjectiveHandler(DisplaySkillTracker)
 
 	CreateSkillTrackingCheckboxes()
-	ns.RegisterEvent("CHAT_MSG_SKILL", updateHandler, "tracker_updateSkills")
-
-	ns.RegisterEvent("UNIT_SPELLCAST_SUCCEEDED", updateHandler, "tracker_updateBattlePetsRevive")
-	ns.RegisterEvent("PET_JOURNAL_LIST_UPDATE", updateHandler, "tracker_updateBattlePetsList")
+	self:RegisterEvent("CHAT_MSG_SKILL", updateHandler)
+	self:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED", updateHandler)
+	self:RegisterEvent("PET_JOURNAL_LIST_UPDATE", updateHandler)
 
 	hooksecurefunc(C_PetJournal, "SetPetLoadOutInfo", function(index, petID, source)
 		WatchFrame_Update()
@@ -315,6 +316,4 @@ ns.RegisterEvent("ADDON_LOADED", function()
 			end
 		}
 	end)
-
-	ns.UnregisterEvent("ADDON_LOADED", "tracker")
-end, "tracker")
+end

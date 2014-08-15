@@ -1,4 +1,6 @@
-local addonName, ns, _ = ...
+local addonName, addon, _ = ...
+local plugin = addon:NewModule('SpellLearner', 'AceEvent-3.0')
+
 -- GLOBALS: _G, MidgetDB, ERR_SPELL_UNLEARNED_S, ERR_LEARN_ABILITY_S, ERR_LEARN_SPELL_S, ERR_LEARN_PASSIVE_S, ClassTrainerFrame, ClassTrainerTrainButton
 -- GLOBALS: CreateFrame, IsPassiveSpell, GetSpellInfo, GetSpellLink, BuyTrainerService, GetTrainerServiceInfo, GetTrainerServiceCost, GetNumTrainerServices, MoneyFrame_Update, GetMoney, StaticPopup_Show, ChatFrame_AddMessageEventFilter, ChatFrame_RemoveMessageEventFilter, ChatFrame_DisplaySystemMessageInPrimary
 -- GLOBALS: string, table, wipe, ipairs, type, select, hooksecurefunc
@@ -69,20 +71,12 @@ local function AddTrainAllButton()
 	end
 end
 
-ns.RegisterEvent("TRAINER_SHOW", function()
-	AddTrainAllButton()
-end, "learnallshow")
-ns.RegisterEvent("TRAINER_UPDATE", function()
-	AddTrainAllButton()
-	-- ns.UnregisterEvent("TRAINER_UPDATE", "learnall")
-end, "learnallupdate")
-
 -- ================================================
 -- SpamMerger for respec learned/unlearned spells
 -- ================================================
-local UNLEARNED = string.gsub(ERR_SPELL_UNLEARNED_S, "%%s", "(.+)")
-local LEARNED = string.gsub(ERR_LEARN_ABILITY_S, "%%s", "(.+)")
-local LEARNED_SPELL = string.gsub(ERR_LEARN_SPELL_S, "%%s", "(.+)")
+local UNLEARNED       = string.gsub(ERR_SPELL_UNLEARNED_S, "%%s", "(.+)")
+local LEARNED         = string.gsub(ERR_LEARN_ABILITY_S, "%%s", "(.+)")
+local LEARNED_SPELL   = string.gsub(ERR_LEARN_SPELL_S, "%%s", "(.+)")
 local LEARNED_PASSIVE = string.gsub(ERR_LEARN_PASSIVE_S, "%%s", "(.+)")
 local respecUnlearned, respecLearned = {}, {}
 
@@ -145,21 +139,21 @@ local function PrintRespecChanges()
 	end
 
 	if MidgetDB.autoCheckSpells then
-		ns.ScanSpells()
+		addon:GetModule('Spellbook').ScanSpells()
 	end
 end
 
-local function SpellLearned(self, event, arg1)
+local function SpellLearned(event, arg1)
 	table.insert(respecLearned, arg1)
 end
-local function RespecStopped(self, event, ...)
+local function RespecStopped(event, ...)
 	local spellID = select(5, ...)
 	if spellID ~= 63645 and spellID ~= 63644 then return end
 
 	ChatFrame_RemoveMessageEventFilter("CHAT_MSG_SYSTEM", RespecSpamChatFilter)
-	ns.UnregisterEvent("UNIT_SPELLCAST_INTERRUPTED", "respecCancelled")
-	ns.UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED",   "respecCompleted")
-	ns.UnregisterEvent("LEARNED_SPELL_IN_TAB", "respecLearned")
+	plugin:UnregisterEvent("UNIT_SPELLCAST_INTERRUPTED")
+	plugin:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+	plugin:UnregisterEvent("LEARNED_SPELL_IN_TAB")
 
 	if event == "UNIT_SPELLCAST_SUCCEEDED" then
 		PrintRespecChanges()
@@ -170,15 +164,13 @@ local function RespecStarted()
 	wipe(respecLearned)
 
 	ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", RespecSpamChatFilter)
-	ns.RegisterEvent("LEARNED_SPELL_IN_TAB", SpellLearned, "respecLearned", true)
-	ns.RegisterEvent("UNIT_SPELLCAST_SUCCEEDED",   RespecStopped, "respecCompleted", true)
-	ns.RegisterEvent("UNIT_SPELLCAST_INTERRUPTED", RespecStopped, "respecCancelled", true)
+	plugin:RegisterEvent("LEARNED_SPELL_IN_TAB",        SpellLearned)
+	plugin:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED",    RespecStopped)
+	plugin:RegisterEvent("UNIT_SPELLCAST_INTERRUPTED",  RespecStopped)
 end
 
-ns.RegisterEvent("ADDON_LOADED", function(frame, event, arg1)
-	if arg1 ~= addonName then return end
-
+function plugin:OnEnable()
 	hooksecurefunc("SetActiveSpecGroup", RespecStarted)
-
-	ns.UnregisterEvent("ADDON_LOADED", "respecInit")
-end, "respecInit")
+	plugin:RegisterEvent("TRAINER_SHOW", AddTrainAllButton)
+	plugin:RegisterEvent("TRAINER_UPDATE", AddTrainAllButton)
+end

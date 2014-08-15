@@ -1,4 +1,5 @@
-local addonName, ns, _ = ...
+local addonName, addon, _ = ...
+_G[addonName] = LibStub('AceAddon-3.0'):NewAddon(addon, addonName, 'AceEvent-3.0')
 
 -- GLOBALS: _G, Midget, MidgetDB, MidgetLocalDB, DEFAULT_CHAT_FRAME, C_PetJournal
 -- GLOBALS: GameTooltip, CreateFrame, GetItemInfo
@@ -62,58 +63,42 @@ local function UpdateDatabase()
 	end
 end
 
-function ns:GetName() return addonName end
-
-local function Initialize()
+function addon:OnInitialize()
 	UpdateDatabase()
-
-	-- expose us to the world
-	_G.Midget = ns
 end
 
-local frame, eventHooks = CreateFrame("Frame", "MidgetEventHandler"), {}
-local function eventHandler(frame, event, arg1, ...)
-	if event == 'ADDON_LOADED' and arg1 == addonName then
-		-- make sure we always init before any other module
-		Initialize()
-
-		if not eventHooks[event] or ns.Count(eventHooks[event]) < 1 then
-			frame:UnregisterEvent(event)
-		end
+function addon:OnEnable()
+	local function GetSetting(info)
+		local data = info[1] == 'main' and MidgetDB or MidgetLocalDB
+		for i = 2, #info do data = data[ info[i] ] end
+		return data
+	end
+	local function SetSetting(info, value)
+		local data = info[1] == 'main' and MidgetDB or MidgetLocalDB
+		for i = 2, #info - 1 do data = data[ info[i] ] end
+		data[ info[#info] ] = value
 	end
 
-	if eventHooks[event] then
-		for id, listener in pairs(eventHooks[event]) do
-			listener(frame, event, arg1, ...)
-		end
-	end
-end
-frame:SetScript("OnEvent", eventHandler)
-frame:RegisterEvent("ADDON_LOADED")
+	local OptionsGenerate = LibStub('LibOptionsGenerate-1.0')
+	LibStub('AceConfig-3.0'):RegisterOptionsTable(addonName, {
+		type = 'group',
+		inline = true,
+		args = {
+			main      = OptionsGenerate:GetOptionsTable(MidgetDB),
+			character = OptionsGenerate:GetOptionsTable(MidgetLocalDB),
+		},
+		get = GetSetting,
+		set = SetSetting,
+	})
 
-function ns.RegisterEvent(event, callback, id, silentFail)
-	assert(callback and event and id, string.format("Usage: RegisterEvent(event, callback, id[, silentFail])"))
-	if not eventHooks[event] then
-		eventHooks[event] = {}
-		frame:RegisterEvent(event)
-	end
-	assert(silentFail or not eventHooks[event][id], string.format("Event %s already registered by id %s.", event, id))
-
-	eventHooks[event][id] = callback
-end
-function ns.UnregisterEvent(event, id)
-	if not eventHooks[event] or not eventHooks[event][id] then return end
-	eventHooks[event][id] = nil
-	if ns.Count(eventHooks[event]) < 1 then
-		eventHooks[event] = nil
-		frame:UnregisterEvent(event)
-	end
+	local AceConfigDialog = LibStub('AceConfigDialog-3.0')
+	      AceConfigDialog:AddToBlizOptions(addonName, addonName, nil, 'main')
 end
 
 -- ================================================
 -- Little Helpers
 -- ================================================
-function ns.Print(text, ...)
+function addon:Print(text, ...)
 	if ... and text:find("%%") then
 		text = string.format(text, ...)
 	elseif ... then
@@ -122,13 +107,13 @@ function ns.Print(text, ...)
 	DEFAULT_CHAT_FRAME:AddMessage("|cff22CCDDMidget|r "..text)
 end
 
-function ns.Debug(...)
+function addon:Debug(...)
   if true then
-	ns.Print("! "..string.join(", ", tostringall(...)))
+	addon.Print("! "..string.join(", ", tostringall(...)))
   end
 end
 
-function ns.ShowTooltip(self)
+function addon.ShowTooltip(self)
 	if self.hyperlink then
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 		GameTooltip:SetHyperlink(self.hyperlink)
@@ -137,26 +122,26 @@ function ns.ShowTooltip(self)
 		GameTooltip:SetText(self.tiptext, nil, nil, nil, nil, true)
 	end
 end
-function ns.HideTooltip()
+function addon.HideTooltip()
 	GameTooltip:Hide()
 end
 
-function ns.GetItemID(itemLink)
+function addon.GetItemID(itemLink)
 	if not itemLink or type(itemLink) ~= "string" then return end
 	local itemID = string.gsub(itemLink, ".-Hitem:([0-9]*):.*", "%1")
 	return tonumber(itemID)
 end
 
-function ns.GetLinkData(link)
+function addon.GetLinkData(link)
 	if not link or type(link) ~= "string" then return end
 	local linkType, id, data = link:match("(%l+):([^:\124]*):?([^\124]*)")
 	return linkType, tonumber(id), data
 end
 
 local BATTLEPET = select(11, GetAuctionItemClasses())
-function ns.GetItemInfo(link)
+function addon.GetItemInfo(link)
 	if not link or type(link) ~= "string" then return end
-	local linkType, itemID, data = ns.GetLinkData(link)
+	local linkType, itemID, data = addon.GetLinkData(link)
 
 	if linkType == "battlepet" then
 		local name, texture, subClass, companionID = C_PetJournal.GetPetInfoBySpeciesID( itemID )
@@ -169,24 +154,8 @@ function ns.GetItemInfo(link)
 	end
 end
 
-function string.explode(str, seperator, plain, useTable)
-	assert(type(seperator) == "string" and seperator ~= "", "Invalid seperator (need string of length >= 1)")
-	local t, pos, nexti = useTable or {}, 1, 1
-	while true do
-		local st, sp = str:find(seperator, pos, plain)
-		if not st then break end -- No more seperators found
-		if pos ~= st then
-			t[nexti] = str:sub(pos, st - 1) -- Attach chars left of current divider
-			nexti = nexti + 1
-		end
-		pos = sp + 1 -- Jump past current divider
-	end
-	t[nexti] = str:sub(pos) -- Attach chars right of last divider
-	return t
-end
-
 -- counts table entries. for numerically indexed tables, use #table
-function ns.Count(table)
+function addon.Count(table)
 	if not table then return 0 end
 	local i = 0
 	for _, _ in pairs(table) do

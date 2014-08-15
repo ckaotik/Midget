@@ -1,4 +1,5 @@
-local addonName, ns, _ = ...
+local addonName, addon, _ = ...
+local plugin = addon:NewModule('EncounterJournal', 'AceEvent-3.0')
 
 -- GLOBALS: _G, EncounterJournal, MidgetLocalDB
 -- GLOBALS: CreateFrame, UnitName, IsAddOnLoaded, EncounterJournal_DisplayInstance, EJ_GetCurrentInstance, EJ_GetDifficulty, EJ_GetEncounterInfo, EJ_GetCreatureInfo, EJ_GetEncounterInfoByIndex, EJ_GetInstanceByIndex, EJ_InstanceIsRaid, NavBar_Reset, GetInstanceInfo, GetTexCoordsForRoleSmallCircle, GetLootSpecialization, SetLootSpecialization, GetSpecialization, GetSpecializationInfo, GetSpecializationInfoByID
@@ -108,7 +109,7 @@ end
 
 -- we store the last started encounter, so if the player makes manual changes after a pull, we don't revert
 local lastEncounter
-local function CheckUpdateLootSpec(self, event, id, name, difficulty, groupSize)
+local function CheckUpdateLootSpec(event, id, name, difficulty, groupSize)
 	-- print('starting encounter', id, name, difficulty, groupSize, 'last was', lastEncounter)
 	if lastEncounter and lastEncounter == id then return end
 	lastEncounter = id
@@ -137,15 +138,15 @@ local function CheckUpdateLootSpec(self, event, id, name, difficulty, groupSize)
 
 	-- don't change if we have no preference set
 	if not specPreference or currentLoot == specPreference or (currentLoot == 0 and currentSpec == specPreference) then
-		ns.Print('Correct loot specialization is already selected')
+		addon:Print('Correct loot specialization is already selected')
 	else
 		local _, specName, _, specIcon = GetSpecializationInfoByID(specPreference)
-		ns.Print('Changing loot spec to |T%1$s:0|t%2$s', specIcon, specName)
+		addon:Print('Changing loot spec to |T%1$s:0|t%2$s', specIcon, specName)
 		SetLootSpecialization(specPreference)
 	end
 end
 
-local function initialize(frame, event, arg1)
+local function initialize(event, arg1)
 	if (arg1 == addonName or arg1 == 'Blizzard_EncounterJournal') and IsAddOnLoaded('Blizzard_EncounterJournal') then
 		local selectedEncounter, selectedDifficulty
 		hooksecurefunc("EncounterJournal_DisplayInstance", UpdateBossButtons)
@@ -185,10 +186,13 @@ local function initialize(frame, event, arg1)
 			initTooltips = true
 		end)
 
-		ns.RegisterEvent('ENCOUNTER_START', CheckUpdateLootSpec, 'encounter_start')
-		-- ns.RegisterEvent('ENCOUNTER_END', CheckUpdateLootSpec, 'encounter_end')
+		plugin:RegisterEvent('ENCOUNTER_START', CheckUpdateLootSpec)
+		-- plugin:RegisterEvent('ENCOUNTER_END', CheckUpdateLootSpec)
 
-		ns.UnregisterEvent('ADDON_LOADED', 'journal')
+		plugin:UnregisterEvent('ADDON_LOADED')
 	end
 end
-ns.RegisterEvent('ADDON_LOADED', initialize, 'journal')
+
+function plugin:OnEnable()
+	plugin:RegisterEvent('ADDON_LOADED', initialize)
+end

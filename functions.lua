@@ -1,4 +1,5 @@
-local addonName, ns, _ = ...
+local addonName, addon, _ = ...
+local plugin = addon:NewModule('Functions', 'AceEvent-3.0')
 
 -- GLOBALS: _G, UIParent, LibStub, TipTac, MidgetDB, CorkFrame, MainMenuBar, InterfaceOptionsFrameAddOnsList, SLASH_ROLECHECK1, CHAT_CONFIG_CHAT_LEFT, WHISPER, CURRENTLY_EQUIPPED, TIMER_TYPE_CHALLENGE_MODE, SlashCmdList, UnitPopupMenus, UIDROPDOWNMENU_INIT_MENU, StaticPopupDialogs, GameTooltip, ItemRefTooltip, ItemRefShoppingTooltip1, ItemRefShoppingTooltip2, ItemRefShoppingTooltip3, ShoppingTooltip1, ShoppingTooltip2, ShoppingTooltip3
 -- GLOBALS: GameTooltip, PlaySound, GetScreenHeight, ToggleChatMessageGroup, PetBattleFrame, GetLocale, IsListeningForMessageType, CreateFrame, IsAddOnLoaded, ScrollFrameTemplate_OnMouseWheel, InitiateRolePoll, GetItemIcon, ChatFrame_AddMessageEventFilter, IsShiftKeyDown, UnitPopupShown, StaticPopup_Hide, UnitIsBattlePet, TimerTracker, TimerTracker_OnEvent, BigWigsLoader
@@ -172,7 +173,7 @@ end
 -- ================================================
 -- Undress button on models!
 -- ================================================
-function ns.AddUndressButton(frame)
+function plugin.AddUndressButton(frame)
 	local undressButton = CreateFrame("Button", "$parentUndressButton", frame.controlFrame, "ModelControlButtonTemplate")
 	undressButton:SetPoint("LEFT", "$parentRotateResetButton", "RIGHT", 0, 0)
 	undressButton:RegisterForClicks("AnyUp")
@@ -194,12 +195,12 @@ local function AddUndressButtons()
 	-- these models are create before we can hook
 	for _, name in pairs({"DressUpModel", "SideDressUpModel"}) do
 		if not _G[name.."ControlFrameUndressButton"] then
-			ns.AddUndressButton(_G[name])
+			plugin.AddUndressButton(_G[name])
 		end
 	end
 	hooksecurefunc('Model_OnLoad', function(self)
 		if self.controlFrame and not self.controlFrame.undressButton then
-			ns.AddUndressButton(self)
+			plugin.AddUndressButton(self)
 		end
 	end)
 end
@@ -242,12 +243,12 @@ end
 -- ================================================
 local function SetupBigWigs()
 	if not IsAddOnLoaded("BigWigs_Plugins") then
-		ns.RegisterEvent("ADDON_LOADED", function(self, event, addon)
-			if addon == "BigWigs_Plugins" then
-				ns.UnregisterEvent("ADDON_LOADED", "bigwigs_fancypull")
+		plugin:RegisterEvent("ADDON_LOADED", function(event, arg1)
+			if arg1 == "BigWigs_Plugins" then
+				plugin:UnregisterEvent("ADDON_LOADED")
 				SetupBigWigs()
 			end
-		end, "bigwigs_fancypull")
+		end)
 
 		return
 	end
@@ -472,9 +473,7 @@ local function AddMasque()
 end
 
 -- ================================================
-ns.RegisterEvent('ADDON_LOADED', function(self, event, arg1)
-	if arg1 ~= addonName then return end
-
+function plugin:OnEnable()
 	CreateCorkButton()
 	AddUndressButtons()
 	FixModelLighting()
@@ -496,8 +495,6 @@ ns.RegisterEvent('ADDON_LOADED', function(self, event, arg1)
 	InterfaceOptionsFrame:SetMovable(true)
 	InterfaceOptionsFrame:CreateTitleRegion():SetAllPoints(InterfaceOptionsFrameHeaderText)
 
-	ChatFrame_AddMessageEventFilter("CHAT_MSG_LOOT", AddLootIcons)
+	ChatFrame_AddMessageEventFilter('CHAT_MSG_LOOT', AddLootIcons)
 	hooksecurefunc('StaticPopup_Show', AutoAcceptPopup)
-
-	ns.UnregisterEvent('ADDON_LOADED', 'init_functions')
-end, 'init_functions')
+end

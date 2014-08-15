@@ -1,4 +1,5 @@
-local addonName, ns, _ = ...
+local addonName, addon, _ = ...
+local plugin = addon:NewModule('GroupFinder', 'AceEvent-3.0')
 
 -- GLOBALS: _G, hooksecurefunc
 -- GLOBALS: SearchLFGGetResults, SearchLFGGetPartyResults
@@ -42,9 +43,7 @@ local function AddLFREntryInfo(button, index)
 	end
 end
 
-ns.RegisterEvent('ADDON_LOADED', function(self, event, arg1)
-	if arg1 ~= addonName then return end
-
+function plugin:OnEnable()
 	hooksecurefunc('LFRBrowseFrameListButton_SetData', AddLFREntryInfo)
 	local i, button = 1, _G['LFRBrowseFrameListButton1']
 	while button do
@@ -62,13 +61,11 @@ ns.RegisterEvent('ADDON_LOADED', function(self, event, arg1)
 		button = _G['LFRBrowseFrameListButton'..i]
 	end
 
-	--[[ ns.RegisterEvent('UPDATE_LFG_LIST', function()
+	--[[ plugin:RegisterEvent('UPDATE_LFG_LIST', function()
 		local sortOrder = {3, 6, 5, 4, 1} -- class, dps, heal, tank, group
 		for _, index in ipairs(sortOrder) do
 			_G['LFRBrowseFrameColumnHeader'..index]:Click()
 		end
-		ns.UnregisterEvent('UPDATE_LFG_LIST', 'init_groupfinder')
-	end, 'sort_groupfinder') --]]
-
-	ns.UnregisterEvent('ADDON_LOADED', 'init_groupfinder')
-end, 'init_groupfinder')
+		plugin:UnregisterEvent('UPDATE_LFG_LIST')
+	end) --]]
+end

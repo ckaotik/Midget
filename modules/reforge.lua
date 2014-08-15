@@ -1,4 +1,5 @@
-local addonName, ns, _ = ...
+local addonName, addon, _ = ...
+local plugin = addon:NewModule('Reforge', 'AceEvent-3.0')
 
 -- GLOBALS: _G, ReforgingFrame
 -- GLOBALS: GetReforgeItemInfo, ReforgingFrame_GetStatRow, GetInventoryItemLink, GetItemStats, GetItemIcon, PickupInventoryItem, SetReforgeFromCursorItem
@@ -84,7 +85,7 @@ local function DisplayReforgingFrameInfo()
 			if not line.Icon then
 				line.Icon = line:CreateTexture()
 				line.Icon:SetAllPoints(line.Button)
-				line:HookScript('OnEnter', ns.ShowTooltip)
+				line:HookScript('OnEnter', addon.ShowTooltip)
 				line.slotID = slotID
 				line:HookScript('OnClick', SetItemForReforge)
 			end
@@ -98,10 +99,13 @@ local function DisplayReforgingFrameInfo()
 		end
 	end
 end
-ns.RegisterEvent('UNIT_INVENTORY_CHANGED', function(self, event, unit)
-	if unit == 'player' and ReforgingFrame and ReforgingFrame:IsShown() then
-		DisplayReforgingFrameInfo()
-	end
-end, 'reforge_update')
-ns.RegisterEvent('FORGE_MASTER_OPENED', DisplayReforgingFrameInfo, 'reforge_open')
-ns.RegisterEvent('FORGE_MASTER_SET_ITEM', DisplayReforgingFrameInfo, 'reforge_item')
+
+function plugin:OnEnable()
+	self:RegisterEvent('UNIT_INVENTORY_CHANGED', function(event, unit)
+		if unit == 'player' and ReforgingFrame and ReforgingFrame:IsShown() then
+			DisplayReforgingFrameInfo()
+		end
+	end)
+	self:RegisterEvent('FORGE_MASTER_OPENED',   DisplayReforgingFrameInfo)
+	self:RegisterEvent('FORGE_MASTER_SET_ITEM', DisplayReforgingFrameInfo)
+end

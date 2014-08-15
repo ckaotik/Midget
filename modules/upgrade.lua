@@ -1,4 +1,5 @@
-local addonName, ns, _ = ...
+local addonName, addon, _ = ...
+local plugin = addon:NewModule('Upgrade', 'AceEvent-3.0')
 
 -- GLOBALS: _G, ItemUpgradeFrame, GRAY_FONT_COLOR_CODE, GREEN_FONT_COLOR_CODE, YELLOW_FONT_COLOR_CODE, RED_FONT_COLOR_CODE
 -- GLOBALS: ItemUpgradeFrame_GetStatRow, GetInventoryItemLink, GetItemUpgradeItemInfo
@@ -115,8 +116,8 @@ local function DisplayItemUpgradeInfo()
 				line.Icon:SetPoint('RIGHT', line.ItemLevelText, 'LEFT', 15, 0)
 				line.Icon:SetSize(15, 15)
 				line:EnableMouse(true)
-				line:HookScript('OnEnter', ns.ShowTooltip)
-				line:HookScript('OnLeave', ns.HideTooltip)
+				line:HookScript('OnEnter', addon.ShowTooltip)
+				line:HookScript('OnLeave', addon.HideTooltip)
 				line.slotID = slotID
 				line:HookScript('OnMouseUp', SetItemForUpgrade)
 			end
@@ -128,10 +129,13 @@ local function DisplayItemUpgradeInfo()
 	end
 end
 
-ns.RegisterEvent('UNIT_INVENTORY_CHANGED', function(self, event, unit)
-	if unit == 'player' and ItemUpgradeFrame and ItemUpgradeFrame:IsShown() then
-		DisplayItemUpgradeInfo()
-	end
-end, 'upgrade_update')
-ns.RegisterEvent('ITEM_UPGRADE_MASTER_OPENED', DisplayItemUpgradeInfo, 'upgrade_open')
-ns.RegisterEvent('ITEM_UPGRADE_MASTER_SET_ITEM', DisplayItemUpgradeInfo, 'upgrade_item')
+function plugin:OnEnable()
+	self:RegisterEvent('UNIT_INVENTORY_CHANGED', function(event, unit)
+		if unit == 'player' and ItemUpgradeFrame and ItemUpgradeFrame:IsShown() then
+			DisplayItemUpgradeInfo()
+		end
+	end)
+	self:RegisterEvent('ITEM_UPGRADE_MASTER_OPENED', DisplayItemUpgradeInfo)
+	self:RegisterEvent('ITEM_UPGRADE_MASTER_SET_ITEM', DisplayItemUpgradeInfo)
+end
+

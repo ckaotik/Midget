@@ -26,8 +26,9 @@ local scopes = {
 	-- this assigns 'SCOPE_VOIDSTORAGE' = 3
 	-- SCOPE_INVENTORY = SCOPE_INVENTORY,
 	[SCOPE_INVENTORY] = {
-		GetLink      = function(container, slot) return GetContainerItemLink(container, slot) end,
 		GetNumSlots  = GetContainerNumSlots,
+		GetLink      = function(container, slot) return GetContainerItemLink(container, slot) end,
+		GetCount     = function(container, slot) return select(2, GetContainerItemInfo(container, slot)) end,
 		IsSlotLocked = function(container, slot) return select(3, GetContainerItemInfo(container, slot)) end,
 		PickupSlot   = function(container, slot, amount)
 			if amount and amount > 0 then
@@ -39,8 +40,9 @@ local scopes = {
 	},
 	-- SCOPE_GUILDBANK = SCOPE_GUILDBANK,
 	[SCOPE_GUILDBANK] = {
-		GetLink      = function(tab, slot) return GetGuildBankItemLink(tab, slot) end,
 		GetNumSlots  = function(tab) return tab <= GetNumGuildBankTabs() and _G.MAX_GUILDBANK_SLOTS_PER_TAB or 0 end,
+		GetLink      = function(tab, slot) return GetGuildBankItemLink(tab, slot) end,
+		GetCount     = function(tab, slot) return select(2, GetGuildBankItemInfo(tab, slot)) end,
 		IsSlotLocked = function(tab, slot) return select(3, GetGuildBankItemInfo(tab, slot)) end,
 		PickupSlot   = function(tab, slot, amount)
 			if amount and amount > 0 then
@@ -52,13 +54,14 @@ local scopes = {
 	},
 	-- SCOPE_VOIDSTORAGE = SCOPE_VOIDSTORAGE,
 	[SCOPE_VOIDSTORAGE] = {
+		-- VOID_STORAGE_MAX defined as local in Blizzard_VoidStorageUI.lua
+		GetNumSlots  = function(tab) return tab == 1 and 80 or 0 end,
 		-- GetVoidItemHyperlinkString
 		GetLink = function(_, slot)
 			local itemID = GetVoidItemInfo(slot)
 			return itemID and select(2, GetItemInfo(itemID)) or nil
 		end,
-		-- VOID_STORAGE_MAX defined as local in Blizzard_VoidStorageUI.lua
-		GetNumSlots  = function(tab) return tab == 1 and 80 or 0 end,
+		GetCount     = function(container, slot) return (GetVoidItemInfo(slot)) and 1 or 0 end,
 		IsSlotLocked = function(_, slot) return select(3, GetVoidItemInfo(slot)) end,
 		PickupSlot   = function(_, slot, amount)
 			-- note: void storage can't ever contain stackable items
@@ -85,6 +88,20 @@ function addon:OnEnable()
 	self:AddCriteria('itemID',    function(itemLink, scope, container, slot) return ns.GetItemID(itemLink) end)
 	-- self:AddCriteria('container', function(itemLink, scope, container, slot) return container end)
 	-- self:AddCriteria('slot',      function(itemLink, scope, container, slot) return slot end)
+
+	-- static item info
+	self:AddCriteria('name', function(itemLink, scope, container, slot) return (select(1, GetItemInfo(itemLink))) end)
+	self:AddCriteria('quality', function(itemLink, scope, container, slot) return (select(3, GetItemInfo(itemLink))) end)
+	self:AddCriteria('ilevel', function(itemLink, scope, container, slot) return (select(4, GetItemInfo(itemLink))) end)
+	self:AddCriteria('level', function(itemLink, scope, container, slot) return (select(5, GetItemInfo(itemLink))) end)
+	-- self:AddCriteria('class', function(itemLink, scope, container, slot) return (select(6, GetItemInfo(itemLink))) end)
+	-- self:AddCriteria('subclass', function(itemLink, scope, container, slot) return (select(7, GetItemInfo(itemLink))) end)
+	self:AddCriteria('maxstack', function(itemLink, scope, container, slot) return (select(8, GetItemInfo(itemLink))) end)
+	self:AddCriteria('slot', function(itemLink, scope, container, slot) return (select(9, GetItemInfo(itemLink))) end)
+	self:AddCriteria('value', function(itemLink, scope, container, slot) return (select(11, GetItemInfo(itemLink))) or 0 end)
+
+	-- scope specific item data
+	self:AddCriteria('stack', function(itemLink, scope, container, slot) return scopes[scope].GetCount(container, slot) end)
 
 	--[[ local frame = CreateFrame('Frame', addonName..'Frame', UIParent, "ButtonFrameTemplate")
 	      frame:EnableMouse()
@@ -159,6 +176,31 @@ function addon:OnEnable()
 			UIDropDownMenu_AddButton(info, level)
 		end
 	end --]]
+
+	local function GetSetting(info)
+		local data = addon.db
+		for i = 2, #info do data = data[ info[i] ] end
+		return data
+	end
+	local function SetSetting(info, value)
+		local data = addon.db
+		for i = 2, #info - 1 do data = data[ info[i] ] end
+		data[ info[#info] ] = value
+	end
+
+	LibStub('AceConfig-3.0'):RegisterOptionsTable(addonName, {
+		type = 'group',
+		args = {
+			main     = LibStub('LibOptionsGenerate-1.0'):GetOptionsTable(self.db.profile),
+			profiles = LibStub('AceDBOptions-3.0'):GetOptionsTable(self.db),
+		},
+		get = GetSetting,
+		set = SetSetting,
+	})
+
+	local AceConfigDialog = LibStub('AceConfigDialog-3.0')
+	      AceConfigDialog:AddToBlizOptions(addonName, addonName, nil, 'main')
+	      AceConfigDialog:AddToBlizOptions(addonName, 'Profiles', addonName, 'profiles')
 end
 
 -- note: may also be used to ignore entirce scopes/containers
@@ -191,10 +233,10 @@ local function ItemSort(aKey, bKey)
 		end
 	end
 end
-local function ItemSortReverse(aKey, bKey)
+--[[ local function ItemSortReverse(aKey, bKey)
 	local sorted = ItemSort(aKey, bKey)
 	return (sorted == aKey) and bKey or aKey
-end
+end --]]
 
 function addon:Run(scope, ...)
 	scope = scope or SCOPE_INVENTORY

@@ -1,13 +1,29 @@
-local addonName, ns, _ = ...
--- GLOBALS: _G, type, pairs, wipe
+local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 2
+local lib = LibStub:NewLibrary(MAJOR, MINOR)
+if not lib then return end
 
-local SharedMedia = LibStub("LibSharedMedia-3.0", true)
-local AceConfig = LibStub("AceConfig-3.0")
+-- GLOBALS: _G, type, pairs, wipe, strsplit
+
+local SharedMedia     = LibStub("LibSharedMedia-3.0", true)
+local AceConfig       = LibStub("AceConfig-3.0")
 local AceConfigDialog = LibStub("AceConfigDialog-3.0")
 if not AceConfig or not AceConfigDialog then return end
 
+local function GetVariableFromPath(path)
+	local variable
+	local parts = { strsplit('.', path) }
+	for index, part in ipairs(parts) do
+		if index == 1 then variable = _G[part]
+		else variable = variable[part] end
+		if not variable then return end
+	end
+	return variable
+end
+
 local function GetSetting(info)
-	local db = _G[ info[1] ]
+	local component = info.options.args[ info[1] ]
+	local db = GetVariableFromPath(component.descStyle or info[1])
+
 	local data = db
 	for i = 2, #info do
 		data = data[ info[i] ]
@@ -16,7 +32,9 @@ local function GetSetting(info)
 end
 
 local function SetSetting(info, value)
-	local db = _G[ info[1] ]
+	local component = info.options.args[ info[1] ]
+	local db = GetVariableFromPath(component.descStyle or info[1])
+
 	local data = db
 	for i = 2, #info - 1 do
 		data = data[ info[i] ]
@@ -24,29 +42,7 @@ local function SetSetting(info, value)
 	data[ info[#info] ] = value
 end
 
-local optionsTable = {
-	type = 'group',
-	args = {
-		['MidgetLocalDB'] = {
-			type = 'group',
-			inline = true,
-			name = 'Individual Settings',
-			order = 1,
-			args = {},
-		},
-		['MidgetDB'] = {
-			type = 'group',
-			inline = true,
-			name = 'Shared Settings',
-			order = 2,
-			args = {},
-		},
-	},
-	get = GetSetting,
-	set = SetSetting,
-}
-
-function ns:LSM_GetMediaKey(mediaType, value)
+local function GetMediaKey(mediaType, value)
 	local keyList = SharedMedia:List(mediaType)
 	for _, key in pairs(keyList) do
 		if SharedMedia:Fetch(mediaType, key) == value then
@@ -55,6 +51,9 @@ function ns:LSM_GetMediaKey(mediaType, value)
 	end
 end
 
+local function GetTableFromList(dataString, seperator)
+	return { strsplit(seperator, dataString) }
+end
 local function GetListFromTable(dataTable, seperator)
 	local output = ''
 	for _, value in pairs(dataTable) do
@@ -63,18 +62,19 @@ local function GetListFromTable(dataTable, seperator)
 	return output
 end
 
-local function GetTableFromList(dataString, seperator)
-	return { strsplit(seperator, dataString) }
-end
-
 local function Widget(key, option)
 	local key, widget = key:lower(), nil
 	if key == 'justifyh' then
 		widget = {
 			type = "select",
-			name = "Text Justification",
-
+			name = "Horiz. Justification",
 			values = {["LEFT"] = "LEFT", ["CENTER"] = "CENTER", ["RIGHT"] = "RIGHT"},
+		}
+	elseif key == 'justifyv' then
+		widget = {
+			type = "select",
+			name = "Vert. Justification",
+			values = {["TOP"] = "TOP", ["MIDDLE"] = "MIDDLE", ["BOTTOM"] = "BOTTOM"},
 		}
 	elseif key == 'fontsize' then
 		widget = {
@@ -82,7 +82,7 @@ local function Widget(key, option)
 			name = "Font Size",
 			step = 1,
 			min = 5,
-			max = 24,
+			max = 24, -- Blizz won't go any larger
 		}
 	elseif key == 'font' and SharedMedia then
 		widget = {
@@ -91,7 +91,7 @@ local function Widget(key, option)
 			name = 'Font Family',
 
 			values = SharedMedia:HashTable('font'),
-			get = function(info) return ns:LSM_GetMediaKey('font', GetSetting(info)) end,
+			get = function(info) return GetMediaKey('font', GetSetting(info)) end,
 			set = function(info, value)
 				SetSetting(info, SharedMedia:Fetch('font', value))
 			end,
@@ -126,6 +126,8 @@ end
 local function ParseOption(key, option)
 	-- in Midget, we don't like nested tables
 	if type(key) ~= 'string' --[[or type(option) == 'table'--]] then return end
+	-- if key == 'profileKeys' then return end
+
 	local widget = Widget(key, option)
 	if widget then
 		widget.name = widget.name or key
@@ -154,25 +156,43 @@ local function ParseOption(key, option)
 		}
 
 		for subkey, value in pairs(option) do
-			data.args[subkey] = ParseOption(subkey, value)
+			if subkey ~= '*' and subkey ~= '**' then
+				data.args[subkey] = ParseOption(subkey, value)
+			end
 		end
 		return data
 	end
 end
 
-local function GenerateOptions()
-	for namespace, _ in pairs(optionsTable.args) do
-		wipe(optionsTable.args[namespace].args)
-		for key, value in pairs(_G[namespace]) do
+local emptyTable = {}
+function lib:GenerateOptions(optionsTable)
+	optionsTable.get = optionsTable.get or GetSetting
+	optionsTable.set = optionsTable.set or SetSetting
+
+	for groupKey, group in pairs(optionsTable.args) do
+		wipe(optionsTable.args[groupKey].args)
+		local gVar = GetVariableFromPath(group.descStyle or groupKey)
+		for key, value in pairs(gVar or emptyTable) do
 			local parsedOption = ParseOption(key, value)
 			if parsedOption and parsedOption.type and parsedOption.type == 'group' then
 				parsedOption.inline = false
 			end
-			optionsTable.args[namespace].args[key] = parsedOption
+			optionsTable.args[groupKey].args[key] = parsedOption
 		end
 	end
 	return optionsTable
 end
 
-AceConfig:RegisterOptionsTable(addonName, GenerateOptions)
-AceConfigDialog:AddToBlizOptions(addonName)
+function lib:GetOptionsTable(variables, getFunc, setFunc)
+	local optionsTable = {
+		name = 'Options',
+		type = 'group',
+		args = {},
+	}
+
+	for key, value in pairs(variables) do
+		optionsTable.args[key] = ParseOption(key, value)
+	end
+
+	return optionsTable
+end

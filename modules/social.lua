@@ -1,4 +1,5 @@
-local addonName, ns, _ = ...
+local addonName, addon, _ = ...
+local plugin = addon:NewModule('Social', 'AceEvent-3.0')
 
 -- GLOBALS: _G, LibStub, RED_FONT_COLOR_CODE, BATTLENET_FONT_COLOR_CODE, RAID_CLASS_COLORS, CHAT_FLAG_AFK, CHAT_FLAG_DND, BNET_CLIENT_WOW, REMOTE_CHAT, HIGHLIGHT_FONT_COLOR_CODE, GREEN_FONT_COLOR_CODE, NORMAL_FONT_COLOR, FriendsFrame
 -- GLOBALS: FillLocalizedClassList, BNGetNumFriends, BNGetFriendInfo, BNGetNumFriendToons, BNGetFriendToonInfo, BNGetFriendIndex, BNGetNumFriendInvites, GetQuestDifficultyColor, GetGuildInfo, GetGuildRosterMOTD, CanEditPublicNote, CanEditOfficerNote, SetGuildRosterSelection, SortGuildRoster, GetNumFriends, GetFriendInfo, GetNumGuildMembers, GetGuildRosterInfo, UnitFactionGroup, UnitInParty, UnitPlayerOrPetInRaid, SetItemRef, StaticPopup_Show, InviteUnit, IsAltKeyDown, IsControlKeyDown, ToggleFriendsFrame, ToggleGuildFrame
@@ -154,8 +155,8 @@ local function TooltipAddBNetContacts(tooltip)
 				if broadcastText and broadcastText ~= '' then
 					tooltip:SetCell(lineNum, 3, friendName .. ' ' .. icons['BROADCAST'])
 					tooltip.lines[lineNum].tiptext = broadcastText
-					tooltip:SetLineScript(lineNum, 'OnEnter', ns.ShowTooltip)
-					tooltip:SetLineScript(lineNum, 'OnLeave', ns.HideTooltip)
+					tooltip:SetLineScript(lineNum, 'OnEnter', addon.ShowTooltip)
+					tooltip:SetLineScript(lineNum, 'OnLeave', addon.HideTooltip)
 				end
 
 				if realmName == playerRealm and faction == playerFaction then
@@ -309,7 +310,7 @@ local function OnLDBClick(self, btn, up)
 	end
 end
 
-local function OnLDBUpdate(self, event)
+local function OnLDBUpdate(event)
 	local ldb = LDB:GetDataObjectByName(addonName..'Social')
 	if ldb then
 		local text = ''
@@ -344,41 +345,34 @@ local function OnLDBUpdate(self, event)
 	end
 end
 
-local function initialize(frame, event, arg1)
-	if arg1 == addonName then
-		local plugin = LDB:NewDataObject(addonName.."Social", {
-			type	= 'data source',
-			icon    = 'Interface\\FriendsFrame\\UI-Toast-FriendOnlineIcon',
-			label	= _G.SOCIAL_LABEL,
-			text 	= _G.SOCIAL_LABEL,
+function plugin:OnEnable()
+	local ldb = LDB:NewDataObject(addonName.."Social", {
+		type	= 'data source',
+		icon    = 'Interface\\FriendsFrame\\UI-Toast-FriendOnlineIcon',
+		label	= _G.SOCIAL_LABEL,
+		text 	= _G.SOCIAL_LABEL,
 
-			OnClick = OnLDBClick,
-			OnEnter = OnLDBEnter,
-			OnLeave = function() end,	-- needed for e.g. NinjaPanel
-		})
+		OnClick = OnLDBClick,
+		OnEnter = OnLDBEnter,
+		OnLeave = function() end,	-- needed for e.g. NinjaPanel
+	})
 
-		local classes = {}
-		FillLocalizedClassList(classes, false) -- male names
-		for class, localizedName in pairs(classes) do
-			classColors[localizedName] = RAID_CLASS_COLORS[class]
-		end
-		FillLocalizedClassList(classes, true) -- female names
-		for class, localizedName in pairs(classes) do
-			classColors[localizedName] = RAID_CLASS_COLORS[class]
-		end
-
-		for _, event in ipairs({'GUILD_ROSTER_UPDATE', 'FRIENDLIST_UPDATE', -- 'IGNORELIST_UPDATE', 'MUTELIST_UPDATE',
-			'BN_CONNECTED', 'BN_DISCONNECTED', 'BN_FRIEND_LIST_SIZE_CHANGED',
-			'BN_FRIEND_TOON_ONLINE', 'BN_FRIEND_TOON_OFFLINE', 'BN_FRIEND_ACCOUNT_ONLINE', 'BN_FRIEND_ACCOUNT_OFFLINE',
-			'BATTLETAG_INVITE_SHOW', 'BN_FRIEND_INVITE_LIST_INITIALIZED', 'BN_FRIEND_INVITE_ADDED', 'BN_FRIEND_INVITE_REMOVED'}) do
-			ns.RegisterEvent(event, OnLDBUpdate, 'social_'..event)
-		end
-
-		ns.UnregisterEvent('ADDON_LOADED', 'social')
+	local classes = {}
+	FillLocalizedClassList(classes, false) -- male names
+	for class, localizedName in pairs(classes) do
+		classColors[localizedName] = RAID_CLASS_COLORS[class]
 	end
-end
-ns.RegisterEvent('ADDON_LOADED', initialize, 'social')
+	FillLocalizedClassList(classes, true) -- female names
+	for class, localizedName in pairs(classes) do
+		classColors[localizedName] = RAID_CLASS_COLORS[class]
+	end
 
-ns.RegisterEvent('NEUTRAL_FACTION_SELECT_RESULT', function()
-	playerFaction = UnitFactionGroup("player")
-end, 'playerfaction')
+	for _, event in ipairs({'GUILD_ROSTER_UPDATE', 'FRIENDLIST_UPDATE', -- 'IGNORELIST_UPDATE', 'MUTELIST_UPDATE',
+		'BN_CONNECTED', 'BN_DISCONNECTED', 'BN_FRIEND_LIST_SIZE_CHANGED',
+		'BN_FRIEND_TOON_ONLINE', 'BN_FRIEND_TOON_OFFLINE', 'BN_FRIEND_ACCOUNT_ONLINE', 'BN_FRIEND_ACCOUNT_OFFLINE',
+		'BATTLETAG_INVITE_SHOW', 'BN_FRIEND_INVITE_LIST_INITIALIZED', 'BN_FRIEND_INVITE_ADDED', 'BN_FRIEND_INVITE_REMOVED'}) do
+		self:RegisterEvent(event, OnLDBUpdate)
+	end
+
+	self:RegisterEvent('NEUTRAL_FACTION_SELECT_RESULT', function() playerFaction = UnitFactionGroup('player') end)
+end

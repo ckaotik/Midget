@@ -1,6 +1,5 @@
-local addonName, ns, _ = ...
-local plugin = {}
--- local ns.battlepets = plugin
+local addonName, addon, _ = ...
+local plugin = addon:NewModule('BattlePets', 'AceEvent-3.0')
 
 -- GLOBALS: _G, UIParent, MidgetDB, PetBattleFrame, C_PetJournal, C_PetBattles, GameTooltip, ITEM_QUALITY_COLORS, PET_TYPE_SUFFIX, ADD_ANOTHER, GREEN_FONT_COLOR_CODE, YELLOW_FONT_COLOR_CODE, GRAY_FONT_COLOR, NORMAL_FONT_COLOR, UIDROPDOWNMENU_INIT_MENU, UnitPopupMenus, UnitPopupShown, UnitIsBattlePet
 -- GLOBALS: CreateFrame, PlaySound, IsShiftKeyDown, IsModifiedClick, PetJournal_UpdatePetLoadOut, IsAddOnLoaded, ChatEdit_GetActiveWindow
@@ -10,10 +9,9 @@ local MAX_PET_LEVEL = 25
 local MAX_ACTIVE_PETS = 3
 local strongTypes, weakTypes = {}, {}
 
-local scanner
+local scanner, timer = nil, 0
 local updateFrame = CreateFrame('Frame')
       updateFrame:Hide()
-local timer = 0
 updateFrame:SetScript('OnUpdate', function(self, elapsed)
 	timer = timer + elapsed
 	if timer > 2 then
@@ -328,29 +326,6 @@ function plugin.Update()
 	plugin.UpdateTabs()
 end
 
-local function initialize(frame, event, arg1)
-	if (arg1 == addonName or arg1 == 'Blizzard_PetJournal') and IsAddOnLoaded('Blizzard_PetJournal') then
-		if not MidgetDB.petBattleTeams then MidgetDB.petBattleTeams = {} end
-		hooksecurefunc("PetJournal_UpdatePetLoadOut", plugin.Update)
-
-		for i = 1, C_PetJournal.GetNumPetTypes() do
-			if not strongTypes[i] then strongTypes[i] = {} end
-			if not   weakTypes[i] then   weakTypes[i] = {} end
-
-			for j = 1, C_PetJournal.GetNumPetTypes() do
-				local modifier = C_PetBattles.GetAttackModifier(i, j)
-				if modifier > 1 then
-					table.insert(strongTypes[i], j)
-				elseif modifier < 1 then
-					table.insert(weakTypes[i], j)
-				end
-			end
-		end
-
-		ns.UnregisterEvent('ADDON_LOADED', 'battlepet')
-	end
-end
-ns.RegisterEvent('ADDON_LOADED', initialize, 'battlepet')
 
 -- ================================================
 --  move pet battle frame down a little
@@ -380,12 +355,37 @@ end
 -- ================================================
 --  loading ...
 -- ================================================
-ns.RegisterEvent('ADDON_LOADED', function(self, event, arg1)
-	if arg1 ~= addonName then return end
+local function InitializePetJournal(event, arg1)
+	if arg1 ~= 'Blizzard_PetJournal' then return end
 
+	if not MidgetDB.petBattleTeams then MidgetDB.petBattleTeams = {} end
+	hooksecurefunc('PetJournal_UpdatePetLoadOut', plugin.Update)
+
+	for i = 1, C_PetJournal.GetNumPetTypes() do
+		if not strongTypes[i] then strongTypes[i] = {} end
+		if not   weakTypes[i] then   weakTypes[i] = {} end
+
+		for j = 1, C_PetJournal.GetNumPetTypes() do
+			local modifier = C_PetBattles.GetAttackModifier(i, j)
+			if modifier > 1 then
+				table.insert(strongTypes[i], j)
+			elseif modifier < 1 then
+				table.insert(weakTypes[i], j)
+			end
+		end
+	end
+
+	plugin:UnregisterEvent('ADDON_LOADED')
+end
+
+function plugin:OnEnable()
 	MovePetBatteFrame()
 	-- hooksecurefunc("UnitPopup_HideButtons", CustomizeDropDowns)
 	-- table.insert(UnitPopupMenus["TARGET"], #UnitPopupMenus["TARGET"], "PET_SHOW_IN_JOURNAL")
 
-	ns.UnregisterEvent('ADDON_LOADED', 'init_battlepet')
-end, 'init_battlepet')
+	if IsAddOnLoaded('Blizzard_PetJournal') then
+		InitializePetJournal()
+	else
+		self:RegisterEvent('ADDON_LOADED', InitializePetJournal)
+	end
+end

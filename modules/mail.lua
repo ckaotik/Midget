@@ -1,4 +1,5 @@
-local addonName, ns, _ = ...
+local addonName, addon, _ = ...
+local plugin = addon:NewModule('Mail', 'AceEvent-3.0')
 
 -- GLOBALS: ITEM_QUALITY_COLORS, FROM_ALL_SOURCES, ATTACHMENTS_MAX, ATTACHMENTS_MAX_SEND, NUM_BAG_SLOTS, GetAuctionBuyout, GameTooltip, SendMailFrame
 -- GLOBALS: GetCoinTextureString, GetInboxItemLink, GetInboxItem, GetItemInfo, IsAltKeyDown, ClearCursor, CursorHasItem, PickupContainerItem, GetSendMailItemLink, GetContainerNumSlots, GetContainerItemInfo, GetContainerItemLink, ClickSendMailItemButton, Click
@@ -65,7 +66,7 @@ local function ShowAttachmentInfo(self)
 end
 
 local function AttachSimilarItems(itemLink, thisItemOnly)
-	local linkType, linkID, linkData = ns.GetLinkData(itemLink)
+	local linkType, linkID, linkData = addon.GetLinkData(itemLink)
 	local bagItemLink, bagItemLocked, bagLinkType, bagLinkID, bagLinkData
 	local shouldAttach
 
@@ -80,7 +81,7 @@ local function AttachSimilarItems(itemLink, thisItemOnly)
 	for container = 0, NUM_BAG_SLOTS do
 		for slot = 1, GetContainerNumSlots(container) or 0 do
 			if numAttachments >= ATTACHMENTS_MAX_SEND then
-				ns.Print('This mail has the maximum number of attachments.')
+				addon:Print('This mail has the maximum number of attachments.')
 				if false then -- TODO: autoSendWhenFull and strlen(SendMailNameEditBox:GetText()) > 0
 					Click("SendMailButton")
 					-- wait for MAIL_SEND_SUCCESS event
@@ -98,7 +99,7 @@ local function AttachSimilarItems(itemLink, thisItemOnly)
 			end
 
 			_, _, bagItemLocked, _, _, _, bagItemLink = GetContainerItemInfo(container, slot)
-			bagLinkType, bagLinkID, bagLinkData = ns.GetLinkData(bagItemLink)
+			bagLinkType, bagLinkID, bagLinkData = addon.GetLinkData(bagItemLink)
 
 			if thisItemOnly then
 				shouldAttach = not bagItemLocked and (bagLinkType == linkType) and (bagLinkID == linkID)
@@ -122,7 +123,7 @@ local function AttachSimilarItems(itemLink, thisItemOnly)
 				if success then
 					numAttachments = numAttachments + 1
 				else
-					ns.Print('Could not attach item', bagItemLink, 'from bag', container, ', slot', slot)
+					addon:Print('Could not attach item', bagItemLink, 'from bag', container, ', slot', slot)
 					ClearCursor()
 				end
 			end
@@ -130,21 +131,15 @@ local function AttachSimilarItems(itemLink, thisItemOnly)
 	end
 end
 
-local function initialize(frame, event, arg1)
-	if arg1 == addonName then
-		hooksecurefunc("InboxFrameItem_OnEnter", ShowAttachmentInfo)
-		hooksecurefunc("ContainerFrameItemButton_OnModifiedClick", function(self, btn)
-			if IsAltKeyDown() and SendMailFrame:IsVisible() and not CursorHasItem() then
-				local itemLink = GetContainerItemLink(self:GetParent():GetID(), self:GetID())
-				AttachSimilarItems(itemLink, btn == 'RightButton')
-			end
-		end)
+function plugin:OnEnable()
+	hooksecurefunc("InboxFrameItem_OnEnter", ShowAttachmentInfo)
+	hooksecurefunc("ContainerFrameItemButton_OnModifiedClick", function(self, btn)
+		if IsAltKeyDown() and SendMailFrame:IsVisible() and not CursorHasItem() then
+			local itemLink = GetContainerItemLink(self:GetParent():GetID(), self:GetID())
+			AttachSimilarItems(itemLink, btn == 'RightButton')
+		end
+	end)
 
-		ns.RegisterEvent('MAIL_INBOX_UPDATE', function()
-			wipe(items)
-		end, 'mail_update')
-
-		ns.UnregisterEvent('ADDON_LOADED', 'mail')
-	end
+	addon:RegisterEvent('MAIL_INBOX_UPDATE', function() wipe(items) end)
+	addon:UnregisterEvent('ADDON_LOADED')
 end
-ns.RegisterEvent('ADDON_LOADED', initialize, 'mail')
