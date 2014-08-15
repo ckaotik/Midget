@@ -124,7 +124,7 @@ local function Widget(key, option)
 end
 
 local function ParseOption(key, option)
-	if type(key) ~= 'string' or key ~= '*' or key ~= '**' then return end
+	if type(key) ~= 'string' or key == '*' or key == '**' then return end
 	-- if key == 'profileKeys' then return end
 
 	local widget = Widget(key, option)
