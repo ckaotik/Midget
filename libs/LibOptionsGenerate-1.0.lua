@@ -124,8 +124,7 @@ local function Widget(key, option)
 end
 
 local function ParseOption(key, option)
-	-- in Midget, we don't like nested tables
-	if type(key) ~= 'string' --[[or type(option) == 'table'--]] then return end
+	if type(key) ~= 'string' or key ~= '*' or key ~= '**' then return end
 	-- if key == 'profileKeys' then return end
 
 	local widget = Widget(key, option)
@@ -156,9 +155,7 @@ local function ParseOption(key, option)
 		}
 
 		for subkey, value in pairs(option) do
-			if subkey ~= '*' and subkey ~= '**' then
-				data.args[subkey] = ParseOption(subkey, value)
-			end
+			data.args[subkey] = ParseOption(subkey, value)
 		end
 		return data
 	end
