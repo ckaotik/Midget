@@ -419,6 +419,8 @@ local function AddMasque()
 			elseif bit.band(flags, COOLDOWN) > 0 or bit.band(flags, IMPORTANT) > 0 then
 				self.Border:SetVertexColor(.5, 0, .5, 1)
 				self.Border:Show()
+			else
+				self.Border:Hide()
 			end
 		end
 
@@ -464,11 +466,6 @@ local function AddMasque()
 		    Duration     = false,
 			AutoCast     = false,
 		})
-
-		-- fix blown-up texture size
-		local settings = AdiSpellHUD.db:GetNamespace('Auras')
-		local iconSize = settings.profile.size
-		-- widget.Icon:SetSize(iconSize - 2, iconSize - 4)
 
 		return widget
 	end
