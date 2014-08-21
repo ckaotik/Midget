@@ -93,6 +93,127 @@ function addon:OnEnable()
 
 	local AceConfigDialog = LibStub('AceConfigDialog-3.0')
 	      AceConfigDialog:AddToBlizOptions(addonName, addonName, nil, 'main')
+
+	-- IN DEVELOPMENT: AceGUIWidget-ListSort
+	--[[
+	local backdrop = {
+		bgFile   = 'Interface\\Tooltips\\UI-Tooltip-Background',
+		edgeFile = 'Interface\\Tooltips\\UI-Tooltip-Border', edgeSize = 16,
+		insets   = { left = 4, right = 3, top = 4, bottom = 3 }
+	}
+	local function Update(self)
+		local offset = FauxScrollFrame_GetOffset(self)
+		for i, button in ipairs(self) do
+			if not button:IsDragging() then
+				local index = i + offset
+				button:SetText('Label '..index)
+			end
+		end
+		local needsScrollBar = FauxScrollFrame_Update(self, 10, #self, self[1]:GetHeight())
+	end
+	local rowHeight, padding = 20, 4
+	local listFrame = CreateFrame('ScrollFrame', 'SampleScrollFrame', UIParent, 'FauxScrollFrameTemplate')
+	      listFrame:SetBackdrop(backdrop)
+	      listFrame:SetBackdropColor(0, 0, 0, 0.5)
+	      listFrame:SetBackdropBorderColor(1, 1, 1, 1)
+	listFrame.scrollBarHideable = true
+	listFrame:SetScript('OnVerticalScroll', function(scrollFrame, offset)
+		FauxScrollFrame_OnVerticalScroll(scrollFrame, offset, rowHeight, Update)
+	end)
+
+	listFrame:SetPoint('CENTER') -- *
+	listFrame:SetSize(300, 130) -- *
+
+	-- drag & drop
+	local dropIndicator = listFrame:CreateTexture()
+	      dropIndicator:SetTexture(1, 0, 0, 0.5)
+	      dropIndicator:SetSize(listFrame:GetWidth() - 2*padding, 2)
+	      dropIndicator:Hide()
+	local function UpdateDragging(self, elapsed)
+		-- local parent = self:GetParent()
+		local frameBelow = GetMouseFocus()
+
+		local myCenter    = (self:GetTop() - self:GetBottom()) / 2
+		local theirCenter = (frameBelow:GetTop() - frameBelow:GetBottom()) / 2
+		if myCenter >= theirCenter then
+			dropIndicator:SetPoint('LEFT', frameBelow, 'TOPLEFT')
+			dropIndicator:Show()
+		else
+			dropIndicator:SetPoint('LEFT', frameBelow, 'BOTTOMLEFT')
+			dropIndicator:Show()
+		end
+	end
+	local function OnDragStart(self, btn)
+		self:StartMoving()
+		self:SetScript('OnUpdate', UpdateDragging)
+		self:SetAlpha(0.5)
+		-- self:SetBackdrop(backdrop)
+	end
+	local function OnDragStop(self)
+		-- self:SetBackdrop(nil)
+		self:SetAlpha(1)
+		self:SetScript('OnUpdate', nil)
+		self:StopMovingOrSizing()
+
+		self:SetUserPlaced(false)
+		dropIndicator:Hide()
+	end
+
+	local label = listFrame:CreateFontString(nil, 'OVERLAY', 'GameFontNormalSmall')
+	      label:SetPoint('TOPLEFT',  listFrame, 'TOPLEFT', 4, 10)
+	      label:SetPoint('TOPRIGHT', listFrame, 'TOPRIGHT', -4, 10)
+	      label:SetJustifyH('LEFT')
+	      label:SetHeight(10)
+	label:SetText('Setting Title') -- *
+
+	local screenWidth, screenHeight = GetScreenWidth(), GetScreenHeight()
+	local left, right, top, bottom  = listFrame:GetLeft(), listFrame:GetRight(), listFrame:GetTop(), listFrame:GetBottom()
+	      left, right, top, bottom  = -left -padding, screenWidth - right + padding, screenHeight - top + padding, -bottom -padding
+
+	for index = 1, 6 do
+		local button = CreateFrame('Button', '$parentButton'..index, listFrame, nil, index)
+		table.insert(listFrame, button)
+
+		button:SetPoint('TOPLEFT', listFrame, 'TOPLEFT', padding, -padding - (index-1)*rowHeight)
+		button:SetPoint('RIGHT', listFrame, 'RIGHT', -padding, 0)
+		button:SetHeight(rowHeight)
+
+		button:SetClampedToScreen(true)
+		button:SetClampRectInsets(left, right, top, bottom)
+		button:SetBackdropColor(0, 0, 0, 0.2)
+		button:SetBackdropBorderColor(1, 0, 0, 0.6)
+
+		button:SetScript('OnEnter', addon.ShowTooltip)
+		button:SetScript('OnLeave', addon.HideTooltip)
+
+		button:SetNormalTexture('Interface\\CURSOR\\UI-Cursor-Move')
+		local tex = button:GetNormalTexture()
+		      tex:SetSize(16, 16)
+		      tex:ClearAllPoints()
+		      tex:SetPoint('LEFT', 2, 0)
+		button:SetHighlightTexture('Interface\\Buttons\\UI-PlusButton-Hilight', 'ADD')
+		local tex = button:GetHighlightTexture()
+		      tex:SetSize(16, 16)
+		      tex:ClearAllPoints()
+		      tex:SetPoint('LEFT', 3, 0)
+
+		button:SetHighlightFontObject('GameFontHighlightLeft')
+		button:SetDisabledFontObject('GameFontHighlightLeft')
+		button:SetNormalFontObject('GameFontNormalLeft')
+
+		local label = button:CreateFontString(nil, nil, 'GameFontNormalLeft')
+		      label:SetPoint('LEFT', 26, 0)
+		      label:SetHeight(rowHeight)
+		      label:SetJustifyH('LEFT')
+		button:SetFontString(label)
+
+		button:SetMovable(true)
+		button:RegisterForDrag('LeftButton')
+		button:SetScript('OnDragStart', OnDragStart)
+		button:SetScript('OnDragStop',  OnDragStop)
+	end
+	FauxScrollFrame_OnVerticalScroll(listFrame, 0, rowHeight, Update)
+	--]]
 end
 
 -- ================================================

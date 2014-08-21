@@ -19,6 +19,7 @@ libs\LibFlash\LibFlash.lua
 libs\LibQTip-1.0\LibQTip-1.0-lua
 #@end-no-lib-strip@
 libs\LibOptionsGenerate-1.0.lua
+libs\AceGUIWidget-ListSort.lua
 
 Midget.lua
 functions.lua
