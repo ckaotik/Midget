@@ -1,3 +1,130 @@
+local function FOO()
+	local rowHeight, padding, dropIndicator = 20, 4
+	local function CreateRow(identifier, parent)
+		local button = CreateFrame('Button', '$parentButton'..identifier, parent, nil, identifier)
+		      button:SetHeight(rowHeight)
+
+		button:SetNormalTexture('Interface\\CURSOR\\UI-Cursor-Move')
+		local tex = button:GetNormalTexture()
+		      tex:SetSize(16, 16)
+		      tex:ClearAllPoints()
+		      tex:SetPoint('LEFT', 2, 0)
+		button:SetHighlightTexture('Interface\\Buttons\\UI-PlusButton-Hilight', 'ADD')
+		local tex = button:GetHighlightTexture()
+		      tex:SetSize(16, 16)
+		      tex:ClearAllPoints()
+		      tex:SetPoint('LEFT', 3, 0)
+
+		button:SetHighlightFontObject('GameFontHighlightLeft')
+		button:SetDisabledFontObject('GameFontHighlightLeft')
+		button:SetNormalFontObject('GameFontNormalLeft')
+
+		local label = button:CreateFontString(nil, nil, 'GameFontNormalLeft')
+		      label:SetPoint('TOPLEFT', 26, 0)
+		      label:SetPoint('BOTTOMRIGHT')
+		      label:SetJustifyH('LEFT')
+		button:SetFontString(label)
+
+		return button
+	end
+
+	local dropIndicator = CreateRow('Dummy')
+	      dropIndicator:SetMovable(true)
+	      dropIndicator:Hide()
+
+	local function Update(self)
+		local offset = FauxScrollFrame_GetOffset(self)
+		for i, button in ipairs(self) do
+			-- TODO: fill in data
+			local index = i + offset
+			button:SetText('Label '..index)
+			button:SetAlpha((dropIndicator.index == index) and 0.5 or 1)
+		end
+		local needsScrollBar = FauxScrollFrame_Update(self, 10, #self, self[1]:GetHeight())
+	end
+
+	local backdrop = {
+		bgFile   = 'Interface\\Tooltips\\UI-Tooltip-Background',
+		edgeFile = 'Interface\\Tooltips\\UI-Tooltip-Border', edgeSize = 16,
+		insets   = { left = 4, right = 3, top = 4, bottom = 3 }
+	}
+	local listFrame = CreateFrame('ScrollFrame', 'SampleScrollFrame', UIParent, 'FauxScrollFrameTemplate')
+	      listFrame:SetBackdrop(backdrop)
+	      listFrame:SetBackdropColor(0, 0, 0, 0.5)
+	      listFrame:SetBackdropBorderColor(1, 1, 1, 1)
+	listFrame.scrollBarHideable = true
+	listFrame:SetScript('OnVerticalScroll', function(scrollFrame, offset)
+		local rowHeight = scrollFrame[1]:GetHeight()
+		FauxScrollFrame_OnVerticalScroll(scrollFrame, offset, rowHeight, Update)
+	end)
+
+	dropIndicator:SetParent(listFrame)
+	listFrame:SetPoint('CENTER', 100, 50)   -- *
+	listFrame:SetSize(300, 130)             -- *
+	-- TODO: what happens to drag constraints when the frame containing listFrame gets moved?
+
+	--[[ local label = listFrame:CreateFontString(nil, 'OVERLAY', 'GameFontNormalSmall')
+	      label:SetPoint('TOPLEFT',  listFrame, 'TOPLEFT', 4, 10)
+	      label:SetPoint('TOPRIGHT', listFrame, 'TOPRIGHT', -4, 10)
+	      label:SetJustifyH('LEFT')
+	      label:SetHeight(10)
+	label:SetText('Setting Title') -- * --]]
+
+	-- drag & drop
+	local function UpdateDragging(self, elapsed)
+		local parent, frameAbove = self:GetParent()
+		local rowHeight = self:GetHeight()
+		for index, button in ipairs(parent) do
+			if button:IsMouseOver(0, 0, rowHeight/2, 0) then
+				frameAbove = button
+				break
+			end
+		end
+
+		dropIndicator:StopMovingOrSizing()
+		dropIndicator:SetPoint('LEFT', frameAbove or parent[#parent], frameAbove and 'TOPLEFT' or 'BOTTOMLEFT')
+		dropIndicator:StartMoving()
+	end
+	local function OnDragStart(self, btn)
+		self:SetAlpha(0.5)
+
+		if not dropIndicator:IsClampedToScreen() then
+			-- first time dragging, do some setup
+			local screenWidth, screenHeight   = GetScreenWidth(), GetScreenHeight()
+			local left, bottom, width, height = self:GetParent():GetRect()
+			dropIndicator:SetClampedToScreen(true)
+			dropIndicator:SetClampRectInsets(-left-padding, screenWidth-left-width+padding, screenHeight-bottom-height, -bottom)
+		end
+		dropIndicator:SetAllPoints(self)
+		dropIndicator:SetText(self:GetText())
+		dropIndicator.index = self:GetID()
+		dropIndicator:Show()
+		dropIndicator:StartMoving()
+		dropIndicator:SetScript('OnUpdate', UpdateDragging)
+	end
+	local function OnDragStop(self)
+		self:SetAlpha(1)
+		dropIndicator.index = nil
+		dropIndicator:SetScript('OnUpdate', nil)
+		dropIndicator:StopMovingOrSizing()
+		dropIndicator:Hide()
+		dropIndicator:SetUserPlaced(false)
+	end
+
+	for index = 1, 6 do
+		local button = CreateRow(index, listFrame)
+		table.insert(listFrame, button)
+
+		button:RegisterForDrag('LeftButton')
+		button:SetScript('OnDragStart', OnDragStart)
+		button:SetScript('OnDragStop',  OnDragStop)
+
+		button:SetPoint('TOPLEFT', listFrame, 'TOPLEFT', padding, -padding - (index-1)*rowHeight)
+		button:SetPoint('RIGHT', listFrame, 'RIGHT', -padding, 0)
+	end
+	FauxScrollFrame_OnVerticalScroll(listFrame, 0, rowHeight, Update)
+end
+
 if true then return end
 
 local AceGUI = LibStub('AceGUI-3.0')
