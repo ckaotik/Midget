@@ -390,6 +390,26 @@ local function ExtendLibItemSearch()
 	}
 end
 
+local function AddSpellHUDImportance()
+	local LibPlayerSpells = LibStub('LibPlayerSpells-1.0', true)
+	if not LibPlayerSpells then return end
+
+	local IMPORTANT = LibPlayerSpells.constants.IMPORTANT
+	local importantSpells = {
+		116257, -- Mage: Invoker's Energy
+	}
+
+	for _, spellID in pairs(importantSpells) do
+		for category, db in pairs(LibPlayerSpells.__categories) do
+			if db[spellID] then
+				db[spellID] = bit.bor(db[spellID], IMPORTANT)
+				local link = GetSpellLink(spellID)
+				print(link, 'is pretty darn important.')
+			end
+		end
+	end
+end
+
 -- apply basic Masque styles to LibSpellWidget frames
 local function AddMasque()
 	local LibMasque       = LibStub('Masque', true)
@@ -486,6 +506,7 @@ function plugin:OnEnable()
 	HideUnusableCompareTips()
 	SetupBigWigs()
 	ExtendLibItemSearch()
+	-- AddSpellHUDImportance()
 	AddMasque()
 
 	-- SLASH_ROLECHECK1 = "/rolecheck"
