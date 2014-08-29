@@ -48,7 +48,7 @@ StaticPopupDialogs['MIDGET_PETTEAM_RENAME'] = {
 	OnAccept = function(self, teamIndex)
 		local name = self.editBox:GetText()
 		if name and name ~= '' then
-			plugin.SaveTeam(teamIndex, name)
+			MidgetDB.petBattleTeams[teamIndex].name = (name and name ~= '') and name or nil
 			plugin.UpdateTabs()
 		end
 		self:Hide()
