@@ -224,13 +224,14 @@ end
 -- ================================================
 local openPopup
 local function AutoAcceptPopup(which, arg1, arg2, data)
+	if not MidgetDB.SHIFTAcceptPopups then return end
 	if type(which) == 'table' then
 		data  = which.data
 		which = which.which
 	end
 	local info = StaticPopupDialogs[which]
 
-	if info and which ~= 'DEATH' and MidgetDB.SHIFTAcceptPopups and IsShiftKeyDown() then
+	if info and which ~= 'DEATH' and IsShiftKeyDown() then
 		if info.OnAccept then
 			info.OnAccept(nil, data)
 		end
