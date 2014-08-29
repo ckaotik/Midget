@@ -16,15 +16,15 @@ local BNET_CLIENT_APP = 'App' -- since there is no global for this
 local icons = {
 	-- see BNet_GetClientTexture(client)
 	[BNET_CLIENT_APP]  = BNet_GetClientEmbeddedTexture(BNET_CLIENT_APP, 0),
-	[BNET_CLIENT_WOW]  = '|TInterface\\FriendsFrame\\BattleNet-WoWIcon:0|t',
-	[BNET_CLIENT_SC2]  = '|TInterface\\FriendsFrame\\BattleNet-SC2Icon:0|t',
-	[BNET_CLIENT_D3]   = '|TInterface\\FriendsFrame\\BattleNet-D3Icon:0|t',
-	[BNET_CLIENT_WTCG] = '|TInterface\\FriendsFrame\\BattleNet-WTCGIcon:0|t',
+	[BNET_CLIENT_WOW]  = BNet_GetClientEmbeddedTexture(BNET_CLIENT_WOW, 0),
+	[BNET_CLIENT_SC2]  = BNet_GetClientEmbeddedTexture(BNET_CLIENT_SC2, 0),
+	[BNET_CLIENT_D3]   = BNet_GetClientEmbeddedTexture(BNET_CLIENT_D3, 0),
+	[BNET_CLIENT_WTCG] = BNet_GetClientEmbeddedTexture(BNET_CLIENT_WTCG, 0),
 	['NONE']           = '|TInterface\\FriendsFrame\\BattleNet-BattleNetIcon:0|t',
-	[CHAT_FLAG_AFK]    = '|TInterface\\FriendsFrame\\StatusIcon-Away:0|t',
-	[CHAT_FLAG_DND]    = '|TInterface\\FriendsFrame\\StatusIcon-DnD:0|t',
+	[CHAT_FLAG_AFK]    = '|T'..FRIENDS_TEXTURE_AFK..':0|t',
+	[CHAT_FLAG_DND]    = '|T'..FRIENDS_TEXTURE_DND..':0|t',
 	['REMOTE']         = '|TInterface\\ChatFrame\\UI-ChatIcon-ArmoryChat:0|t',
-	['BROADCAST']      = '|TInterface\\FriendsFrame\\BroadcastIcon:0|t',
+	['BROADCAST']      = '|T'..FRIENDS_TEXTURE_BROADCAST..':0|t',
 	['NOTE']           = '|TInterface\\FriendsFrame\\UI-FriendsFrame-Note:0|t',
 	['CONTACT']        = '|TInterface\\FriendsFrame\\UI-Toast-FriendOnlineIcon:0|t',
 }
