@@ -222,70 +222,93 @@ function plugin.DumpTeam(index)
 	ChatEdit_GetActiveWindow():Insert(output)
 end
 
-local battlepets = LibStub('AceAddon-3.0'):NewAddon(addonName..'BattlePets', 'AceEvent-3.0')
-local scanSlot = 1
-local function CompareSlotPet(scanSlot)
-	local petID, ability1, ability2, ability3 = C_PetJournal.GetPetLoadOutInfo(scanSlot)
-	local _, _, _, _, _, _, _, name = C_PetJournal.GetPetInfoByPetID(petID)
-	print(YELLOW_FONT_COLOR_CODE..name, '|rwith skills', ability1, ability2, ability3)
-
+local function CheckPets()
+	local missingPets, scanSlot = {}, 1
 	for teamIndex, team in ipairs(MidgetDB.petBattleTeams) do
-		local teamDesc = teamIndex
 		for slotIndex = 1, MAX_ACTIVE_PETS do
 			local pet = team[slotIndex]
 			if pet and pet.petID and not (C_PetJournal.GetPetInfoByPetID(pet.petID)) then
-				local skill1, skill2, skill3 = unpack(pet)
-				teamDesc = teamDesc .. ' / ' .. strjoin(' ', skill1, skill2, skill3)
-				if ability1 == skill1 and ability2 == skill2 and ability3 == skill3 then
-					-- note: this will not work correctly when using multiple pets with the same skill set
-					-- since we don't have level or quality info to compare
-					print(GREEN_FONT_COLOR_CODE, 'Matched!|r', teamIndex, slotIndex, 'with skills', skill1, skill2, skill3)
-					pet.petID = petID
-				end
+				missingPets[pet.petID] = { team = teamIndex, slot = slotIndex, unpack(pet) }
 			end
 		end
-		-- print('comparing against', teamDesc)
 	end
-end
+	if not next(missingPets) then return end
+	FOO = missingPets
 
--- TODO: we could also scan the other way around: find missing petIDs and scan journal for pets that may learn those skills. Then, set that pet and check if we were correct
-local function CheckPetIDs()
 	local scanSlotPetID, _, _, _, isLocked = C_PetJournal.GetPetLoadOutInfo(scanSlot)
 	if isLocked then
 		print('Can\'t scan pet IDs because slot is locked')
 		return
 	end
 
+	local abilityIDs, abilityLevels = {}, {}
 	for index = 1, C_PetJournal.GetNumPets() do
-		local petID, _, owned, _, _, _, revoked, name, _, _, _, _, _, _, canBattle = C_PetJournal.GetPetInfoByIndex(index)
+		local petID, id, owned, _, level, _, revoked, _, _, _, _, _, _, _, canBattle = C_PetJournal.GetPetInfoByIndex(index)
 		if owned and not revoked and canBattle then
-			-- /script C_PetJournal.SetPetLoadOutInfo(2, "0x000000000308B99D", true)
-			C_PetJournal.SetPetLoadOutInfo(scanSlot, petID, true)
-			PetJournal_UpdatePetLoadOut()
+			wipe(abilityIDs); wipe(abilityLevels)
+			C_PetJournal.GetPetAbilityList(id, abilityIDs, abilityLevels)
 
-			updateFrame:Show()
-			coroutine.yield(scanner)
+			for _, data in pairs(missingPets) do
+				local invalid = false
+				for j = 1, 3 do
+					local low, lowLevel   = abilityIDs[j], abilityLevels[j]
+					local high, highLevel = abilityIDs[j+3], abilityLevels[j+3]
+					if data[j] and data[j] ~= low and (level < highLevel or data[j] ~= high) then
+						invalid = true
+						break
+					end
+				end
+				if not invalid then
+					C_PetJournal.SetPetLoadOutInfo(scanSlot, petID, true)
+					PetJournal_UpdatePetLoadOut()
 
-			local scanSlotPetID = C_PetJournal.GetPetLoadOutInfo(scanSlot)
-			CompareSlotPet(scanSlot)
+					updateFrame:Show()
+					coroutine.yield(scanner)
+
+					local petID, ability1, ability2, ability3 = C_PetJournal.GetPetLoadOutInfo(scanSlot)
+					local _, _, _, _, _, _, _, name = C_PetJournal.GetPetInfoByPetID(petID)
+					print(YELLOW_FONT_COLOR_CODE..name, '|rwith skills', ability1, ability2, ability3)
+
+					for oldPetID, data in pairs(missingPets) do
+						local skill1, skill2, skill3 = unpack(data)
+						-- print('looking for', skill1, skill2, skill3)
+						if skill1 == ability1 and skill2 == ability2 and skill3 == ability3 then
+							print(GREEN_FONT_COLOR_CODE, 'Matched!|r', data.team..'/'..data.slot, 'with skills', skill1, skill2, skill3)
+							MidgetDB.petBattleTeams[data.team][data.slot].petID = petID
+
+							wipe(missingPets[oldPetID])
+							missingPets[oldPetID] = nil
+						end
+					end
+				end
+			end
 		end
 	end
+
 	-- restore previous pet
 	C_PetJournal.SetPetLoadOutInfo(scanSlot, scanSlotPetID, true)
+	coroutine.yield(scanner)
+
+	for oldPetID, data in pairs(missingPets) do
+		local link = 'http://www.wowhead.com/petspecies?filter=cr=15:15:15;crs=0:0:0;crv=' .. strjoin(':', unpack(data))
+		print('Your pet '..data.slot..' in team '..data.team..' could not be found. Please check '..link)
+	end
+
+	plugin.UpdateTabs()
 end
 
 StaticPopupDialogs['MIDGET_PETID_SCAN'] = {
-  text = 'It seems some of your pet IDs are outdated. Would you like me to try and fix them?|nThis will take quite some time.',
-  button1 = _G.OKAY,
-  button2 = _G.CANCEL,
-  OnAccept = function()
-    scanner = coroutine.create(CheckPetIDs)
-	coroutine.resume(scanner)
-  end,
-  timeout = 0,
-  whileDead = true,
-  hideOnEscape = true,
-  preferredIndex = 3,
+	text = 'It seems some of your pet IDs have changed. Should I try to fix them?|nThis will take some time.',
+	button1 = _G.OKAY,
+	button2 = _G.CANCEL,
+	OnAccept = function()
+		scanner = coroutine.create(CheckPets)
+		coroutine.resume(scanner)
+	end,
+	timeout = 0,
+	whileDead = true,
+	hideOnEscape = true,
+	preferredIndex = 3,
 }
 
 function plugin.UpdateTabs()
@@ -299,7 +322,7 @@ function plugin.UpdateTabs()
 
 		tab.teamIndex = index
 		tab.tooltip = SetTeamTooltip
-		if not speciesID then
+		if not speciesID and not scanner then
 			StaticPopup_Show('MIDGET_PETID_SCAN')
 		end
 	end
