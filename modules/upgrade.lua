@@ -55,9 +55,9 @@ local function DisplayItemUpgradeInfo()
 		for index = 1, numRows do
 			local left, right = ItemUpgradeFrame_GetStatRow(index)
 			if left.Icon then left.Icon:Hide() end
-			left.hyperlink = nil
+			left.link = nil
 			if right.Icon then right.Icon:Hide() end
-			right.hyperlink = nil
+			right.link = nil
 		end
 		return
 	end
@@ -121,7 +121,7 @@ local function DisplayItemUpgradeInfo()
 				line.slotID = slotID
 				line:HookScript('OnMouseUp', SetItemForUpgrade)
 			end
-			line.hyperlink = itemLink
+			line.link = itemLink
 			line.Icon:Show()
 			line.Icon:SetTexture( GetItemIcon(itemLink) )
 			line:Show()

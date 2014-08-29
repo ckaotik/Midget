@@ -113,18 +113,31 @@ function addon:Debug(...)
   end
 end
 
-function addon.ShowTooltip(self)
-	if self.hyperlink then
+-- convenient and smart tooltip handling
+function addon.ShowTooltip(self, anchor)
+	if not self.tiptext and not self.link then return end
+	if anchor and type(anchor) == 'table' then
+		GameTooltip:SetOwner(anchor, "ANCHOR_RIGHT")
+	else
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-		GameTooltip:SetHyperlink(self.hyperlink)
-	elseif self.tiptext then
-		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-		GameTooltip:SetText(self.tiptext, nil, nil, nil, nil, true)
 	end
+	GameTooltip:ClearLines()
+
+	if self.link then
+		GameTooltip:SetHyperlink(self.link)
+	elseif type(self.tiptext) == "string" and self.tiptext ~= "" then
+		GameTooltip:SetText(self.tiptext, nil, nil, nil, nil, true)
+		local lineIndex = 2
+		while self['tiptext'..lineIndex] do
+			GameTooltip:AddLine(self['tiptext'..lineIndex], 1, 1, 1, nil, true)
+			lineIndex = lineIndex + 1
+		end
+	elseif type(self.tiptext) == "function" then
+		self.tiptext(self, GameTooltip)
+	end
+	GameTooltip:Show()
 end
-function addon.HideTooltip()
-	GameTooltip:Hide()
-end
+function addon.HideTooltip() GameTooltip:Hide() end
 
 function addon.GetItemID(itemLink)
 	if not itemLink or type(itemLink) ~= "string" then return end

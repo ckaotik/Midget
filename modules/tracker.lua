@@ -182,7 +182,7 @@ local function DisplayTeamTracker(lineFrame, nextAnchor, maxHeight, frameWidth)
 				button:SetAttribute("type", "spell")
 				button:SetAttribute("spell", spellName)
 
-				button.hyperlink = 'spell:'..HEAL_PETS
+				button.link = 'spell:'..HEAL_PETS
 				button:SetScript("OnEnter", addon.ShowTooltip)
 				button:SetScript("OnLeave", addon.HideTooltip)
 

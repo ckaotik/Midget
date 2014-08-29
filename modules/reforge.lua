@@ -41,9 +41,9 @@ local function DisplayReforgingFrameInfo()
 		for index = 1, _G.REFORGE_MAX_STATS_SHOWN do
 			local left, right = ReforgingFrame_GetStatRow(index)
 			if left.Icon then left.Icon:Hide() end
-			left.hyperlink = nil
+			left.link = nil
 			if right.Icon then right.Icon:Hide() end
-			right.hyperlink = nil
+			right.link = nil
 		end
 		ReforgingFrame.RestoreMessage:SetText(_G.REFORGE_RESTORE_MESSAGE)
 		ReforgingFrame.RestoreMessage:SetTextColor(0, 0, 0, 1)
@@ -89,7 +89,7 @@ local function DisplayReforgingFrameInfo()
 				line.slotID = slotID
 				line:HookScript('OnClick', SetItemForReforge)
 			end
-			line.hyperlink = itemLink
+			line.link = itemLink
 			line.Icon:Show()
 			line.Icon:SetTexture( GetItemIcon(itemLink) )
 			line.Button:Hide()
