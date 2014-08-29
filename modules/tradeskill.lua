@@ -75,7 +75,7 @@ local function AddTradeSkillReagentCosts()
 					if LPT and LPT:ItemInSet(reagent, "Tradeskill.Mat.BySource.Vendor") then
 						reagentPrice = 4 * (select(11, GetItemInfo(reagent)) or 0)
 					else
-						reagentPrice = GetAuctionBuyout(reagent) or 0 -- [TODO] what about BoP things?
+						reagentPrice = GetAuctionBuyout and GetAuctionBuyout(reagent) or 0 -- [TODO] what about BoP things?
 					end
 					reagentPrice = reagentPrice * amount
 					craftPrice = craftPrice + reagentPrice
@@ -85,7 +85,7 @@ local function AddTradeSkillReagentCosts()
 			end
 
 			craftedItem = GetTradeSkillItemLink(skillIndex)
-			craftedValue = craftedItem and GetAuctionBuyout(craftedItem) or 0
+			craftedValue = craftedItem and GetAuctionBuyout and GetAuctionBuyout(craftedItem) or 0
 
 			if craftPrice > 0 and craftedValue > 0 then
 				infoIcon.tiptext = COSTS_LABEL.." "..GetCoinTextureString(craftPrice) .. "\n"
