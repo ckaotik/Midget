@@ -34,7 +34,7 @@ modules\groupfinder.lua
 modules\journal.lua
 modules\learner.lua
 modules\mail.lua
-modules\openraid.lua
+modules\raid.lua
 modules\reforge.lua
 modules\social.lua
 modules\spellbook.lua

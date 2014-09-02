@@ -1,8 +1,31 @@
-local addonName, ns, _ = ...
+local addonName, addon, _ = ...
+local plugin = addon:NewModule('RaidTracker', 'AceEvent-3.0')
 
 -- GLOBALS: _G,
 -- GLOBALS:
 -- GLOBALS: hooksecurefunc
+
+function plugin:OnEnable()
+	self:RegisterEvent('ENCOUNTER_END')
+	self:RegisterEvent('ENCOUNTER_START')
+end
+
+function plugin:OnDisable()
+	self:UnregisterEvent('ENCOUNTER_END')
+	self:UnregisterEvent('ENCOUNTER_START')
+end
+
+-- http://wowprogramming.com/docs/events/ENCOUNTER_START
+function plugin:ENCOUNTER_START(event, encounterID, encounterName, difficulty, raidSize)
+	print('Encounter', encounterName, '('..encounterID..')', 'started')
+end
+
+-- http://wowprogramming.com/docs/events/ENCOUNTER_END
+function plugin:ENCOUNTER_END(event, encounterID, encounterName, difficulty, raidSize, endStatus)
+	print('Encounter', encounterName, '('..encounterID..')', endStatus == 1 and 'completed' or 'wiped')
+end
+
+if true then return end
 
 -- ================================================
 -- Utility for OpenRaid.eu
