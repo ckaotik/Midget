@@ -146,53 +146,60 @@ local function CheckUpdateLootSpec(event, id, name, difficulty, groupSize)
 	end
 end
 
-local function initialize(event, arg1)
-	if (arg1 == addonName or arg1 == 'Blizzard_EncounterJournal') and IsAddOnLoaded('Blizzard_EncounterJournal') then
-		local selectedEncounter, selectedDifficulty
-		hooksecurefunc("EncounterJournal_DisplayInstance", UpdateBossButtons)
-		hooksecurefunc("EncounterJournal_DisplayEncounter", function(encounterID, noButton)
-			if selectedEncounter and selectedEncounter == EncounterJournal.encounterID
-				and (not selectedDifficulty or selectedDifficulty == EJ_GetDifficulty()) then
-				-- unselect this boss without changing scroll position in boss list
-				NavBar_Reset(EncounterJournal.navBar)
-				selectedEncounter = nil
+local function initialize()
+	local selectedEncounter, selectedDifficulty
+	hooksecurefunc("EncounterJournal_DisplayInstance", UpdateBossButtons)
+	hooksecurefunc("EncounterJournal_DisplayEncounter", function(encounterID, noButton)
+		if selectedEncounter and selectedEncounter == EncounterJournal.encounterID
+			and (not selectedDifficulty or selectedDifficulty == EJ_GetDifficulty()) then
+			-- unselect this boss without changing scroll position in boss list
+			NavBar_Reset(EncounterJournal.navBar)
+			selectedEncounter = nil
 
-				local leftScroll = EncounterJournal.encounter.info.bossesScroll.ScrollBar
-				local bossListScrollValue = leftScroll:GetValue()
-				EncounterJournal_DisplayInstance(EncounterJournal.instanceID)
-				leftScroll:SetValue(bossListScrollValue)
-			else
-				selectedEncounter = encounterID
-			end
-			selectedDifficulty = EJ_GetDifficulty()
-		end)
+			local leftScroll = EncounterJournal.encounter.info.bossesScroll.ScrollBar
+			local bossListScrollValue = leftScroll:GetValue()
+			EncounterJournal_DisplayInstance(EncounterJournal.instanceID)
+			leftScroll:SetValue(bossListScrollValue)
+		else
+			selectedEncounter = encounterID
+		end
+		selectedDifficulty = EJ_GetDifficulty()
+	end)
 
-		local initArrows = nil
-		EncounterJournal:HookScript("OnShow", function()
-			if initArrows then return end
-			CreateArrow( 1, "BOTTOMRIGHT", "$parentInstanceTitle", "LEFT", 0,  1)
-			CreateArrow(-1, "TOPRIGHT",    "$parentInstanceTitle", "LEFT", 0, -1)
-			initArrows = true
-		end)
+	local initArrows = nil
+	EncounterJournal:HookScript("OnShow", function()
+		if initArrows then return end
+		CreateArrow( 1, "BOTTOMRIGHT", "$parentInstanceTitle", "LEFT", 0,  1)
+		CreateArrow(-1, "TOPRIGHT",    "$parentInstanceTitle", "LEFT", 0, -1)
+		initArrows = true
+	end)
 
-		local initTooltips = nil
-		hooksecurefunc("EncounterJournal_LootUpdate", function()
-			if initTooltips then return end
-			-- don't like tooltips triggering EVERYWHERE
-			local lootButtons = EncounterJournal.encounter.info.lootScroll.buttons
-			for _, button in pairs(lootButtons) do
-				button:SetHitRectInsets(0, 276, 0, 0)
-			end
-			initTooltips = true
-		end)
+	local initTooltips = nil
+	hooksecurefunc("EncounterJournal_LootUpdate", function()
+		if initTooltips then return end
+		-- don't like tooltips triggering EVERYWHERE
+		local lootButtons = EncounterJournal.encounter.info.lootScroll.buttons
+		for _, button in pairs(lootButtons) do
+			button:SetHitRectInsets(0, 276, 0, 0)
+		end
+		initTooltips = true
+	end)
 
-		plugin:RegisterEvent('ENCOUNTER_START', CheckUpdateLootSpec)
-		-- plugin:RegisterEvent('ENCOUNTER_END', CheckUpdateLootSpec)
+	plugin:RegisterEvent('ENCOUNTER_START', CheckUpdateLootSpec)
+	-- plugin:RegisterEvent('ENCOUNTER_END', CheckUpdateLootSpec)
 
-		plugin:UnregisterEvent('ADDON_LOADED')
-	end
+	plugin:UnregisterEvent('ADDON_LOADED')
 end
 
 function plugin:OnEnable()
-	plugin:RegisterEvent('ADDON_LOADED', initialize)
+	if IsAddOnLoaded('Blizzard_EncounterJournal') then
+		initialize()
+		UpdateBossButtons()
+	else
+		plugin:RegisterEvent('ADDON_LOADED', function(event, arg1)
+			if arg1 == 'Blizzard_EncounterJournal' then
+				initialize()
+			end
+		end)
+	end
 end
