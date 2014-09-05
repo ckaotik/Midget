@@ -5,14 +5,118 @@ local plugin = addon:NewModule('RaidTracker', 'AceEvent-3.0')
 -- GLOBALS:
 -- GLOBALS: hooksecurefunc
 
+local raidBuffColors = {
+	-- _G.RAID_BUFF_1 stat multiplier
+	[  1126] = _G.RAID_CLASS_COLORS['DRUID'], -- Mark of the Wild
+	[ 20217] = _G.RAID_CLASS_COLORS['PALADIN'], -- Blessing of Kings
+	[115921] = _G.RAID_CLASS_COLORS['MONK'], -- Legacy of the Emperor
+	[ 90363] = _G.RAID_CLASS_COLORS['HUNTER'], -- Embrace of the Shale Spider
+	-- _G.RAID_BUFF_2 stamina
+	[   469] = _G.RAID_CLASS_COLORS['WARRIOR'], -- Commanding Shout
+	[ 21562] = _G.RAID_CLASS_COLORS['PRIEST'], -- Power Word: Fortitude
+	[ 90364] = _G.RAID_CLASS_COLORS['HUNTER'], -- Qiraji Fortitude
+	[109773] = _G.RAID_CLASS_COLORS['WARLOCK'], -- Dark Intent
+	[ 86507] = {r = 1, g = 1, b = 1, a = 1}, -- Runescroll of Fortitude II [Inscription]
+	[ 69377] = {r = 1, g = 1, b = 1, a = 1}, -- Runescroll of Fortitude I [Inscription]
+	-- _G.RAID_BUFF_3 -- attack power
+	[  6673] = _G.RAID_CLASS_COLORS['WARRIOR'], -- Batte Shout
+	[ 19506] = _G.RAID_CLASS_COLORS['HUNTER'], -- Trueshot Aura
+	[ 57330] = _G.RAID_CLASS_COLORS['DEATHKNIGHT'], -- Horn of Winter
+	-- _G.RAID_BUFF_4 attack speed
+	[ 30809] = _G.RAID_CLASS_COLORS['SHAMAN'], -- Unleashed Rage
+	[ 55610] = _G.RAID_CLASS_COLORS['DEATHKNIGHT'], -- Unholy Aura
+	[113742] = _G.RAID_CLASS_COLORS['ROGUE'], -- Swiftblade's Cunning
+	[128432] = _G.RAID_CLASS_COLORS['HUNTER'], -- Cackling Howl
+	[128433] = _G.RAID_CLASS_COLORS['HUNTER'], -- Serpent's Swiftness
+	-- _G.RAID_BUFF_5 spell power
+	[  1459] = _G.RAID_CLASS_COLORS['MAGE'], -- Arcane Brilliance
+	[ 61316] = _G.RAID_CLASS_COLORS['MAGE'], -- Dalaran Brilliance
+	[ 77747] = _G.RAID_CLASS_COLORS['SHAMAN'], -- Burning Wrath
+	-- [109773] = _G.RAID_CLASS_COLORS['WARLOCK'], -- Dark Intent
+	[126309] = _G.RAID_CLASS_COLORS['HUNTER'], -- Still Water
+	-- _G.RAID_BUFF_6 spell haste
+	[ 15473] = _G.RAID_CLASS_COLORS['PRIEST'], -- Shadowform
+	[ 24907] = _G.RAID_CLASS_COLORS['DRUID'], -- Moonkin Aura
+	[ 51470] = _G.RAID_CLASS_COLORS['SHAMAN'], -- Elemental Oath
+	[ 49868] = _G.RAID_CLASS_COLORS['HUNTER'], -- Mind Quickening
+	[135678] = _G.RAID_CLASS_COLORS['HUNTER'], -- Energizing Spores
+	-- _G.RAID_BUFF_7 critical strike chance
+	-- [  1459] = _G.RAID_CLASS_COLORS['MAGE'], -- Arcane Brilliance
+	[ 17007] = _G.RAID_CLASS_COLORS['DRUID'], -- Leader of the Pack
+	[ 24604] = _G.RAID_CLASS_COLORS['HUNTER'], -- Furious Howl
+	-- [ 61316] = _G.RAID_CLASS_COLORS['MAGE'], -- Dalaran Brilliance
+	[ 90309] = _G.RAID_CLASS_COLORS['HUNTER'], -- Terrifying Roar
+	[ 97229] = _G.RAID_CLASS_COLORS['HUNTER'], -- Bellowing Roar
+	[116781] = _G.RAID_CLASS_COLORS['MONK'], -- Legacy of the White Tiger
+	-- [126309] = _G.RAID_CLASS_COLORS['HUNTER'], -- Still Water
+	[126373] = _G.RAID_CLASS_COLORS['HUNTER'], -- Fearless Roar
+	-- _G.RAID_BUFF_8 mastery
+	[ 19740] = _G.RAID_CLASS_COLORS['PALADIN'], -- Blessing of Might
+	[116956] = _G.RAID_CLASS_COLORS['SHAMAN'], -- Grace of Air
+	[ 93435] = _G.RAID_CLASS_COLORS['HUNTER'], -- Roar of Courage
+	[128997] = _G.RAID_CLASS_COLORS['HUNTER'], -- Spirit Beast Blessing
+}
+
+local function OnEnterRaidBuff(self)
+	local index = self:GetID()
+	local _, _, _, _, _, spellID = GetRaidBuffTrayAuraInfo(index)
+	if not spellID then return end
+	GameTooltip:SetOwner(self)
+	GameTooltip:SetUnitConsolidatedBuff('player', index)
+	GameTooltip:AddLine(string.format(_G.ITEM_SPELL_EFFECT, _G['RAID_BUFF_'..index]:gsub('-\n', '')), 1, 1, 1, 1)
+	GameTooltip:Show()
+end
 function plugin:OnEnable()
+	self.indicators = {}
+	for index = 1, _G.NUM_LE_RAID_BUFF_TYPES do
+		local indicator = CreateFrame('Frame', nil, UIParent, nil, index)
+		      indicator:SetSize(10, 10)
+		      indicator:Hide()
+		local icon = indicator:CreateTexture()
+		      icon:SetAllPoints()
+		      icon:SetTexture(1, 1, 1, 1)
+		indicator.icon = icon
+
+		if index == 1 then
+			indicator:SetPoint('TOPLEFT', _G.Minimap, 'TOPRIGHT', 4, -40)
+		else
+			indicator:SetPoint('TOPLEFT', self.indicators[index-1], 'BOTTOMLEFT', 0, -1)
+		end
+		self.indicators[index] = indicator
+
+		indicator:SetScript('OnEnter', OnEnterRaidBuff)
+		indicator:SetScript('OnLeave', GameTooltip_Hide)
+	end
+
 	self:RegisterEvent('ENCOUNTER_END')
 	self:RegisterEvent('ENCOUNTER_START')
+	self:RegisterEvent('UNIT_AURA')
+	self:UNIT_AURA('UNIT_AURA', 'player')
 end
 
 function plugin:OnDisable()
 	self:UnregisterEvent('ENCOUNTER_END')
 	self:UnregisterEvent('ENCOUNTER_START')
+	self:UnregisterEvent('UNIT_AURA')
+
+	for index, indicator in ipairs(self.indicators) do
+		indicator:Hide()
+	end
+end
+
+function plugin:UNIT_AURA(event, unit)
+	if unit ~= 'player' then return end
+	for index = 1, _G.NUM_LE_RAID_BUFF_TYPES do
+		local name, rank, texture, duration, expiration, spellID, slot = GetRaidBuffTrayAuraInfo(index)
+		local indicator = self.indicators[index]
+		if not name then
+			indicator:Hide()
+		else
+			local color = raidBuffColors[spellID]
+			indicator.icon:SetVertexColor(color.r, color.g, color.b, color.a)
+			indicator:Show()
+		end
+	end
 end
 
 -- http://wowprogramming.com/docs/events/ENCOUNTER_START
