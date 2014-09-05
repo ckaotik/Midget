@@ -59,7 +59,7 @@ local function OnCharacterClick(self, character, btn, up)
 	elseif IsControlKeyDown() then
 		-- edit notes
 		if contactType == 'guild' then
-			for index = 1, select(3, GetNumGuildMembers()) do
+			for index = 1, GetNumGuildMembers() do
 				local name = GetGuildRosterInfo(index)
 				if name == contactInfo then
 					SetGuildRosterSelection(index)
