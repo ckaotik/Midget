@@ -1,8 +1,18 @@
+local data = {
+	'lorem',
+	'ipsum',
+	'dolor',
+	'foo',
+	'bar',
+	'1337',
+	'x',
+}
+
 local function FOO()
-	local rowHeight, padding, dropIndicator = 20, 4
+	local numRows, padding, dropIndicator = 6, 4, nil
 	local function CreateRow(identifier, parent)
 		local button = CreateFrame('Button', '$parentButton'..identifier, parent, nil, identifier)
-		      button:SetHeight(rowHeight)
+		      button:SetHeight(20)
 
 		button:SetNormalTexture('Interface\\CURSOR\\UI-Cursor-Move')
 		local tex = button:GetNormalTexture()
@@ -28,19 +38,69 @@ local function FOO()
 		return button
 	end
 
-	local dropIndicator = CreateRow('Dummy')
-	      dropIndicator:SetMovable(true)
-	      dropIndicator:Hide()
-
 	local function Update(self)
 		local offset = FauxScrollFrame_GetOffset(self)
 		for i, button in ipairs(self) do
-			-- TODO: fill in data
 			local index = i + offset
-			button:SetText('Label '..index)
-			button:SetAlpha((dropIndicator.index == index) and 0.5 or 1)
+			-- TODO: allow assoc data tables and create sorttable
+			local label = self.data[index]
+			if label then
+				button:SetText(label)
+				button:SetAlpha((dropIndicator.index == index) and 0.5 or 1)
+				button:Show()
+			else
+				button:Hide()
+			end
+			button.index = index
 		end
-		local needsScrollBar = FauxScrollFrame_Update(self, 10, #self, self[1]:GetHeight())
+		-- alwaysShowScrollBar: true, so we're not hiding with <= #self rows
+		FauxScrollFrame_Update(self, #data, #self, self[1]:GetHeight(), nil, nil, nil, nil, nil, nil, true)
+	end
+	local function UpdateDragging(self, elapsed)
+		local parent, frameAbove = self:GetParent()
+		local rowHeight = self:GetHeight()
+		for index, button in ipairs(parent) do
+			if button:IsMouseOver(0, 0, rowHeight/2, 0) then
+				frameAbove = button
+				break
+			end
+		end
+		dropIndicator:StopMovingOrSizing()
+		dropIndicator:SetPoint('LEFT', frameAbove or parent[#parent], frameAbove and 'TOPLEFT' or 'BOTTOMLEFT')
+	end
+	local function OnDragStart(self, btn)
+		self:SetAlpha(0.5)
+
+		if not dropIndicator:IsClampedToScreen() then
+			-- first time dragging, do some setup
+			local screenWidth, screenHeight   = GetScreenWidth(), GetScreenHeight()
+			local left, bottom, width, height = self:GetParent():GetRect()
+			dropIndicator:SetClampedToScreen(true)
+			dropIndicator:SetClampRectInsets(-left-padding, screenWidth-left-width+padding, screenHeight-bottom-height, -bottom)
+		end
+		dropIndicator:SetAllPoints(self)
+		dropIndicator:SetText(self:GetText())
+		dropIndicator.index = self.index
+		dropIndicator:Show()
+		dropIndicator:StartMoving() -- attach dropIndicator to mouse
+		dropIndicator:SetScript('OnUpdate', UpdateDragging)
+	end
+	local function OnDragStop(self)
+		local _, anchor, position = dropIndicator:GetPoint()
+		local oldIndex, anchorIndex = dropIndicator.index, anchor.index
+		local newIndex = position == 'TOPLEFT' and anchorIndex or (anchorIndex + 1)
+
+		local listFrame = self:GetParent()
+		table.insert(listFrame.data, newIndex, listFrame.data[oldIndex])
+		table.remove(listFrame.data, newIndex > oldIndex and oldIndex or (oldIndex + 1))
+		Update(listFrame)
+
+		self:SetAlpha(1)
+		dropIndicator.index = nil
+		dropIndicator:SetScript('OnUpdate', nil)
+		dropIndicator:StopMovingOrSizing()
+		dropIndicator:Hide()
+		dropIndicator:SetUserPlaced(false)
 	end
 
 	local backdrop = {
@@ -58,60 +118,24 @@ local function FOO()
 		FauxScrollFrame_OnVerticalScroll(scrollFrame, offset, rowHeight, Update)
 	end)
 
-	dropIndicator:SetParent(listFrame)
 	listFrame:SetPoint('CENTER', 100, 50)   -- *
 	listFrame:SetSize(300, 130)             -- *
+	listFrame.data = data                   -- *
 	-- TODO: what happens to drag constraints when the frame containing listFrame gets moved?
 
-	--[[ local label = listFrame:CreateFontString(nil, 'OVERLAY', 'GameFontNormalSmall')
+	local label = listFrame:CreateFontString(nil, 'OVERLAY', 'GameFontNormalSmall')
 	      label:SetPoint('TOPLEFT',  listFrame, 'TOPLEFT', 4, 10)
 	      label:SetPoint('TOPRIGHT', listFrame, 'TOPRIGHT', -4, 10)
 	      label:SetJustifyH('LEFT')
 	      label:SetHeight(10)
-	label:SetText('Setting Title') -- * --]]
 
 	-- drag & drop
-	local function UpdateDragging(self, elapsed)
-		local parent, frameAbove = self:GetParent()
-		local rowHeight = self:GetHeight()
-		for index, button in ipairs(parent) do
-			if button:IsMouseOver(0, 0, rowHeight/2, 0) then
-				frameAbove = button
-				break
-			end
-		end
+	dropIndicator = CreateRow('Dummy', listFrame)
+	dropIndicator:SetMovable(true)
+	dropIndicator:Hide()
 
-		dropIndicator:StopMovingOrSizing()
-		dropIndicator:SetPoint('LEFT', frameAbove or parent[#parent], frameAbove and 'TOPLEFT' or 'BOTTOMLEFT')
-		dropIndicator:StartMoving()
-	end
-	local function OnDragStart(self, btn)
-		self:SetAlpha(0.5)
-
-		if not dropIndicator:IsClampedToScreen() then
-			-- first time dragging, do some setup
-			local screenWidth, screenHeight   = GetScreenWidth(), GetScreenHeight()
-			local left, bottom, width, height = self:GetParent():GetRect()
-			dropIndicator:SetClampedToScreen(true)
-			dropIndicator:SetClampRectInsets(-left-padding, screenWidth-left-width+padding, screenHeight-bottom-height, -bottom)
-		end
-		dropIndicator:SetAllPoints(self)
-		dropIndicator:SetText(self:GetText())
-		dropIndicator.index = self:GetID()
-		dropIndicator:Show()
-		dropIndicator:StartMoving()
-		dropIndicator:SetScript('OnUpdate', UpdateDragging)
-	end
-	local function OnDragStop(self)
-		self:SetAlpha(1)
-		dropIndicator.index = nil
-		dropIndicator:SetScript('OnUpdate', nil)
-		dropIndicator:StopMovingOrSizing()
-		dropIndicator:Hide()
-		dropIndicator:SetUserPlaced(false)
-	end
-
-	for index = 1, 6 do
+	local rowHeight
+	for index = 1, numRows do
 		local button = CreateRow(index, listFrame)
 		table.insert(listFrame, button)
 
@@ -119,6 +143,7 @@ local function FOO()
 		button:SetScript('OnDragStart', OnDragStart)
 		button:SetScript('OnDragStop',  OnDragStop)
 
+		if index == 1 then rowHeight = button:GetHeight() end
 		button:SetPoint('TOPLEFT', listFrame, 'TOPLEFT', padding, -padding - (index-1)*rowHeight)
 		button:SetPoint('RIGHT', listFrame, 'RIGHT', -padding, 0)
 	end
@@ -128,15 +153,14 @@ end
 if true then return end
 
 local AceGUI = LibStub('AceGUI-3.0')
-local dragIcon = 'Interface\\CURSOR\\UI-Cursor-Move'
--- local up, up_disabled     = 'Interface\\Buttons\\Arrow-Up-Up', 'Interface\\Buttons\\Arrow-Up-Disabled'
--- local down, down_disabled = 'Interface\\Buttons\\Arrow-Down-Up', 'Interface\\Buttons\\Arrow-Down-Disabled'
+local widgetType = 'ListSort'
+local widgetVersion = 1
 
 --[[-----------------------------------------------------------------------------
 Support functions
 -------------------------------------------------------------------------------]]
 local function Layout(self)
-	self:SetHeight(self.numlines * 14 + (self.disablebutton and 19 or 41) + self.labelHeight)
+	--[[ self:SetHeight(self.numlines * 14 + (self.disablebutton and 19 or 41) + self.labelHeight)
 
 	if self.labelHeight == 0 then
 		self.scrollBar:SetPoint("TOP", self.frame, "TOP", 0, -23)
@@ -150,39 +174,13 @@ local function Layout(self)
 	else
 		self.scrollBar:SetPoint("BOTTOM", self.button, "TOP", 0, 18)
 		self.scrollBG:SetPoint("BOTTOMLEFT", self.button, "TOPLEFT")
-	end
+	end --]]
 end
 
 --[[-----------------------------------------------------------------------------
 Scripts
 -------------------------------------------------------------------------------]]
-local function OnClick(self)                                                     -- Button
-	self = self.obj
-	self.editBox:ClearFocus()
-	if not self:Fire("OnEnterPressed", self.editBox:GetText()) then
-		self.button:Disable()
-	end
-end
-
-local function OnCursorChanged(self, _, y, _, cursorHeight)                      -- EditBox
-	self, y = self.obj.scrollFrame, -y
-	local offset = self:GetVerticalScroll()
-	if y < offset then
-		self:SetVerticalScroll(y)
-	else
-		y = y + cursorHeight - self:GetHeight()
-		if y > offset then
-			self:SetVerticalScroll(y)
-		end
-	end
-end
-
-local function OnEditFocusLost(self)                                             -- EditBox
-	self:HighlightText(0, 0)
-	self.obj:Fire("OnEditFocusLost")
-end
-
-local function OnEnter(self)                                                     -- EditBox / ScrollFrame
+local function OnEnter(self)                                                     -- ScrollFrame
 	self = self.obj
 	if not self.entered then
 		self.entered = true
@@ -190,7 +188,7 @@ local function OnEnter(self)                                                    
 	end
 end
 
-local function OnLeave(self)                                                     -- EditBox / ScrollFrame
+local function OnLeave(self)                                                     -- ScrollFrame
 	self = self.obj
 	if self.entered then
 		self.entered = nil
@@ -198,63 +196,14 @@ local function OnLeave(self)                                                    
 	end
 end
 
-local function OnMouseUp(self)                                                   -- ScrollFrame
-	self = self.obj.editBox
-	self:SetFocus()
-	self:SetCursorPosition(self:GetNumLetters())
-end
-
-local function OnReceiveDrag(self)                                               -- EditBox / ScrollFrame
-	local type, id, info = GetCursorInfo()
-	if type == "spell" then
-		info = GetSpellInfo(id, info)
-	elseif type ~= "item" then
-		return
-	end
-	ClearCursor()
-	self = self.obj
-	local editBox = self.editBox
-	if not editBox:HasFocus() then
-		editBox:SetFocus()
-		editBox:SetCursorPosition(editBox:GetNumLetters())
-	end
-	editBox:Insert(info)
-	self.button:Enable()
-end
-
-local function OnSizeChanged(self, width, height)                                -- ScrollFrame
-	self.obj.editBox:SetWidth(width)
-end
-
-local function OnTextChanged(self, userInput)                                    -- EditBox
-	if userInput then
-		self = self.obj
-		self:Fire("OnTextChanged", self.editBox:GetText())
-		self.button:Enable()
-	end
-end
-
-local function OnTextSet(self)                                                   -- EditBox
-	self:HighlightText(0, 0)
-	self:SetCursorPosition(self:GetNumLetters())
-	self:SetCursorPosition(0)
-	self.obj.button:Disable()
-end
-
 local function OnVerticalScroll(self, offset)                                    -- ScrollFrame
-	local editBox = self.obj.editBox
-	editBox:SetHitRectInsets(0, 0, offset, editBox:GetHeight() - offset - self:GetHeight())
+	local rowHeight = self[1]:GetHeight()
+	FauxScrollFrame_OnVerticalScroll(self, offset, rowHeight, Update)
 end
 
-local function OnShowFocus(frame)
-	frame.obj.editBox:SetFocus()
-	frame:SetScript("OnShow", nil)
-end
-
-local function OnEditFocusGained(frame)
-	AceGUI:SetFocus(frame.obj)
-	frame.obj:Fire("OnEditFocusGained")
-end
+--[[ local function OnSizeChanged(self, width, height)                                -- ScrollFrame
+	self.obj.editBox:SetWidth(width)
+end --]]
 
 --[[-----------------------------------------------------------------------------
 Methods
@@ -312,64 +261,22 @@ local methods = {
 		self.numlines = value
 		Layout(self)
 	end,
-
-	["SetText"] = function(self, text)
-		self.editBox:SetText(text)
-	end,
-
-	["GetText"] = function(self)
-		return self.editBox:GetText()
-	end,
-
-	["SetMaxLetters"] = function (self, num)
-		self.editBox:SetMaxLetters(num or 0)
-	end,
-
-	["DisableButton"] = function(self, disabled)
-		self.disablebutton = disabled
-		if disabled then
-			self.button:Hide()
-		else
-			self.button:Show()
-		end
-		Layout(self)
-	end,
-
-	["ClearFocus"] = function(self)
-		self.editBox:ClearFocus()
-		self.frame:SetScript("OnShow", nil)
-	end,
-
-	["SetFocus"] = function(self)
-		self.editBox:SetFocus()
-		if not self.frame:IsShown() then
-			self.frame:SetScript("OnShow", OnShowFocus)
-		end
-	end,
-
-	["GetCursorPosition"] = function(self)
-		return self.editBox:GetCursorPosition()
-	end,
-
-	["SetCursorPosition"] = function(self, ...)
-		return self.editBox:SetCursorPosition(...)
-	end,
 }
 
 --[[-----------------------------------------------------------------------------
 Constructor
 -------------------------------------------------------------------------------]]
 local backdrop = {
-	bgFile = [[Interface\Tooltips\UI-Tooltip-Background]],
+	bgFile   = [[Interface\Tooltips\UI-Tooltip-Background]],
 	edgeFile = [[Interface\Tooltips\UI-Tooltip-Border]], edgeSize = 16,
-	insets = { left = 4, right = 3, top = 4, bottom = 3 }
+	insets   = { left = 4, right = 3, top = 4, bottom = 3 }
 }
 
 local function Constructor()
 	local frame = CreateFrame("Frame", nil, UIParent)
-	frame:Hide()
+	      frame:Hide()
 
-	local widgetNum = AceGUI:GetNextWidgetNum(Type)
+	local widgetNum = AceGUI:GetNextWidgetNum(widgetType)
 
 	local label = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	      label:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -4)
@@ -378,77 +285,38 @@ local function Constructor()
 	      label:SetText(ACCEPT)
 	      label:SetHeight(10)
 
-	local button = CreateFrame("Button", ("%s%dButton"):format(Type, widgetNum), frame, "UIPanelButtonTemplate")
-	      button:SetPoint("BOTTOMLEFT", 0, 4)
-	      button:SetHeight(22)
-	      button:SetWidth(label:GetStringWidth() + 24)
-	      button:SetText(ACCEPT)
-	      button:SetScript("OnClick", OnClick)
-	      button:Disable()
-
-	local text = button:GetFontString()
-	      text:ClearAllPoints()
-	      text:SetPoint("TOPLEFT", button, "TOPLEFT", 5, -5)
-	      text:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -5, 1)
-	      text:SetJustifyV("MIDDLE")
-
-	local scrollBG = CreateFrame("Frame", nil, frame)
-	      scrollBG:SetBackdrop(backdrop)
-	      scrollBG:SetBackdropColor(0, 0, 0)
-	      scrollBG:SetBackdropBorderColor(0.4, 0.4, 0.4)
-
-	local scrollFrame = CreateFrame("ScrollFrame", ("%s%dScrollFrame"):format(Type, widgetNum), frame, "UIPanelScrollFrameTemplate")
-
-	local scrollBar = _G[scrollFrame:GetName() .. "ScrollBar"]
-	      scrollBar:ClearAllPoints()
-	      scrollBar:SetPoint("TOP", label, "BOTTOM", 0, -19)
-	      scrollBar:SetPoint("BOTTOM", button, "TOP", 0, 18)
-	      scrollBar:SetPoint("RIGHT", frame, "RIGHT")
-
-	scrollBG:SetPoint("TOPRIGHT", scrollBar, "TOPLEFT", 0, 19)
-	scrollBG:SetPoint("BOTTOMLEFT", button, "TOPLEFT")
-
+	local scrollFrame = CreateFrame("ScrollFrame", ("%s%dScrollFrame"):format(widgetType, widgetNum), frame, "UIPanelScrollFrameTemplate")
 	scrollFrame:SetPoint("TOPLEFT", scrollBG, "TOPLEFT", 5, -6)
 	scrollFrame:SetPoint("BOTTOMRIGHT", scrollBG, "BOTTOMRIGHT", -4, 4)
 	scrollFrame:SetScript("OnEnter", OnEnter)
 	scrollFrame:SetScript("OnLeave", OnLeave)
 	scrollFrame:SetScript("OnMouseUp", OnMouseUp)
-	scrollFrame:SetScript("OnReceiveDrag", OnReceiveDrag)
-	scrollFrame:SetScript("OnSizeChanged", OnSizeChanged)
-	scrollFrame:HookScript("OnVerticalScroll", OnVerticalScroll)
-
-	local editBox = CreateFrame("EditBox", ("%s%dEdit"):format(Type, widgetNum), scrollFrame)
-	      editBox:SetAllPoints()
-	      editBox:SetFontObject(ChatFontNormal)
-	      editBox:SetMultiLine(true)
-	      editBox:EnableMouse(true)
-	      editBox:SetAutoFocus(false)
-	      editBox:SetCountInvisibleLetters(false)
-	      editBox:SetScript("OnCursorChanged", OnCursorChanged)
-	      editBox:SetScript("OnEditFocusLost", OnEditFocusLost)
-	      editBox:SetScript("OnEnter", OnEnter)
-	      editBox:SetScript("OnEscapePressed", editBox.ClearFocus)
-	      editBox:SetScript("OnLeave", OnLeave)
-	      editBox:SetScript("OnMouseDown", OnReceiveDrag)
-	      editBox:SetScript("OnReceiveDrag", OnReceiveDrag)
-	      editBox:SetScript("OnTextChanged", OnTextChanged)
-	      editBox:SetScript("OnTextSet", OnTextSet)
-	      editBox:SetScript("OnEditFocusGained", OnEditFocusGained)
+	-- scrollFrame:SetScript("OnSizeChanged", OnSizeChanged)
+	scrollFrame:SetScript("OnVerticalScroll", OnVerticalScroll)
 
 
-	scrollFrame:SetScrollChild(editBox)
+	--[[ local scrollBar = _G[scrollFrame:GetName() .. "ScrollBar"]
+	      scrollBar:ClearAllPoints()
+	      scrollBar:SetPoint("TOP", label, "BOTTOM", 0, -19)
+	      scrollBar:SetPoint("BOTTOM", button, "TOP", 0, 18)
+	      scrollBar:SetPoint("RIGHT", frame, "RIGHT") --]]
+
+	--[[ local scrollBG = CreateFrame("Frame", nil, frame)
+	      scrollBG:SetBackdrop(backdrop)
+	      scrollBG:SetBackdropColor(0, 0, 0)
+	      scrollBG:SetBackdropBorderColor(0.4, 0.4, 0.4)
+	scrollBG:SetPoint("TOPRIGHT", scrollBar, "TOPLEFT", 0, 19)
+	scrollBG:SetPoint("BOTTOMLEFT", button, "TOPLEFT") --]]
 
 	local widget = {
-		button      = button,
-		editBox     = editBox,
 		frame       = frame,
 		label       = label,
 		labelHeight = 10,
-		numlines    = 4,
-		scrollBar   = scrollBar,
-		scrollBG    = scrollBG,
+		numlines    = 6,
+		-- scrollBar   = scrollBar,
+		-- scrollBG    = scrollBG,
 		scrollFrame = scrollFrame,
-		type        = Type
+		type        = widgetType
 	}
 	for method, func in pairs(methods) do
 		widget[method] = func
@@ -458,7 +326,7 @@ local function Constructor()
 	return AceGUI:RegisterAsWidget(widget)
 end
 
-AceGUI:RegisterWidgetType(Type, Constructor, Version)
+AceGUI:RegisterWidgetType(widgetType, Constructor, widgetVersion)
 
 
 
