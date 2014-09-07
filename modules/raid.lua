@@ -58,12 +58,16 @@ local raidBuffColors = {
 }
 
 local function OnEnterRaidBuff(self)
+	GameTooltip:SetOwner(self)
 	local index = self:GetID()
 	local _, _, _, _, _, spellID = GetRaidBuffTrayAuraInfo(index)
-	if not spellID then return end
-	GameTooltip:SetOwner(self)
-	GameTooltip:SetUnitConsolidatedBuff('player', index)
-	GameTooltip:AddLine(string.format(_G.ITEM_SPELL_EFFECT, _G['RAID_BUFF_'..index]:gsub('-\n', '')), 1, 1, 1, 1)
+	local effect = _G['RAID_BUFF_'..index]:gsub('-\n', '')
+	if spellID then
+		GameTooltip:SetUnitConsolidatedBuff('player', index)
+		GameTooltip:AddLine(string.format(_G.ITEM_SPELL_EFFECT, effect), 1, 1, 1, true)
+	else
+		GameTooltip:AddLine(string.format(_G.ITEM_MISSING, effect), 1, 0, 0, true)
+	end
 	GameTooltip:Show()
 end
 function plugin:OnEnable()
@@ -71,10 +75,10 @@ function plugin:OnEnable()
 	for index = 1, _G.NUM_LE_RAID_BUFF_TYPES do
 		local indicator = CreateFrame('Frame', nil, UIParent, nil, index)
 		      indicator:SetSize(10, 10)
-		      indicator:Hide()
 		local icon = indicator:CreateTexture()
 		      icon:SetAllPoints()
 		      icon:SetTexture(1, 1, 1, 1)
+		      icon:Hide()
 		indicator.icon = icon
 
 		if index == 1 then
@@ -92,6 +96,14 @@ function plugin:OnEnable()
 	self:RegisterEvent('ENCOUNTER_START')
 	self:RegisterEvent('UNIT_AURA')
 	self:UNIT_AURA('UNIT_AURA', 'player')
+
+	local button = CreateFrame('Button', '$parentOtherRaids', GroupFinderFrame, 'UIPanelButtonTemplate')
+	      button:SetText(_G.LOOKING_FOR_RAID)
+	      button:SetPoint('BOTTOMLEFT', 36, 16)
+	      button:SetSize(150, 20)
+	button:SetScript('OnClick', function(self, btn, up)
+		ToggleFrame(RaidBrowserFrame)
+	end)
 end
 
 function plugin:OnDisable()
@@ -100,21 +112,22 @@ function plugin:OnDisable()
 	self:UnregisterEvent('UNIT_AURA')
 
 	for index, indicator in ipairs(self.indicators) do
-		indicator:Hide()
+		indicator.icon:Hide()
 	end
 end
 
 function plugin:UNIT_AURA(event, unit)
 	if unit ~= 'player' then return end
+	local enabled = MidgetDB.showRaidBuffIndicators
 	for index = 1, _G.NUM_LE_RAID_BUFF_TYPES do
 		local name, rank, texture, duration, expiration, spellID, slot = GetRaidBuffTrayAuraInfo(index)
-		local indicator = self.indicators[index]
-		if not name then
-			indicator:Hide()
+		local icon = self.indicators[index].icon
+		if not name or not enabled then
+			icon:Hide()
 		else
-			local color = raidBuffColors[spellID]
-			indicator.icon:SetVertexColor(color.r, color.g, color.b, color.a)
-			indicator:Show()
+			local color = raidBuffColors[spellID] or _G.NORMAL_FONT_COLOR
+			icon:SetVertexColor(color.r, color.g, color.b, color.a)
+			icon:Show()
 		end
 	end
 end
