@@ -29,6 +29,7 @@ local globalDefaults = {
 	InterfaceOptionsScrolling = true,
 	SHIFTAcceptPopups = true,
 	hideUnusableCompareTips = true,
+	showRaidBuffIndicators = true,
 
 	scanGems = false,
 }
