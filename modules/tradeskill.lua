@@ -196,6 +196,304 @@ function plugin.GetTradeSkillColoredString(orange, yellow, green, gray)
 	return string.format("|cffFF8040%s|r/|cffFFFF00%s|r/|cff40BF40%s|r/|cff808080%s|r", orange or "", yellow or "", green or "", gray or "")
 end
 
+-- Wide TradeSkills
+-- ------------------------------------------------------
+-- this mimics default behavior
+local function UpdateTradeSkillRow(button, index, selected, isGuild)
+	local skillName, skillType, numAvailable, isExpanded, serviceType, numSkillUps, indentLevel, showProgressBar, currentRank, maxRank, startingRank = GetTradeSkillInfo(index)
+
+	local color       = TradeSkillTypeColor[skillType]
+	local prefix      = _G.ENABLE_COLORBLIND_MODE == '1' and TradeSkillTypePrefix[skillType] or ' '
+	local indentDelta = indentLevel > 0 and 20 or 0
+	local textWidth   = _G.TRADE_SKILL_TEXT_WIDTH - indentDelta
+	local usedWidth   = 0
+
+	local skillUps, rankBar = button.skillup, button.SubSkillRankBar
+	if skillType == 'header' or skillType == 'subheader' then
+		-- headers / rank bar
+		if showProgressBar then
+			TradeSkilSubSkillRank_Set(rankBar, skillName, currentRank, startingRank, maxRank)
+			textWidth = textWidth - _G.SUB_SKILL_BAR_WIDTH
+			rankBar:Show()
+		end
+		button.text:SetWidth(textWidth)
+		button.count:SetText('')
+		button:SetText(skillName)
+		button:SetNormalTexture('Interface\\Buttons\\' .. (isExpanded and 'UI-MinusButton-Up' or 'UI-PlusButton-Up'))
+		button:GetHighlightTexture():SetTexture('Interface\\Buttons\\UI-PlusButton-Hilight')
+		button:UnlockHighlight()
+		button.isHighlighted = false
+	else
+		-- multiskill
+		if numSkillUps > 1 and skillType == 'optimal' then
+			usedWidth = _G.TRADE_SKILL_SKILLUP_TEXT_WIDTH
+			skillUps.countText:SetText(numSkillUps)
+			skillUps:Show()
+		else
+			skillUps:Hide()
+		end
+
+		-- guild color override
+		if isGuild then color = TradeSkillTypeColor['easy'] end
+
+		button:SetNormalTexture('')
+		button:GetHighlightTexture():SetTexture('')
+		button:SetText(prefix .. skillName)
+
+		if numAvailable > 0 then
+			button.count:SetText('['..numAvailable..']')
+			local nameWidth, countWidth = button.text:GetStringWidth(), button.count:GetStringWidth()
+			if (nameWidth + 2 + countWidth) > (textWidth - usedWidth) then
+				textWidth = textWidth - 2 - countWidth - usedWidth
+			else
+				textWidth = 0
+			end
+		else
+			button.count:SetText('')
+			textWidth = textWidth - usedWidth
+		end
+		button.text:SetWidth(textWidth)
+
+		-- Place the highlight and lock the highlight state
+		if index == selected then
+			TradeSkillHighlightFrame:SetPoint('TOPLEFT', button, 'TOPLEFT', 0, 0)
+			TradeSkillHighlightFrame:Show()
+			button:LockHighlight()
+			button.isHighlighted = true
+
+			-- Set the max makeable items for the create all button
+			_G.TradeSkillFrame.numAvailable = math.abs(numAvailable)
+		else
+			button:UnlockHighlight()
+			button.isHighlighted = false
+		end
+	end
+
+	-- color
+	button:SetNormalFontObject(color.font)
+	button.font = color.font
+	if button.isHighlighted then color = _G.HIGHLIGHT_FONT_COLOR end
+	button.text:SetVertexColor(color.r, color.g, color.b)
+	button.count:SetVertexColor(color.r, color.g, color.b)
+	skillUps.countText:SetVertexColor(color.r, color.g, color.b)
+	skillUps.icon:SetVertexColor(color.r, color.g, color.b)
+	button.r, button.g, button.b = color.r, color.g, color.b
+
+	-- indent
+	button:GetNormalTexture():SetPoint('LEFT', 3 + indentDelta, 0)
+	button:GetDisabledTexture():SetPoint('LEFT', 3 + indentDelta, 0)
+	button:GetHighlightTexture():SetPoint('LEFT', 3 + indentDelta, 0)
+
+	return skillType == 'header' or skillType == 'subheader', isExpanded
+end
+-- needed so we can add our own search
+local function UpdateTradeSkillList()
+	local offset    = FauxScrollFrame_GetOffset(_G.TradeSkillListScrollFrame)
+	local isGuild   = IsTradeSkillGuild()
+	local selected  = GetTradeSkillSelectionIndex()
+	-- local numSkills = GetNumTradeSkills()
+	local numHeaders, notExpanded = 0, 0
+
+	for i = (_G.TradeSkillFilterBar:IsShown() and 2 or 1), _G.TRADE_SKILLS_DISPLAYED do
+		local index = i + offset
+		local button = _G['TradeSkillSkill'..i]
+		local skillName, skillType, numAvailable, isExpanded, serviceType, numSkillUps, indentLevel, showProgressBar, currentRank, maxRank, startingRank = GetTradeSkillInfo(index)
+
+		if skillName then -- TODO: handle search
+			local header, expanded = UpdateTradeSkillRow(button, index, selected, isGuild)
+			numHeaders  = numHeaders + (header and 1 or 0)
+			notExpanded = notExpanded + (expanded and 0 or 1)
+
+			button:SetID(index)
+			button:Show()
+		else
+			button:Hide()
+		end
+	end
+
+	-- Set the expand/collapse all button texture
+	local collapseAll = _G.TradeSkillCollapseAllButton
+	if notExpanded ~= numHeaders then
+		collapseAll.collapsed = nil
+		collapseAll:SetNormalTexture('Interface\\Buttons\\UI-MinusButton-Up')
+	else
+		collapseAll.collapsed = 1
+		collapseAll:SetNormalTexture('Interface\\Buttons\\UI-PlusButton-Up')
+	end
+end
+
+local function UpdateScrollFrameWidth(self)
+	local scrollFrame = self:GetParent()
+	if self:IsShown() then
+		scrollFrame:SetPoint('BOTTOMRIGHT', -32, 28)
+	else
+		scrollFrame:SetPoint('BOTTOMRIGHT', -5, 28)
+	end
+	local newWidth = scrollFrame:GetWidth()
+	scrollFrame:GetScrollChild():SetWidth(newWidth)
+	scrollFrame:UpdateScrollChildRect()
+end
+
+local function OnTradeSkillFrame_SetSelection(index)
+	local scrollFrame = _G.TradeSkillDetailScrollFrame
+	local skillName, reqLabel, reqText, cooldown, headerLeft, headerRight, description, reagentLabel = scrollFrame:GetScrollChild():GetRegions()
+
+	if description:GetText() == ' ' then description:SetText(nil) end
+	if not cooldown:GetText() then cooldown:SetHeight(-10) end
+	if not reqText:GetText() then reqText:SetHeight(-10) end
+
+	-- add a section for required items
+	reqLabel:SetTextColor(reagentLabel:GetTextColor())
+	reqLabel:SetShadowColor(reagentLabel:GetShadowColor())
+	cooldown:SetPoint('TOPLEFT', description, 'BOTTOMLEFT', 0, -10)
+	reqLabel:SetPoint('TOPLEFT', cooldown, 'BOTTOMLEFT', 0, -10)
+	reqText:SetPoint('TOPLEFT', reqLabel, 'BOTTOMLEFT', 0, 0)
+	reagentLabel:SetPoint('TOPLEFT', reqText, 'BOTTOMLEFT', 0, -10)
+	-- scrollFrame:SetVerticalScroll(0)
+end
+
+local function InitializeTradeSkillFrame()
+	local frame = _G.TradeSkillFrame
+	      frame:SetSize(540, 468)
+
+	-- recipe list area
+	local list = _G.TradeSkillListScrollFrame
+	      list:ClearAllPoints()
+	      list:SetPoint('TOPLEFT', 0, -83)
+	      list:SetPoint('BOTTOMRIGHT', '$parent', 'BOTTOMLEFT', 300, 28)
+
+	-- create additional rows since scroll frame area grew
+	local numRows = math.floor((frame:GetHeight() - 83 - 28) / _G.TRADE_SKILL_HEIGHT)
+	for index = TRADE_SKILLS_DISPLAYED+1, numRows do
+		local row = CreateFrame('Button', 'TradeSkillSkill'..index, frame, 'TradeSkillSkillButtonTemplate')
+		      row:SetPoint('TOPLEFT', _G['TradeSkillSkill'..(index-1)], 'BOTTOMLEFT')
+		      row.skillup:Hide()
+		      row.SubSkillRankBar:Hide()
+		      row:SetNormalTexture('')
+		_G['TradeSkillSkill'..index..'Highlight']:SetTexture('')
+	end
+	_G.TRADE_SKILLS_DISPLAYED = numRows
+
+	-- detail/reagent panel
+	local details = _G.TradeSkillDetailScrollFrame
+	      details:ClearAllPoints()
+	      details:SetPoint('TOPLEFT', list, 'TOPRIGHT', 28, 0)
+	      details:SetPoint('BOTTOMRIGHT', -5, 28)
+	details.ScrollBar:HookScript('OnShow', UpdateScrollFrameWidth)
+	details.ScrollBar:HookScript('OnHide', UpdateScrollFrameWidth)
+
+	-- hide top-bottom separator
+	local sepLeft, sepRight = select(21, frame:GetRegions())
+	sepLeft:Hide(); sepRight:Hide()
+
+	-- move bottom action buttons
+	_G.TradeSkillCreateAllButton:SetPoint('BOTTOMLEFT', 'TradeSkillCreateButton', 'BOTTOMLEFT', -167, 0)
+
+	-- stretching the scroll bars
+	for _, scrollFrame in pairs({list, details}) do
+		local topScrollBar, bottomScrollBar = scrollFrame:GetRegions()
+		local middleScrollBar = scrollFrame:CreateTexture(scrollFrame:GetName()..'Middle', 'BACKGROUND')
+		      middleScrollBar:SetTexture('Interface\\PaperDollInfoFrame\\UI-Character-ScrollBar')
+		      middleScrollBar:SetTexCoord(0, 0.46875, 0.03125, 0.9609375)
+		      middleScrollBar:SetPoint('TOPLEFT', topScrollBar, 'TOPLEFT', 1, 0)
+		      middleScrollBar:SetPoint('BOTTOMRIGHT', bottomScrollBar, 'TOPRIGHT', 0, 0)
+	end
+
+	-- sidebar/craft details changes
+	local background = details:CreateTexture(nil, 'BACKGROUND')
+	      background:SetTexture('Interface\\ACHIEVEMENTFRAME\\UI-ACHIEVEMENT-PARCHMENT')
+	      background:SetTexCoord(0.5, 1, 0, 1)
+	      background:SetAllPoints()
+
+
+	local skillName, reqLabel, reqText, cooldown, headerLeft, headerRight, description, reagentLabel = details:GetScrollChild():GetRegions()
+	headerRight:ClearAllPoints()
+	headerRight:SetPoint('TOPRIGHT', 20-5, 3-5)
+	headerLeft:SetPoint('BOTTOMRIGHT', headerRight, 'BOTTOMLEFT')
+	headerLeft:SetTexCoord(0, 0.6, 0, 1)
+	for _, region in pairs({headerLeft, _G.TradeSkillSkillIcon, skillName}) do
+		local point, relativeTo, relativePoint, xOffset, yOffset = region:GetPoint()
+		region:SetPoint(point, relativeTo, relativePoint, xOffset + 2, yOffset - 5)
+	end
+
+	local sideBarWidth = details:GetWidth()
+	skillName:SetNonSpaceWrap(true)
+	skillName:SetWidth(sideBarWidth - 50)
+	description:SetNonSpaceWrap(true)
+	description:SetWidth(sideBarWidth - 5)
+	description:SetPoint('TOPLEFT', 5, -55)
+
+	-- move reagents below one another and widen buttons
+	for index = 1, _G.MAX_TRADE_SKILL_REAGENTS do
+		local button = _G['TradeSkillReagent'..index]
+		local nameFrame = _G['TradeSkillReagent'..index..'NameFrame']
+		      nameFrame:SetPoint('RIGHT', 3, 0)
+		local itemName = button.name
+		      itemName:SetPoint('LEFT', '$parentNameFrame', 'LEFT', 20, 0)
+		      itemName:SetPoint('RIGHT', '$parentNameFrame', 'RIGHT', -5, 0)
+		if index ~= 1 then
+			button:ClearAllPoints()
+			button:SetPoint('TOPLEFT', _G['TradeSkillReagent'..(index-1)], 'BOTTOMLEFT', 0, -2)
+		end
+		local _, _, _, _, yOffset = button:GetPoint()
+		button:SetPoint('TOPRIGHT', 0+5, yOffset)
+	end
+
+	-- TODO: use a custom, more powerful search using LibItemSearch-1.2
+	local searchBox = _G.TradeSkillFrameSearchBox
+	      searchBox:SetScript('OnEnter', addon.ShowTooltip)
+	      searchBox:SetScript('OnLeave', addon.HideTooltip)
+	      searchBox.tiptext = 'Search in recipe, item or reagent names or in item descriptions.\nitem level ± 2: "~123"\nitem level range: "123 - 456"'
+
+	-- add quick filters
+	local hasMaterials = CreateFrame('CheckButton', '$parentHasMaterials', frame, 'UICheckButtonTemplate')
+	      hasMaterials:SetPoint('LEFT', 'TradeSkillLinkButton', 'RIGHT', 10, 0)
+	      hasMaterials:SetSize(24, 24)
+	local hasMatLabel = hasMaterials:CreateFontString(nil, nil, 'GameFontNormal')
+	      hasMatLabel:SetPoint('LEFT', hasMaterials, 'RIGHT', 2, 0)
+	      hasMatLabel:SetText(_G.CRAFT_IS_MAKEABLE)
+	      hasMaterials:SetHitRectInsets(-5, -10 - hasMatLabel:GetStringWidth(), -2, -2)
+	hooksecurefunc('TradeSkillOnlyShowMakeable', function(enable) hasMaterials:SetChecked(enable) end)
+	hasMaterials:SetScript('OnClick', function(self, btn, up)
+		local enable = self:GetChecked()
+		TradeSkillFrame.filterTbl.hasMaterials = enable
+		TradeSkillOnlyShowMakeable(enable)
+		TradeSkillUpdateFilterBar()
+	end)
+	local hasSkillUp = CreateFrame('CheckButton', '$parentHasSkillUp', frame, 'UICheckButtonTemplate')
+	      hasSkillUp:SetPoint('TOPLEFT', '$parentHasMaterials', 'BOTTOMLEFT', 0, -2)
+	      hasSkillUp:SetSize(24, 24)
+	local hasSkillLabel = hasSkillUp:CreateFontString(nil, nil, 'GameFontNormal')
+	      hasSkillLabel:SetPoint('LEFT', hasSkillUp, 'RIGHT', 2, 0)
+	      hasSkillLabel:SetText(_G.TRADESKILL_FILTER_HAS_SKILL_UP)
+	      hasSkillUp:SetHitRectInsets(-5, -10 - hasSkillLabel:GetStringWidth(), -2, -2)
+	hooksecurefunc('TradeSkillOnlyShowSkillUps', function(enable) hasSkillUp:SetChecked(enable) end)
+	hasSkillUp:SetScript('OnClick', function(self, btn, up)
+		local enable = self:GetChecked()
+		TradeSkillFrame.filterTbl.hasSkillUp  = enable
+		TradeSkillOnlyShowSkillUps(enable)
+		TradeSkillUpdateFilterBar()
+	end)
+	frame.hasMaterials, frame.hasSkillUp = hasMaterials, hasSkillUp
+	hooksecurefunc('TradeSkillUpdateFilterBar', function(subName, slotName, ignore)
+		if ignore then return end
+		-- don't list "hasMaterials" or "hasSkillUp" in the filter bar
+		local hasMaterials, hasSkillUp = TradeSkillFrame.filterTbl.hasMaterials, TradeSkillFrame.filterTbl.hasSkillUp
+		TradeSkillFrame.filterTbl.hasMaterials = false
+		TradeSkillFrame.filterTbl.hasSkillUp   = false
+		TradeSkillUpdateFilterBar(subName, slotName, true)
+		TradeSkillFrame.filterTbl.hasMaterials = hasMaterials
+		TradeSkillFrame.filterTbl.hasSkillUp   = hasSkillUp
+	end)
+end
+
+function plugin:TRADE_SKILL_SHOW()
+	InitializeTradeSkillFrame()
+	-- hooksecurefunc('TradeSkillFrame_Update', UpdateTradeSkillList)
+	hooksecurefunc('TradeSkillFrame_SetSelection', OnTradeSkillFrame_SetSelection)
+	self:UnregisterEvent('TRADE_SKILL_SHOW')
+end
+
 -- ------------------------------------------------------
 -- Experimental Stuff
 -- ------------------------------------------------------
@@ -421,6 +719,7 @@ function plugin:OnEnable()
 	hooksecurefunc("TradeSkillFrame_SetSelection", AddTradeSkillLevels)
 	hooksecurefunc("TradeSkillFrameButton_OnEnter", AddTradeSkillHoverLink)
 	hooksecurefunc("TradeSkillFrameButton_OnLeave", addon.HideTooltip)
+	self:RegisterEvent('TRADE_SKILL_SHOW')
 
 	hooksecurefunc("TradeSkillFrame_SetSelection", ScanForReagents)
 
