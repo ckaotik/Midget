@@ -9,7 +9,7 @@ local raidBuffColors = {
 	-- _G.RAID_BUFF_1 stat multiplier
 	[  1126] = _G.RAID_CLASS_COLORS['DRUID'], -- Mark of the Wild
 	[ 20217] = _G.RAID_CLASS_COLORS['PALADIN'], -- Blessing of Kings
-	[115921] = _G.RAID_CLASS_COLORS['MONK'], -- Legacy of the Emperor
+	[117666] = _G.RAID_CLASS_COLORS['MONK'], -- Legacy of the Emperor
 	[ 90363] = _G.RAID_CLASS_COLORS['HUNTER'], -- Embrace of the Shale Spider
 	-- _G.RAID_BUFF_2 stamina
 	[   469] = _G.RAID_CLASS_COLORS['WARRIOR'], -- Commanding Shout
@@ -60,7 +60,7 @@ local raidBuffColors = {
 local function OnEnterRaidBuff(self)
 	GameTooltip:SetOwner(self)
 	local index = self:GetID()
-	local _, _, _, _, _, spellID = GetRaidBuffTrayAuraInfo(index)
+	local spellName, _, _, _, _, spellID = GetRaidBuffTrayAuraInfo(index)
 	local effect = _G['RAID_BUFF_'..index]:gsub('-\n', '')
 	if spellID then
 		GameTooltip:SetUnitConsolidatedBuff('player', index)
