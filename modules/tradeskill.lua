@@ -198,7 +198,13 @@ end
 
 -- Wide TradeSkills
 -- ------------------------------------------------------
--- this mimics default behavior
+-- functions needed to add our own search
+local ItemSearch = LibStub('LibItemSearch-1.2')
+local function UpdateTradeSkillSearch(self, isUserInput)
+	local text = self:GetText()
+	self:GetParent().search = (text ~= '' and text ~= _G.SEARCH) and text or nil
+	TradeSkillFrame_Update()
+end
 local function UpdateTradeSkillRow(button, index, selected, isGuild)
 	local skillName, skillType, numAvailable, isExpanded, serviceType, numSkillUps, indentLevel, showProgressBar, currentRank, maxRank, startingRank = GetTradeSkillInfo(index)
 
@@ -286,29 +292,60 @@ local function UpdateTradeSkillRow(button, index, selected, isGuild)
 
 	return skillType == 'header' or skillType == 'subheader', isExpanded
 end
--- needed so we can add our own search
+-- FIXME: allow to keep headers intact
 local function UpdateTradeSkillList()
+	local searchText = _G.TradeSkillFrame.search
+	if not searchText or searchText == _G.SEARCH then return end
+
 	local offset    = FauxScrollFrame_GetOffset(_G.TradeSkillListScrollFrame)
 	local isGuild   = IsTradeSkillGuild()
 	local selected  = GetTradeSkillSelectionIndex()
-	-- local numSkills = GetNumTradeSkills()
 	local numHeaders, notExpanded = 0, 0
 
-	for i = (_G.TradeSkillFilterBar:IsShown() and 2 or 1), _G.TRADE_SKILLS_DISPLAYED do
+	local buttonIndex, numItems = _G.TradeSkillFilterBar:IsShown() and 2 or 1, 0
+	-- for i = buttonIndex, _G.TRADE_SKILLS_DISPLAYED do
+	for i = 1, GetNumTradeSkills() do
 		local index = i + offset
-		local button = _G['TradeSkillSkill'..i]
+		local button = _G['TradeSkillSkill'..buttonIndex]
+		if not button then break end
+
 		local skillName, skillType, numAvailable, isExpanded, serviceType, numSkillUps, indentLevel, showProgressBar, currentRank, maxRank, startingRank = GetTradeSkillInfo(index)
 
-		if skillName then -- TODO: handle search
+		local matchesSearch = false -- local link = GetTradeSkillRecipeLink(index)
+		if skillName and skillType ~= 'header' and skillType ~= 'subheader' then
+			matchesSearch = ItemSearch:Matches(GetTradeSkillItemLink(index), searchText)
+			local reagentIndex = 0
+			while not matchesSearch do
+				reagentIndex = reagentIndex + 1
+				local reagentLink = GetTradeSkillReagentItemLink(index, reagentIndex)
+				if not reagentLink then break end
+				matchesSearch = ItemSearch:Matches(reagentLink, searchText)
+			end
+		end
+
+		if matchesSearch then
 			local header, expanded = UpdateTradeSkillRow(button, index, selected, isGuild)
 			numHeaders  = numHeaders + (header and 1 or 0)
 			notExpanded = notExpanded + (expanded and 0 or 1)
 
 			button:SetID(index)
 			button:Show()
+			buttonIndex = buttonIndex + 1
+			numItems = numItems + 1
 		else
 			button:Hide()
+			button:UnlockHighlight()
+			button.isHighlighted = false
 		end
+	end
+	FauxScrollFrame_Update(_G.TradeSkillListScrollFrame, numItems, _G.TRADE_SKILLS_DISPLAYED, _G.TRADE_SKILL_HEIGHT, nil, nil, nil, _G.TradeSkillHighlightFrame, 293, 316, true)
+	local button = _G['TradeSkillSkill'..buttonIndex]
+	while button do
+		button:Hide()
+		button:UnlockHighlight()
+		button.isHighlighted = false
+		buttonIndex = buttonIndex + 1
+		button = _G['TradeSkillSkill'..buttonIndex]
 	end
 
 	-- Set the expand/collapse all button texture
@@ -324,23 +361,31 @@ end
 
 local function UpdateScrollFrameWidth(self)
 	local scrollFrame = self:GetParent()
+	local skillName, _, reqText, _, headerLeft, _, description, _ = scrollFrame:GetScrollChild():GetRegions()
 	if self:IsShown() then
 		scrollFrame:SetPoint('BOTTOMRIGHT', -32, 28)
+		headerLeft:SetTexCoord(0, 0.5, 0, 1)
 	else
 		scrollFrame:SetPoint('BOTTOMRIGHT', -5, 28)
+		headerLeft:SetTexCoord(0, 0.6, 0, 1)
 	end
 	local newWidth = scrollFrame:GetWidth()
 	scrollFrame:GetScrollChild():SetWidth(newWidth)
 	scrollFrame:UpdateScrollChildRect()
+
+	-- text don't stretch properly without fixed width
+	description:SetWidth(newWidth - 5)
+	  skillName:SetWidth(newWidth - 50)
+	    reqText:SetWidth(newWidth - 5)
 end
 
 local function OnTradeSkillFrame_SetSelection(index)
 	local scrollFrame = _G.TradeSkillDetailScrollFrame
+	      scrollFrame:SetVerticalScroll(0)
 	local skillName, reqLabel, reqText, cooldown, headerLeft, headerRight, description, reagentLabel = scrollFrame:GetScrollChild():GetRegions()
 
 	if description:GetText() == ' ' then description:SetText(nil) end
 	if not cooldown:GetText() then cooldown:SetHeight(-10) end
-	if not reqText:GetText() then reqText:SetHeight(-10) end
 
 	-- add a section for required items
 	reqLabel:SetTextColor(reagentLabel:GetTextColor())
@@ -349,7 +394,6 @@ local function OnTradeSkillFrame_SetSelection(index)
 	reqLabel:SetPoint('TOPLEFT', cooldown, 'BOTTOMLEFT', 0, -10)
 	reqText:SetPoint('TOPLEFT', reqLabel, 'BOTTOMLEFT', 0, 0)
 	reagentLabel:SetPoint('TOPLEFT', reqText, 'BOTTOMLEFT', 0, -10)
-	-- scrollFrame:SetVerticalScroll(0)
 end
 
 local function InitializeTradeSkillFrame()
@@ -422,6 +466,7 @@ local function InitializeTradeSkillFrame()
 	description:SetNonSpaceWrap(true)
 	description:SetWidth(sideBarWidth - 5)
 	description:SetPoint('TOPLEFT', 5, -55)
+	reqText:SetWidth(sideBarWidth - 5)
 
 	-- move reagents below one another and widen buttons
 	for index = 1, _G.MAX_TRADE_SKILL_REAGENTS do
@@ -439,11 +484,37 @@ local function InitializeTradeSkillFrame()
 		button:SetPoint('TOPRIGHT', 0+5, yOffset)
 	end
 
-	-- TODO: use a custom, more powerful search using LibItemSearch-1.2
+	-- more powerful search engine using LibItemSearch
 	local searchBox = _G.TradeSkillFrameSearchBox
-	      searchBox:SetScript('OnEnter', addon.ShowTooltip)
-	      searchBox:SetScript('OnLeave', addon.HideTooltip)
-	      searchBox.tiptext = 'Search in recipe, item or reagent names or in item descriptions.\nitem level ± 2: "~123"\nitem level range: "123 - 456"'
+	      searchBox.searchIcon = _G.TradeSkillFrameSearchBoxSearchIcon
+	      searchBox:SetScript('OnTextChanged', UpdateTradeSkillSearch)
+	      searchBox:SetScript('OnEditFocusLost',   _G.SearchBoxTemplate_OnEditFocusLost)
+	      searchBox:SetScript('OnEditFocusGained', _G.SerachBoxTemplate_OnEditFocusGained)
+	--      searchBox:SetScript('OnEnter', addon.ShowTooltip)
+	--      searchBox:SetScript('OnLeave', addon.HideTooltip)
+	--      searchBox.tiptext = 'Search in recipe, item or reagent names or in item descriptions.\nitem level ± 2: "~123"\nitem level range: "123 - 456"'
+
+	-- add missing clear search button
+	local clearButton = CreateFrame('Button', '$parentClearButton', searchBox)
+	      clearButton:SetSize(17, 17)
+	      clearButton:SetPoint('RIGHT', -3, 0)
+	      clearButton:Hide()
+	clearButton:SetScript('OnEnter', function(self) self.texture:SetAlpha(1) end)
+	clearButton:SetScript('OnLeave', function(self) self.texture:SetAlpha(0.5) end)
+	clearButton:SetScript('OnClick', function(self, btn, up)
+		PlaySound('igMainMenuOptionCheckBoxOn')
+		local editBox = self:GetParent()
+		      editBox:SetText('')
+		      editBox:ClearFocus()
+		if editBox.clearFunc then editBox.clearFunc(editBox) end
+		if not editBox:HasFocus() then editBox:GetScript('OnEditFocusLost')(editBox) end
+	end)
+	local clearIcon = clearButton:CreateTexture(nil, 'OVERLAY')
+	      clearIcon:SetTexture('Interface\\FriendsFrame\\ClearBroadcastIcon')
+	      clearIcon:SetAllPoints()
+	      clearIcon:SetAlpha(0.5)
+	clearButton.texture = clearIcon
+	searchBox.clearButton = clearButton
 
 	-- add quick filters
 	local hasMaterials = CreateFrame('CheckButton', '$parentHasMaterials', frame, 'UICheckButtonTemplate')
@@ -489,7 +560,7 @@ end
 
 function plugin:TRADE_SKILL_SHOW()
 	InitializeTradeSkillFrame()
-	-- hooksecurefunc('TradeSkillFrame_Update', UpdateTradeSkillList)
+	hooksecurefunc('TradeSkillFrame_Update', UpdateTradeSkillList)
 	hooksecurefunc('TradeSkillFrame_SetSelection', OnTradeSkillFrame_SetSelection)
 	self:UnregisterEvent('TRADE_SKILL_SHOW')
 end
