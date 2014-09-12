@@ -267,6 +267,8 @@ local function UpdateTradeSkillRow(button, index, selected, isGuild)
 			button:LockHighlight()
 			button.isHighlighted = true
 
+			-- update craft details
+			TradeSkillFrame_SetSelection(index)
 			-- Set the max makeable items for the create all button
 			_G.TradeSkillFrame.numAvailable = math.abs(numAvailable)
 		else
@@ -290,29 +292,45 @@ local function UpdateTradeSkillRow(button, index, selected, isGuild)
 	button:GetDisabledTexture():SetPoint('LEFT', 3 + indentDelta, 0)
 	button:GetHighlightTexture():SetPoint('LEFT', 3 + indentDelta, 0)
 
-	return skillType == 'header' or skillType == 'subheader', isExpanded
+	button:SetID(index)
+	button:Show()
 end
--- FIXME: allow to keep headers intact
+
 local function UpdateTradeSkillList()
 	local searchText = _G.TradeSkillFrame.search
-	if not searchText or searchText == _G.SEARCH then return end
+	if not searchText or searchText == _G.SEARCH or not TradeSkillFrameSearchBox:IsEnabled() then return end
 
 	local offset    = FauxScrollFrame_GetOffset(_G.TradeSkillListScrollFrame)
 	local isGuild   = IsTradeSkillGuild()
 	local selected  = GetTradeSkillSelectionIndex()
 	local numHeaders, notExpanded = 0, 0
+	_G.TradeSkillHighlightFrame:Hide()
 
-	local buttonIndex, numItems = _G.TradeSkillFilterBar:IsShown() and 2 or 1, 0
-	-- for i = buttonIndex, _G.TRADE_SKILLS_DISPLAYED do
-	for i = 1, GetNumTradeSkills() do
-		local index = i + offset
-		local button = _G['TradeSkillSkill'..buttonIndex]
-		if not button then break end
-
+	-- ignore the first matches we have scrolled past
+	local buttonIndex = 1 - offset
+	local lastType, sndLastType = nil, nil
+	local numItems = 0
+	for index = 1, GetNumTradeSkills() do
+		local isHeader = false
 		local skillName, skillType, numAvailable, isExpanded, serviceType, numSkillUps, indentLevel, showProgressBar, currentRank, maxRank, startingRank = GetTradeSkillInfo(index)
 
-		local matchesSearch = false -- local link = GetTradeSkillRecipeLink(index)
-		if skillName and skillType ~= 'header' and skillType ~= 'subheader' then
+		local matchesSearch = false
+		if skillType == 'header' or skillType == 'subheader' then
+			if skillType == lastType or (lastType == 'subheader' and skillType == 'header') then
+				-- hide empty groups
+				buttonIndex = buttonIndex - 1
+				numItems    = numItems - 1
+				lastType    = nil
+				if sndLastType == 'header' then -- and lastType == 'subheader' and skillType == 'header' then
+					-- header - subheader - header, go back 2 steps
+					buttonIndex = buttonIndex - 1
+					numItems    = numItems - 1
+					sndLastType = nil
+				end
+			end
+			isHeader      = true
+			matchesSearch = true
+		elseif skillName then
 			matchesSearch = ItemSearch:Matches(GetTradeSkillItemLink(index), searchText)
 			local reagentIndex = 0
 			while not matchesSearch do
@@ -323,30 +341,46 @@ local function UpdateTradeSkillList()
 			end
 		end
 
-		if matchesSearch then
-			local header, expanded = UpdateTradeSkillRow(button, index, selected, isGuild)
-			numHeaders  = numHeaders + (header and 1 or 0)
-			notExpanded = notExpanded + (expanded and 0 or 1)
-
-			button:SetID(index)
-			button:Show()
+		if buttonIndex == 1 and _G.TradeSkillFilterBar:IsShown() then
+			-- first button is filter bar, move on to next one
 			buttonIndex = buttonIndex + 1
-			numItems = numItems + 1
-		else
+		end
+		local button = _G['TradeSkillSkill'..buttonIndex]
+		if matchesSearch then
+			if button then
+				UpdateTradeSkillRow(button, index, selected, isGuild)
+			end
+			numHeaders  = numHeaders  + (isHeader and 1 or 0)
+			notExpanded = notExpanded + ((isHeader and isExpanded) and 0 or 1)
+
+			buttonIndex = buttonIndex + 1
+			numItems    = numItems + 1
+			sndLastType = lastType
+			lastType    = skillType
+		elseif button then
 			button:Hide()
 			button:UnlockHighlight()
 			button.isHighlighted = false
 		end
 	end
-	FauxScrollFrame_Update(_G.TradeSkillListScrollFrame, numItems, _G.TRADE_SKILLS_DISPLAYED, _G.TRADE_SKILL_HEIGHT, nil, nil, nil, _G.TradeSkillHighlightFrame, 293, 316, true)
+
+	if lastType == 'header' or lastType == 'subheader' then
+		-- last row is an empty group
+		buttonIndex = buttonIndex - 1
+		numItems    = numItems - 1
+	end
 	local button = _G['TradeSkillSkill'..buttonIndex]
 	while button do
+		-- hide unused buttons
 		button:Hide()
 		button:UnlockHighlight()
 		button.isHighlighted = false
 		buttonIndex = buttonIndex + 1
 		button = _G['TradeSkillSkill'..buttonIndex]
 	end
+
+	-- update scroll bar
+	FauxScrollFrame_Update(_G.TradeSkillListScrollFrame, numItems, _G.TRADE_SKILLS_DISPLAYED, _G.TRADE_SKILL_HEIGHT, nil, nil, nil, nil, nil, nil, true)
 
 	-- Set the expand/collapse all button texture
 	local collapseAll = _G.TradeSkillCollapseAllButton
@@ -474,8 +508,8 @@ local function InitializeTradeSkillFrame()
 		local nameFrame = _G['TradeSkillReagent'..index..'NameFrame']
 		      nameFrame:SetPoint('RIGHT', 3, 0)
 		local itemName = button.name
-		      itemName:SetPoint('LEFT', '$parentNameFrame', 'LEFT', 20, 0)
-		      itemName:SetPoint('RIGHT', '$parentNameFrame', 'RIGHT', -5, 0)
+		      itemName:SetPoint('LEFT', nameFrame, 'LEFT', 20, 0)
+		      itemName:SetPoint('RIGHT', nameFrame, 'RIGHT', -5, 0)
 		if index ~= 1 then
 			button:ClearAllPoints()
 			button:SetPoint('TOPLEFT', _G['TradeSkillReagent'..(index-1)], 'BOTTOMLEFT', 0, -2)
@@ -527,7 +561,7 @@ local function InitializeTradeSkillFrame()
 	hooksecurefunc('TradeSkillOnlyShowMakeable', function(enable) hasMaterials:SetChecked(enable) end)
 	hasMaterials:SetScript('OnClick', function(self, btn, up)
 		local enable = self:GetChecked()
-		TradeSkillFrame.filterTbl.hasMaterials = enable
+		frame.filterTbl.hasMaterials = enable
 		TradeSkillOnlyShowMakeable(enable)
 		TradeSkillUpdateFilterBar()
 	end)
@@ -541,7 +575,7 @@ local function InitializeTradeSkillFrame()
 	hooksecurefunc('TradeSkillOnlyShowSkillUps', function(enable) hasSkillUp:SetChecked(enable) end)
 	hasSkillUp:SetScript('OnClick', function(self, btn, up)
 		local enable = self:GetChecked()
-		TradeSkillFrame.filterTbl.hasSkillUp  = enable
+		frame.filterTbl.hasSkillUp  = enable
 		TradeSkillOnlyShowSkillUps(enable)
 		TradeSkillUpdateFilterBar()
 	end)
@@ -549,12 +583,12 @@ local function InitializeTradeSkillFrame()
 	hooksecurefunc('TradeSkillUpdateFilterBar', function(subName, slotName, ignore)
 		if ignore then return end
 		-- don't list "hasMaterials" or "hasSkillUp" in the filter bar
-		local hasMaterials, hasSkillUp = TradeSkillFrame.filterTbl.hasMaterials, TradeSkillFrame.filterTbl.hasSkillUp
-		TradeSkillFrame.filterTbl.hasMaterials = false
-		TradeSkillFrame.filterTbl.hasSkillUp   = false
+		local hasMaterials, hasSkillUp = frame.filterTbl.hasMaterials, frame.filterTbl.hasSkillUp
+		frame.filterTbl.hasMaterials = false
+		frame.filterTbl.hasSkillUp   = false
 		TradeSkillUpdateFilterBar(subName, slotName, true)
-		TradeSkillFrame.filterTbl.hasMaterials = hasMaterials
-		TradeSkillFrame.filterTbl.hasSkillUp   = hasSkillUp
+		frame.filterTbl.hasMaterials = hasMaterials
+		frame.filterTbl.hasSkillUp   = hasSkillUp
 	end)
 end
 
