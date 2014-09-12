@@ -124,6 +124,7 @@ local function TooltipItemInfo(self)
 
 	wipe(itemSpecs)
 	GetItemSpecInfo(itemLink, itemSpecs)
+	if #itemSpecs > 4 then return end
 	for i, specID in ipairs(itemSpecs) do
 		local _, _, _, icon, _, role, class = GetSpecializationInfoByID(specID)
 		specs = (specs and specs..' ' or '') .. '|T'..icon..':0|t'
