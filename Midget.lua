@@ -130,7 +130,11 @@ function addon.ShowTooltip(self, anchor)
 		GameTooltip:SetText(self.tiptext, nil, nil, nil, nil, true)
 		local lineIndex = 2
 		while self['tiptext'..lineIndex] do
-			GameTooltip:AddLine(self['tiptext'..lineIndex], 1, 1, 1, nil, true)
+			if self['tiptext'..lineIndex..'Right'] then
+				GameTooltip:AddDoubleLine(self['tiptext'..lineIndex], self['tiptext'..lineIndex..'Right'], 1, 1, 1, 1, 1, 1)
+			else
+				GameTooltip:AddLine(self['tiptext'..lineIndex], 1, 1, 1, nil, true)
+			end
 			lineIndex = lineIndex + 1
 		end
 	elseif type(self.tiptext) == "function" then
