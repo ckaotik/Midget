@@ -200,6 +200,9 @@ end
 -- ------------------------------------------------------
 -- functions needed to add our own search
 local ItemSearch = LibStub('LibItemSearch-1.2')
+local searchResultCache, searchQuery = setmetatable({}, {
+	__mode = 'kv',
+})
 local function UpdateTradeSkillSearch(self, isUserInput)
 	local text = self:GetText()
 	self:GetParent().search = (text ~= '' and text ~= _G.SEARCH) and text or nil
@@ -299,6 +302,8 @@ end
 local function UpdateTradeSkillList()
 	local searchText = _G.TradeSkillFrame.search
 	if not searchText or searchText == _G.SEARCH or not TradeSkillFrameSearchBox:IsEnabled() then return end
+	if searchText ~= searchQuery then wipe(searchResultCache) end
+	searchQuery = searchText
 
 	local offset    = FauxScrollFrame_GetOffset(_G.TradeSkillListScrollFrame)
 	local isGuild   = IsTradeSkillGuild()
@@ -321,7 +326,7 @@ local function UpdateTradeSkillList()
 				buttonIndex = buttonIndex - 1
 				numItems    = numItems - 1
 				lastType    = nil
-				if sndLastType == 'header' then -- and lastType == 'subheader' and skillType == 'header' then
+				if sndLastType == 'header' then
 					-- header - subheader - header, go back 2 steps
 					buttonIndex = buttonIndex - 1
 					numItems    = numItems - 1
@@ -331,13 +336,18 @@ local function UpdateTradeSkillList()
 			isHeader      = true
 			matchesSearch = true
 		elseif skillName then
-			matchesSearch = ItemSearch:Matches(GetTradeSkillItemLink(index), searchText)
-			local reagentIndex = 0
-			while not matchesSearch do
-				reagentIndex = reagentIndex + 1
-				local reagentLink = GetTradeSkillReagentItemLink(index, reagentIndex)
-				if not reagentLink then break end
-				matchesSearch = ItemSearch:Matches(reagentLink, searchText)
+			if searchResultCache[index] ~= nil then
+				matchesSearch = searchResultCache[index]
+			else
+				matchesSearch = ItemSearch:Matches(GetTradeSkillItemLink(index), searchText)
+				local reagentIndex = 0
+				while not matchesSearch do
+					reagentIndex = reagentIndex + 1
+					local reagentLink = GetTradeSkillReagentItemLink(index, reagentIndex)
+					if not reagentLink then break end
+					matchesSearch = ItemSearch:Matches(reagentLink, searchText)
+				end
+				searchResultCache[index] = matchesSearch and true or false
 			end
 		end
 
