@@ -1,6 +1,6 @@
 local addonName, addon, _ = ...
 local plugin = addon:NewModule('Tradeskill', 'AceEvent-3.0')
-local LPT = LibStub("LibPeriodicTable-3.1", true)
+local LPT = LibStub('LibPeriodicTable-3.1', true)
 
 -- GLOBALS: _G, Auctional, MidgetDB, GameTooltip, CURRENT_TRADESKILL, TRADE_SKILLS_DISPLAYED, Atr_ShowTipWithPricing, TradeSkillListScrollFrame, TradeSkillSkillName, TradeSkillFilterBar
 -- GLOBALS: IsAddOnLoaded, CreateFrame, GetCoinTextureString, GetItemInfo, IsModifiedClick, GetSpellInfo, GetProfessionInfo, GetTradeSkill, GetTradeSkillInfo, GetTradeSkillItemLink, GetAuctionBuyout, GetTradeSkillRecipeLink, GetTradeSkillReagentInfo, GetTradeSkillReagentItemLink, FauxScrollFrame_GetOffset, DressUpItemLink
@@ -529,14 +529,34 @@ local function InitializeTradeSkillFrame()
 	end
 
 	-- more powerful search engine using LibItemSearch
+	local color = _G.NORMAL_FONT_COLOR_CODE
 	local searchBox = _G.TradeSkillFrameSearchBox
 	      searchBox.searchIcon = _G.TradeSkillFrameSearchBoxSearchIcon
 	      searchBox:SetScript('OnTextChanged', UpdateTradeSkillSearch)
 	      searchBox:SetScript('OnEditFocusLost',   _G.SearchBoxTemplate_OnEditFocusLost)
 	      searchBox:SetScript('OnEditFocusGained', _G.SerachBoxTemplate_OnEditFocusGained)
-	--      searchBox:SetScript('OnEnter', addon.ShowTooltip)
-	--      searchBox:SetScript('OnLeave', addon.HideTooltip)
-	--      searchBox.tiptext = 'Search in recipe, item or reagent names or in item descriptions.\nitem level ± 2: "~123"\nitem level range: "123 - 456"'
+	      searchBox:SetScript('OnEnter', addon.ShowTooltip)
+	      searchBox:SetScript('OnLeave', addon.HideTooltip)
+	      searchBox.tiptext  = 'Search hints:'
+	      -- 'Search in recipe, item or reagent names or in item descriptions.\nitem level ± 2: "~123"\nitem level range: "123 - 456"'
+	local index = 2
+	for key, label in pairs({
+		['Name']     = 'n',
+		['Type']     = 't, slot',
+		['Quality']  = 'q',
+		['Level']    = 'l, lvl',
+		['Binding']  = 'bop, boe, boa, bou, quest, bound',
+		['Equipment sets'] = 's (* to match any)',
+		['Tooltip']  = 'tt, tip',
+	}) do
+		searchBox['tiptext'..index] = color..key..'|r'
+		searchBox['tiptext'..index..'Right'] = label
+		index = index + 1
+	end
+	searchBox['tiptext'..index] = color..'|nExamples:|r'
+	searchBox['tiptext'..(index+1)], searchBox['tiptext'..(index+1)..'Right'] = 'l: > 200 & boe', 'BoE items with level > 200'
+	searchBox['tiptext'..(index+2)], searchBox['tiptext'..(index+2)..'Right'] = 'q: epic & gladiator', 'Epics named gladiator'
+	searchBox['tiptext'..(index+3)] = 'Combine using ' ..color..'!|r (don\'t match), '..color..'&|r (and), '..color..'|||r (or)'
 
 	-- add missing clear search button
 	local clearButton = CreateFrame('Button', '$parentClearButton', searchBox)
