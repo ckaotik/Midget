@@ -44,6 +44,64 @@ local function AddTradeSkillInfoIcon(line)
 	return button
 end
 
+local function AddTradeSkillLineReagentCost(message, button, skillIndex, selected, isGuild)
+	if not MidgetDB.tradeskillCosts then return end
+
+	local _, skillType = GetTradeSkillInfo(skillIndex)
+	if not skillType or (skillType ~= "optimal" and skillType ~= "medium" and skillType ~= "easy") then
+		if button.infoIcon then button.infoIcon:Hide() end
+	else
+		local craftPrice = 0
+		for reagentIndex = 1, GetTradeSkillNumReagents(skillIndex) do
+			local _, _, amount = GetTradeSkillReagentInfo(skillIndex, reagentIndex)
+			local reagent = GetTradeSkillReagentItemLink(skillIndex, reagentIndex)
+			      reagent = addon.GetItemID(reagent)
+
+			if reagent then
+				local reagentPrice = 0
+				if LPT and LPT:ItemInSet(reagent, "Tradeskill.Mat.BySource.Vendor") then
+					reagentPrice = 4 * (select(11, GetItemInfo(reagent)) or 0)
+				else
+					-- TODO: what about BoP things?
+					reagentPrice = GetAuctionBuyout and GetAuctionBuyout(reagent) or 0
+				end
+				reagentPrice = reagentPrice * amount
+				craftPrice   = craftPrice + reagentPrice
+			end
+		end
+
+		local craftedItem  = GetTradeSkillItemLink(skillIndex)
+		local craftedValue = craftedItem and GetAuctionBuyout and GetAuctionBuyout(craftedItem) or 0
+
+		if craftPrice > 0 and craftedValue > 0 then
+			local infoIcon = button.infoIcon or AddTradeSkillInfoIcon(button)
+			      infoIcon.tiptext = string.format('%s %s\n%s: %s', _G.COSTS_LABEL, GetCoinTextureString(craftPrice), _G.SELL_PRICE, GetCoinTextureString(craftedValue))
+
+			local difference = craftedValue - craftPrice
+			if difference > 0 then
+				infoIcon.tiptext = infoIcon.tiptext .. "\n"..string.format(_G.LOOT_ROLL_YOU_WON, GetCoinTextureString(difference))
+				if craftPrice > 0 and difference / craftPrice > 0.2 and difference > 500000 then
+					infoIcon:SetNormalTexture('Interface\\COMMON\\Indicator-Green')
+				else
+					infoIcon:SetNormalTexture('Interface\\COMMON\\Indicator-Yellow')
+				end
+			else
+				infoIcon:SetNormalTexture('Interface\\COMMON\\Indicator-Red')
+			end
+			infoIcon:Show()
+		elseif button.infoIcon then
+			button.infoIcon:Hide()
+		end
+
+		--[[ if craftPrice > 0 then
+			name = _G["TradeSkillSkill"..lineIndex]:GetText()
+			if name then
+				_G["TradeSkillSkill"..lineIndex]:SetText(name .. " "..GetCoinTextureString(floor(craftPrice/1000)*1000))
+			end
+		end --]]
+	end
+end
+
 local function AddTradeSkillReagentCosts()
 	if not MidgetDB.tradeskillCosts then return end
 
@@ -58,62 +116,9 @@ local function AddTradeSkillReagentCosts()
 		skillIndex = line + offset
 		lineIndex = line + (hasFilterBar and 1 or 0)
 
-		_, skillType = GetTradeSkillInfo(skillIndex)
-		infoIcon = _G["TradeSkillSkill"..lineIndex.."InfoIcon"]
-		if not skillType or (skillType ~= "optimal" and skillType ~= "medium" and skillType ~= "easy") then
-			if infoIcon then infoIcon:Hide() end
-		else
-			reagentIndex, craftPrice = 1, 0
-			infoIcon = infoIcon or AddTradeSkillInfoIcon(_G["TradeSkillSkill"..lineIndex])
-
-			while GetTradeSkillReagentItemLink(skillIndex, reagentIndex) do
-				_, _, amount = GetTradeSkillReagentInfo(skillIndex, reagentIndex)
-				reagent = GetTradeSkillReagentItemLink(skillIndex, reagentIndex)
-				reagent = addon.GetItemID(reagent)
-
-				if reagent then
-					if LPT and LPT:ItemInSet(reagent, "Tradeskill.Mat.BySource.Vendor") then
-						reagentPrice = 4 * (select(11, GetItemInfo(reagent)) or 0)
-					else
-						reagentPrice = GetAuctionBuyout and GetAuctionBuyout(reagent) or 0 -- [TODO] what about BoP things?
-					end
-					reagentPrice = reagentPrice * amount
-					craftPrice = craftPrice + reagentPrice
-				end
-
-				reagentIndex = reagentIndex + 1
-			end
-
-			craftedItem = GetTradeSkillItemLink(skillIndex)
-			craftedValue = craftedItem and GetAuctionBuyout and GetAuctionBuyout(craftedItem) or 0
-
-			if craftPrice > 0 and craftedValue > 0 then
-				infoIcon.tiptext = COSTS_LABEL.." "..GetCoinTextureString(craftPrice) .. "\n"
-					..SELL_PRICE..": "..GetCoinTextureString(craftedValue)
-
-				difference = craftedValue - craftPrice
-				if difference > 0 then
-					infoIcon.tiptext = infoIcon.tiptext .. "\n"..string.format(LOOT_ROLL_YOU_WON, GetCoinTextureString(difference))
-					if craftPrice > 0 and difference / craftPrice > 0.2 and difference > 500000 then
-						infoIcon:SetNormalTexture("Interface\\COMMON\\Indicator-Green")
-					else
-						infoIcon:SetNormalTexture("Interface\\COMMON\\Indicator-Yellow")
-					end
-				else
-					infoIcon:SetNormalTexture("Interface\\COMMON\\Indicator-Red")
-				end
-				infoIcon:Show()
-			else
-				infoIcon:Hide()
-			end
-
-			--[[ if craftPrice > 0 then
-				name = _G["TradeSkillSkill"..lineIndex]:GetText()
-				if name then
-					_G["TradeSkillSkill"..lineIndex]:SetText(name .. " "..GetCoinTextureString(floor(craftPrice/1000)*1000))
-				end
-			end --]]
-		end
+		local button = _G['TradeSkillSkill'..lineIndex]
+		AddTradeSkillLineReagentCost('TRADE_SKILL_ROW_UPDATE', button, skillIndex)
+		-- plugin:SendMessage('TRADE_SKILL_ROW_UPDATE', button, skillIndex)
 	end
 end
 
@@ -297,6 +302,7 @@ local function UpdateTradeSkillRow(button, index, selected, isGuild)
 
 	button:SetID(index)
 	button:Show()
+	plugin:SendMessage('TRADE_SKILL_ROW_UPDATE', button, index, selected, isGuild)
 end
 
 local function UpdateTradeSkillList()
@@ -442,7 +448,12 @@ end
 
 local function InitializeTradeSkillFrame()
 	local frame = _G.TradeSkillFrame
-	      frame:SetSize(540, 468)
+	      frame:SetSize(540, 450)
+	--[[
+	ReforgingFrame:GetSize()  => 428 x 430
+	TradeSkillFrame:GetSize() => 540 x 468
+	PaperDollFrame:GetSize()  => 540 x 424
+	--]]
 
 	-- recipe list area
 	local list = _G.TradeSkillListScrollFrame
@@ -621,6 +632,81 @@ local function InitializeTradeSkillFrame()
 		frame.filterTbl.hasSkillUp   = hasSkillUp
 	end)
 end
+
+--[[
+local function SetTradeSkillTab(index, spellID, isSecondary)
+	local frame = TradeSkillFrame
+	local button = frame[index]
+	if not button then
+		button = CreateFrame('CheckButton', nil, frame, 'SpellBookSkillLineTabTemplate SecureActionButtonTemplate')
+		button:SetScript('OnEnter', addon.ShowTooltip)
+		button:SetScript('OnLeave', addon.HideTooltip)
+		button:SetAttribute('type', 'spell')
+		frame[index] = button
+	end
+
+	button:ClearAllPoints()
+	button:Show()
+	local previous = frame[index - 1]
+	if isSecondary then
+		if previous and previous:GetID() < 0 then
+			button:SetPoint('BOTTOMLEFT', previous, 'TOPLEFT', 0, 12)
+			button:SetID(previous:GetID() - 1)
+		else
+			-- first bottom tab
+			button:SetPoint('BOTTOMLEFT', '$parent', 'BOTTOMRIGHT', 0, 30)
+			button:SetID(-1)
+		end
+	else
+		if previous and index > 1 then
+			button:SetPoint('TOPLEFT', previous, 'BOTTOMLEFT', 0, -12)
+			button:SetID(previous:GetID() + 1)
+		else
+			-- first top tab
+			button:SetPoint('TOPLEFT', '$parent', 'TOPRIGHT', 0, -30)
+			button:SetID(1)
+		end
+	end
+
+	local spellName, rank, icon = GetSpellInfo(spellID)
+	button:SetNormalTexture(icon)
+	button.link = GetSpellLink(spellID)
+	-- button.tiptext = spellName
+	-- button.tiptext2 = rank
+	button:SetAttribute('spell', spellName)
+end
+
+local function UpdateTradeSkillTabs()
+	local tradeSkillSpells = {}
+	local secondarySpells = {}
+
+	for index, profession in ipairs({ GetProfessions() }) do
+		local name, texture, rank, maxRank, numSpells, spellOffset, skillLine, rankModifier, specializationIndex, specializationOffset = GetProfessionInfo(profession)
+
+		local hasMainSpell
+		for offset = 1, numSpells or 0 do
+			local link, tradeLink = GetSpellLink(spellOffset + offset, _G.BOOKTYPE_SPELL)
+			if not IsPassiveSpell(spellOffset + offset, _G.BOOKTYPE_SPELL) then
+				local _, spellID = addon.GetLinkData(link)
+				if tradeLink or spellID == 2656 then
+					if not hasMainSpell then
+						table.insert(tradeSkillSpells, spellID)
+					end
+					hasMainSpell = true
+				else
+					table.insert(secondarySpells, spellID)
+				end
+			end
+		end
+	end
+
+	for index, spellID in ipairs(tradeSkillSpells) do
+		SetTradeSkillTab(index, spellID)
+	end
+	for index, spellID in ipairs(secondarySpells) do
+		SetTradeSkillTab(index + #tradeSkillSpells, spellID, true)
+	end
+end --]]
 
 function plugin:TRADE_SKILL_SHOW()
 	InitializeTradeSkillFrame()
@@ -851,6 +937,7 @@ local commonCraftables = {
 
 function plugin:OnEnable()
 	hooksecurefunc("TradeSkillFrame_Update", AddTradeSkillReagentCosts)
+	self:RegisterMessage('TRADE_SKILL_ROW_UPDATE', AddTradeSkillLineReagentCost)
 	hooksecurefunc("TradeSkillFrame_SetSelection", AddTradeSkillLevels)
 	hooksecurefunc("TradeSkillFrameButton_OnEnter", AddTradeSkillHoverLink)
 	hooksecurefunc("TradeSkillFrameButton_OnLeave", addon.HideTooltip)
