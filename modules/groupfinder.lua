@@ -4,13 +4,21 @@ local plugin = addon:NewModule('GroupFinder', 'AceEvent-3.0')
 -- GLOBALS: _G, hooksecurefunc
 -- GLOBALS: SearchLFGGetResults, SearchLFGGetPartyResults
 
+local playerRealm = GetRealmName()
+
 -- ================================================
 -- Add further info to lfg tooltips
 -- ================================================
 local function AddLFREntryInfo(button, index)
 	local name, level, areaName, className, comment, partyMembers, status, class, encountersTotal, encountersComplete, isIneligible, isLeader, isTank, isHealer, isDamage, bossKills, specID, isGroupLeader, armor, spellDamage, plusHealing, CritMelee, CritRanged, critSpell, mp5, mp5Combat, attackPower, agility, maxHealth, maxMana, gearRating, avgILevel, defenseRating, dodgeRating, BlockRating, ParryRating, HasteRating, expertise = SearchLFGGetResults(index)
 
+	local unitName, unitRealm = strsplit('-', name)
+	button.name:SetText(unitName)
+	button.class:SetText(_G.NORMAL_FONT_COLOR_CODE .. (unitRealm or playerRealm) .. '|r')
+
 	if button.type == 'individual' then
+		local color = _G.RAID_CLASS_COLORS[class] or _G.NORMAL_FONT_COLOR
+		button.name:SetTextColor(color.r, color.g, color.b)
 		if isDamage and spellDamage > attackPower then
 			-- caster dps shown in green, otherwise regular (red)
 			button.damageIcon:SetTexture('Interface\\LFGFRAME\\LFGRole_Green')
@@ -23,6 +31,8 @@ local function AddLFREntryInfo(button, index)
 		button.healerCount:SetText('')
 		button.damageCount:SetText('')
 	else
+		local color = _G.NORMAL_FONT_COLOR
+		button.name:SetTextColor(color.r, color.g, color.b)
 		if level == 90 then
 			local _, _, _, _, _, partyMembers = SearchLFGGetResults(button.index)
 			local numTanks, numHeals, numDPS = isTank and 1 or 0, isHealer and 1 or 0, isDamage and 1 or 0
