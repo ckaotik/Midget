@@ -194,32 +194,34 @@ end
 -- ================================================
 -- SpellBookSearch
 -- ================================================
-local ItemSearch = LibStub('LibItemSearch-1.0')
-local simpleSearch = ItemSearch:GetTypedSearch('text')
-if not simpleSearch then
-	ItemSearch:RegisterTypedSearch{
-		id = 'text',
-		canSearch = function(self, _, search)
-			return search
-		end,
-		findItem = function(self, text, _, search)
-			return text:lower():find(search)
-		end,
-	}
-	simpleSearch = ItemSearch:GetTypedSearch('text')
-end
-
+local CustomSearch = LibStub('CustomSearch-1.0')
+local ItemSearch   = LibStub('LibItemSearch-1.2')
+local filters = {
+	tooltip = {
+		tags      = ItemSearch.Filters.tooltip.tags,
+		onlyTags  = ItemSearch.Filters.tooltip.onlyTags,
+		canSearch = ItemSearch.Filters.tooltip.canSearch,
+		match     = function(self, hyperlink, operator, search)
+			return ItemSearch.Filters.tooltip.match(self, hyperlink, operator, search)
+		end
+	},
+	name = {
+		tags      = {'n', 'name', 'title', 'text'},
+		canSearch = function(self, operator, search) return not operator and search end,
+		match     = function(self, text, operator, search)
+			local spellID, name = text:match('spell:(%d+).-%[(.-)%]')
+			      spellID = tonumber(spellID)
+			local description = GetSpellDescription(spellID)
+			if name then
+				return CustomSearch:Find(search, name, description, tostring(spellID))
+			end
+		end
+	},
+}
 local function SearchInSpell(index, searchString)
-	if not index then return end
-	searchString = searchString or ""
-
-	local _, spellID 	= GetSpellBookItemInfo(index, BOOKTYPE_SPELL)
-	local name, subText = GetSpellBookItemName(index, BOOKTYPE_SPELL)
-	local description 	= GetSpellDescription(spellID)
-
-	return (name and ItemSearch:UseTypedSearch(simpleSearch, name, nil, searchString))
-		or (subText and ItemSearch:UseTypedSearch(simpleSearch, subText, nil, searchString))
-		or (description and ItemSearch:UseTypedSearch(simpleSearch, description, nil, searchString))
+	if not index or not searchString then return end
+	local spellLink, tradeLink = GetSpellLink(index, _G.BOOKTYPE_SPELL)
+	return CustomSearch:Matches(spellLink, searchString, filters)
 end
 
 local LibFlash = LibStub("LibFlash")
