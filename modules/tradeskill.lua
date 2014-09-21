@@ -528,7 +528,7 @@ local function InitializeTradeSkillFrame()
 		local button = _G['TradeSkillReagent'..index]
 		local nameFrame = _G['TradeSkillReagent'..index..'NameFrame']
 		      nameFrame:SetPoint('RIGHT', 3, 0)
-		local itemName = button.name
+		local itemName = button.name or button.Name
 		      itemName:SetPoint('LEFT', nameFrame, 'LEFT', 20, 0)
 		      itemName:SetPoint('RIGHT', nameFrame, 'RIGHT', -5, 0)
 		if index ~= 1 then
@@ -708,7 +708,7 @@ local function UpdateTradeSkillTabs()
 	end
 end --]]
 
-function plugin:TRADE_SKILL_SHOW()
+function plugin:TRADE_SKILL_SHOW(event, ...)
 	InitializeTradeSkillFrame()
 	hooksecurefunc('TradeSkillFrame_Update', UpdateTradeSkillList)
 	hooksecurefunc('TradeSkillFrame_SetSelection', OnTradeSkillFrame_SetSelection)

@@ -155,6 +155,7 @@ end
 local function HideUnusableCompareTips()
 	if not MidgetDB.hideUnusableCompareTips then return end
 	local function HookCompareItems(shoppingtip)
+		if not shoppingtip then return end
 		local old = shoppingtip.SetHyperlinkCompareItem
 		shoppingtip.SetHyperlinkCompareItem = function(self, link, level, shift, main, ...)
 			main = nil

@@ -68,10 +68,6 @@ local function INSPECT_READY(event, guid)
 	end
 end
 
-function plugin:OnEnable()
-	self:RegisterEvent('INSPECT_READY', INSPECT_READY)
-end
-
 local function TooltipUnitInfo(tooltip)
 	local _, unit = tooltip:GetUnit()
 	if not unit or not UnitIsPlayer(unit) then return end
@@ -108,12 +104,6 @@ local function TooltipUnitInfo(tooltip)
 		end
 	end
 end
-GameTooltip:HookScript('OnTooltipSetUnit', TooltipUnitInfo)
-GameTooltip:HookScript('OnTooltipCleared', function(self)
-	self.talentsAdded = nil
-	unitID = nil
-	unitTooltip = nil
-end)
 
 -- display item specs
 local itemSpecs = {}
@@ -135,8 +125,22 @@ local function TooltipItemInfo(self)
 	      text:SetText(specs)
 	      text:Show()
 end
-GameTooltip:HookScript('OnTooltipSetItem', TooltipItemInfo)
-ItemRefTooltip:HookScript('OnTooltipSetItem', TooltipItemInfo)
-ShoppingTooltip1:HookScript('OnTooltipSetItem', TooltipItemInfo)
-ShoppingTooltip2:HookScript('OnTooltipSetItem', TooltipItemInfo)
-ShoppingTooltip3:HookScript('OnTooltipSetItem', TooltipItemInfo)
+
+function plugin:OnEnable()
+	self:RegisterEvent('INSPECT_READY', INSPECT_READY)
+
+	-- unit info
+	GameTooltip:HookScript('OnTooltipSetUnit', TooltipUnitInfo)
+	GameTooltip:HookScript('OnTooltipCleared', function(self)
+		self.talentsAdded = nil
+		unitID = nil
+		unitTooltip = nil
+	end)
+
+	-- item info
+	GameTooltip:HookScript('OnTooltipSetItem', TooltipItemInfo)
+	ItemRefTooltip:HookScript('OnTooltipSetItem', TooltipItemInfo)
+	if ShoppingTooltip1 then ShoppingTooltip1:HookScript('OnTooltipSetItem', TooltipItemInfo) end
+	if ShoppingTooltip2 then ShoppingTooltip2:HookScript('OnTooltipSetItem', TooltipItemInfo) end
+	if ShoppingTooltip3 then ShoppingTooltip3:HookScript('OnTooltipSetItem', TooltipItemInfo) end
+end

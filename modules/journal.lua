@@ -41,7 +41,7 @@ local function CreateArrow(direction, ...)
 	-- arrow:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight")
 
 	arrow:SetPoint(...)
-	arrow:SetSize(10, 10)
+	arrow:SetSize(14, 14)
 
 	return arrow
 end
@@ -116,6 +116,7 @@ local function CheckUpdateLootSpec(event, id, name, difficulty, groupSize)
 
 	local instanceID = EJ_GetCurrentInstance()
 	if not instanceID then return end
+	-- EJ_SelectInstance(instanceID)
 	EncounterJournal_DisplayInstance(instanceID)
 
 	local encounterIndex, encounterID, encounterName = 1, nil, nil
@@ -167,10 +168,10 @@ local function initialize()
 	end)
 
 	local initArrows = nil
-	EncounterJournal:HookScript("OnShow", function()
+	EncounterJournal:HookScript("OnShow", function(self)
 		if initArrows then return end
-		CreateArrow( 1, "BOTTOMRIGHT", "$parentInstanceTitle", "LEFT", 0,  1)
-		CreateArrow(-1, "TOPRIGHT",    "$parentInstanceTitle", "LEFT", 0, -1)
+		CreateArrow( 1, "BOTTOMRIGHT", "$parentInstanceTitle", "RIGHT", 30, 1)
+		CreateArrow(-1, "TOPRIGHT",    "$parentInstanceTitle", "RIGHT", 30, -1)
 		initArrows = true
 	end)
 
