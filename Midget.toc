@@ -1,4 +1,4 @@
-## Interface: 50400
+## Interface: 60000
 ## Author: ckaotik
 ## Title: Midget
 ## Version: dev
@@ -36,7 +36,6 @@ modules\journal.lua
 modules\learner.lua
 modules\mail.lua
 modules\raid.lua
-modules\reforge.lua
 modules\social.lua
 modules\spellbook.lua
 modules\stuffer.lua
