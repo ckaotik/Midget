@@ -103,8 +103,8 @@ local function SortSpellTable(a, b)
 		nameA = a:match("%[(.-)%]") or a
 		nameB = b:match("%[(.-)%]") or b
 	end
-	passiveA = IsPassiveSpell(nameA) or 0
-	passiveB = IsPassiveSpell(nameB) or 0
+	passiveA = IsPassiveSpell(nameA) and 1 or 0
+	passiveB = IsPassiveSpell(nameB) and 1 or 0
 
 
 	if passiveA == passiveB then

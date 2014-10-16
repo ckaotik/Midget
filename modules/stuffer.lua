@@ -55,7 +55,7 @@ local scopes = {
 	-- SCOPE_VOIDSTORAGE = SCOPE_VOIDSTORAGE,
 	[SCOPE_VOIDSTORAGE] = {
 		-- VOID_STORAGE_MAX defined as local in Blizzard_VoidStorageUI.lua
-		GetNumSlots  = function(tab) return tab == 1 and 80 or 0 end,
+		GetNumSlots  = function(tab) return tab == 1 or tab == 2 and 80 or 0 end,
 		-- GetVoidItemHyperlinkString
 		GetLink = function(_, slot)
 			local itemID = GetVoidItemInfo(slot)
