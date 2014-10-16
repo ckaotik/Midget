@@ -219,7 +219,7 @@ local function TooltipAddGuildMembers(tooltip, needsSeparator)
 		          tooltip:SetCell(lineNum, 1, guildMOTD or '', 'LEFT', numColumns)
 		lineNum = tooltip:AddLine(' ')
 
-		lineNum = tooltip:AddLine('', _G.ITEM_LEVEL_ABBR, _G.NAMES_LABEL, _G.RANK, _G.ZONE, _G.LABEL_NOTE)
+		lineNum = tooltip:AddLine('', _G.ITEM_LEVEL_ABBR, _G.CALENDAR_EVENT_NAME, _G.RANK, _G.ZONE, _G.LABEL_NOTE)
 
 		-- also available: class, wideName, online, weeklyxp, totalxp, arenarating, bgrating, achievement
 		tooltip:SetCellScript(lineNum, 2, 'OnMouseUp', SortGuildList, 'level')
