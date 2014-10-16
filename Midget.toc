@@ -42,5 +42,4 @@ modules\spellbook.lua
 modules\stuffer.lua
 modules\tooltip.achievement.lua
 modules\tooltip.unit.lua
-modules\tradeskill.lua
 modules\upgrade.lua
