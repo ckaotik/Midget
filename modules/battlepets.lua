@@ -336,11 +336,6 @@ end
 function plugin.UpdateTabs()
 	local selected = MidgetDB.petBattleTeams.selected
 	for index, team in ipairs(MidgetDB.petBattleTeams) do
-		-- team 1                                    0x000-0-00000308B99D
-		-- C_PetJournal.GetPetLoadOutInfo(1) => "BattlePet-0-00000308B8C4", 826, 745, 404, false
-		-- C_PetJournal.GetPetInfoByIndex(1) => "BattlePet-0-00000308B99D", 277, true, "Klonk", 25, true, false, "Aufziehgnom", "Interface\ICONS\INV_Misc_Head_ClockworkGnome_01.blp", 10, 48609, "|cFFFFD200Beruf: |rArch\195\164ologie", "...", false, true, true, false, true
-
-		print('team', index, team[1], team[1] and team[1].petID)
 		local speciesID, _, _, _, _, _, _, _, icon = C_PetJournal.GetPetInfoByPetID(team[1].petID)
 		local tab = GetTab(index)
 		      tab:SetChecked(index == selected)
