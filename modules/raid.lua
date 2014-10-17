@@ -96,14 +96,6 @@ function plugin:OnEnable()
 	self:RegisterEvent('ENCOUNTER_START')
 	self:RegisterEvent('UNIT_AURA')
 	self:UNIT_AURA('UNIT_AURA', 'player')
-
-	local button = CreateFrame('Button', '$parentOtherRaids', GroupFinderFrame, 'UIPanelButtonTemplate')
-	      button:SetText(_G.LOOKING_FOR_RAID)
-	      button:SetPoint('BOTTOMLEFT', 36, 16)
-	      button:SetSize(150, 20)
-	button:SetScript('OnClick', function(self, btn, up)
-		ToggleFrame(RaidBrowserFrame)
-	end)
 end
 
 function plugin:OnDisable()
