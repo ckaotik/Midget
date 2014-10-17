@@ -177,27 +177,13 @@ function addon:OnEnable()
 		end
 	end --]]
 
-	local function GetSetting(info)
-		local data = addon.db
-		for i = 2, #info do data = data[ info[i] ] end
-		return data
-	end
-	local function SetSetting(info, value)
-		local data = addon.db
-		for i = 2, #info - 1 do data = data[ info[i] ] end
-		data[ info[#info] ] = value
-	end
-
 	LibStub('AceConfig-3.0'):RegisterOptionsTable(addonName, {
 		type = 'group',
 		args = {
-			main     = LibStub('LibOptionsGenerate-1.0'):GetOptionsTable(self.db.profile),
+			main = LibStub('LibOptionsGenerate-1.0'):GetOptionsTable(addonName..'.db.profile'),
 			profiles = LibStub('AceDBOptions-3.0'):GetOptionsTable(self.db),
 		},
-		get = GetSetting,
-		set = SetSetting,
 	})
-
 	local AceConfigDialog = LibStub('AceConfigDialog-3.0')
 	      AceConfigDialog:AddToBlizOptions(addonName, addonName, nil, 'main')
 	      AceConfigDialog:AddToBlizOptions(addonName, 'Profiles', addonName, 'profiles')

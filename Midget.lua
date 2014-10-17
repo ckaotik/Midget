@@ -69,31 +69,25 @@ function addon:OnInitialize()
 end
 
 function addon:OnEnable()
-	local function GetSetting(info)
-		local data = info[1] == 'main' and MidgetDB or MidgetLocalDB
-		for i = 2, #info do data = data[ info[i] ] end
-		return data
-	end
-	local function SetSetting(info, value)
-		local data = info[1] == 'main' and MidgetDB or MidgetLocalDB
-		for i = 2, #info - 1 do data = data[ info[i] ] end
-		data[ info[#info] ] = value
-	end
-
-	local OptionsGenerate = LibStub('LibOptionsGenerate-1.0')
+	local types = {
+		craftables = '*none*',
+		petBattleTeams = '*none*',
+	}
+	local charTypes = {
+		LFRLootSpecs = '*none*',
+	}
 	LibStub('AceConfig-3.0'):RegisterOptionsTable(addonName, {
 		type = 'group',
-		inline = true,
 		args = {
-			main      = OptionsGenerate:GetOptionsTable(MidgetDB),
-			character = OptionsGenerate:GetOptionsTable(MidgetLocalDB),
+			main = LibStub('LibOptionsGenerate-1.0'):GetOptionsTable(addonName..'DB', types),
+			char = LibStub('LibOptionsGenerate-1.0'):GetOptionsTable(addonName..'LocalDB', charTypes),
+			-- profiles = LibStub('AceDBOptions-3.0'):GetOptionsTable(self.db), -- this is not an AceAddon (yet)
 		},
-		get = GetSetting,
-		set = SetSetting,
 	})
-
 	local AceConfigDialog = LibStub('AceConfigDialog-3.0')
 	      AceConfigDialog:AddToBlizOptions(addonName, addonName, nil, 'main')
+	      AceConfigDialog:AddToBlizOptions(addonName, 'Character Settings', addonName, 'char')
+	      -- AceConfigDialog:AddToBlizOptions(addonName, 'Profiles', addonName, 'profiles')
 end
 
 -- ================================================
