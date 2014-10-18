@@ -495,21 +495,53 @@ local function AddMasque()
 end
 
 function InitItemButtonLevels()
+	-- TODO: horrible lockup on default UI's inventory
+	-- TODO: could also hook onto metatable's set handler for 'UpdateTooltip'
 	local LibItemUpgrade = LibStub('LibItemUpgradeInfo-1.0')
-	local function UpdateButton(self)
-		local button = self.icon and self or self:GetParent()
-		if button.noItemLevel then return end
+	local buttons, colors = {}, { -- 0.55,0.55,0.55 -- gray
+		{1 ,0, 0}, 			-- red 			-- worst item
+		{1, 0.7, 0}, 		-- orange
+		{1, 1, 0}, 			-- yellow
+		{0, 1, 0}, 			-- green
+		{0, 1, 1}, 			-- lightblue
+		{0.2, 0.2, 1}, 		-- blue 		-- base color
+		{0, 0.5, 1},		-- darkblue
+		{0.7, 0, 1},		-- purple
+		{1, 0, 1}, 			-- pink
+		{0.9, 0.8, 0.5}, 	-- heirloom
+		{1, 1, 1}, 			-- white 		-- best item
+	}
+	local baseColorIndex, stepSize = math.ceil(#colors/2), 8
+	local function GetItemLevelColor(itemLevel)
+		local total, equipped = GetAverageItemLevel()
+		local levelDiff = math.floor((itemLevel - equipped)/stepSize)
+		local color     = colors[baseColorIndex + levelDiff]
+			or (levelDiff < 0 and colors[1])
+			or (levelDiff > 0 and colors[#colors])
+		return unpack(color or colors[baseColorIndex])
+	end
+	local function HideButtonLevel(self)
+		local button = (self.icon or self.Icon) and self or self:GetParent()
+		if button.itemLevel then
+			button.itemLevel:SetText('')
+		end
+	end
+	local function UpdateButtonLevel(self, texture)
+		local button = (self.icon or self.Icon) and self or self:GetParent()
+		if not texture or texture == '' or button.noItemLevel then
+			HideButtonLevel(button)
+			return
+		end
 
 		if not button.itemLevel then
+			table.insert(buttons, button)
 			local iLevel = button:CreateFontString(nil, 'OVERLAY', 'NumberFontNormalSmall')
 			      iLevel:SetPoint('TOPLEFT', -2, 1)
 			      iLevel:SetText('')
 			button.itemLevel = iLevel
-		else
-			button.itemLevel:SetText('')
 		end
 
-		local itemLink = button.link or button.hyperlink or button.itemLink
+		local itemLink = button.link or button.hyperLink or button.hyperlink or button.itemlink or button.itemLink
 			or (button.item and type(button.item) == 'string' and button.item)
 		if not itemLink and button.GetItem then
 			itemLink = button:GetItem()
@@ -521,13 +553,26 @@ function InitItemButtonLevels()
 		end
 
 		if itemLink then
-			-- TODO: coloring using relative levels
-			local itemLevel = LibItemUpgrade:GetUpgradedItemLevel(itemLink)
-			button.itemLevel:SetText(itemLevel)
+			local _, _, quality, itemLevel, _, _, _, _, equipSlot = GetItemInfo(itemLink)
+			if itemLevel > 1 and equipSlot ~= '' and equipSlot ~= 'INVTYPE_BAG' then
+				-- local r, g, b = GetItemQualityColor(quality)
+				itemLevel = LibItemUpgrade:GetUpgradedItemLevel(itemLink) or itemLevel
+				button.itemLevel:SetText(itemLevel)
+				button.itemLevel:SetTextColor(GetItemLevelColor(itemLevel))
+			end
 		end
 	end
-	hooksecurefunc('SetItemButtonTexture', UpdateButton)
+	hooksecurefunc('SetItemButtonTexture', UpdateButtonLevel)
+	hooksecurefunc('EquipmentFlyout_DisplayButton', UpdateButtonLevel)
+	hooksecurefunc('EquipmentFlyout_DisplaySpecialButton', HideButtonLevel)
 
+	plugin:RegisterEvent('PLAYER_AVG_ITEM_LEVEL_UPDATE', function()
+		for _, button in pairs(buttons) do
+			UpdateButtonLevel(button, true)
+		end
+	end)
+
+	-- QuestInfoRewardsFrame
 	hooksecurefunc('CreateFrame', function(frameType, name, parent, templates, id)
 		if frameType:lower() == 'button' and templates and templates:lower():find('itembutton') then
 			if not name then return end
@@ -535,10 +580,12 @@ function InitItemButtonLevels()
 				name = name:gsub('$parent', parent:GetName())
 			end
 			local button = _G[name]
-			if button.SetTexture then hooksecurefunc(button, 'SetTexture', UpdateButton) end
-			if button.icon.SetTexture then hooksecurefunc(button.icon, 'SetTexture', UpdateButton) end
-			hooksecurefunc(button, 'Hide', UpdateButton)
-			hooksecurefunc(button.icon, 'Hide', UpdateButton)
+			local icon = button.icon or button.Icon
+			if not button or not icon then return end
+			if button.SetTexture then hooksecurefunc(button, 'SetTexture', UpdateButtonLevel) end
+			if icon.SetTexture then hooksecurefunc(icon, 'SetTexture', UpdateButtonLevel) end
+			hooksecurefunc(button, 'Hide', HideButtonLevel)
+			hooksecurefunc(icon, 'Hide', HideButtonLevel)
 		end
 	end)
 end
@@ -551,33 +598,8 @@ local function CalendarIconFlash()
 	self.pendingCalendarInvites = 1337 --]]
 end
 
-local function InitTooltipStyle()
-	-- heavily inspired by rTooltip
-	if true then return end
-	-- GameTooltipHeaderText:SetFont(cfg.font.family, 14, 'THINOUTLINE')
-	-- GameTooltipText:SetFont(cfg.font.family, 12, 'THINOUTLINE')
-	-- Tooltip_Small:SetFont(cfg.font.family, 11, 'THINOUTLINE')
-
-	-- /run DAMAGE_TEXT_FONT = 'Interface\\Addons\\Midget\\media\\express.ttf'
-
-	-- health statusbar
-	local statusBar = GameTooltipStatusBar
-	      statusBar:ClearAllPoints()
-	      statusBar:SetPoint('LEFT', 5, 0)
-	      statusBar:SetPoint('RIGHT', -5, 0)
-	      statusBar:SetPoint('BOTTOM', statusBar:GetParent(), 'TOP', 0, -6)
-	      statusBar:SetHeight(4)
-	local bg = statusBar:CreateTexture(nil, 'BACKGROUND', nil, -8)
-	      bg:SetPoint('TOPLEFT',-1,1)
-	      bg:SetPoint('BOTTOMRIGHT',1,-1)
-	      bg:SetTexture(1,1,1)
-	      bg:SetVertexColor(0,0,0,0.7)
-	statusBar.bg = bg
-end
-
 -- ================================================
 function plugin:OnEnable()
-	InitTooltipStyle()
 	InitItemButtonLevels()
 	CalendarIconFlash()
 	CreateCorkButton()
