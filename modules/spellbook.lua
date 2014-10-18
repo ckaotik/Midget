@@ -319,14 +319,10 @@ function plugin:OnEnable()
 		EditBox_ClearFocus(self)
 	end)
 	searchbox:SetScript("OnTextChanged", function(self)
+		InputBoxInstructions_OnTextChanged(self)
 		local text = self:GetText()
 		local oldText = SpellBookFrame.searchString
-
-		if text == "" or text == SEARCH then
-			SpellBookFrame.searchString = nil
-		else
-			SpellBookFrame.searchString = string.lower(text)
-		end
+		SpellBookFrame.searchString = text ~= '' and string.lower(text) or nil
 
 		if oldText ~= SpellBookFrame.searchString then
 			plugin.SearchInSpellBook()
