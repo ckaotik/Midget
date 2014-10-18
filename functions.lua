@@ -14,16 +14,17 @@ local function AddMoreSharedMedia()
 	LSM:Register("border", "Glow", "Interface\\Addons\\Midget\\media\\glow.tga")
 	LSM:Register("border", "Double", "Interface\\Addons\\Midget\\media\\double_border.tga")
 	LSM:Register("border", "Single Gray", "Interface\\Addons\\Midget\\media\\grayborder.tga")
+	LSM:Register("statusbar", "Smooth", "Interface\\Addons\\Midget\\media\\Smooth.tga")
+	LSM:Register("statusbar", "TukTex", "Interface\\Addons\\Midget\\media\\TukTexture.tga")
 	LSM:Register("font", "Accidental Presidency", "Interface\\Addons\\Midget\\media\\AccidentalPresidency.ttf")
 	LSM:Register("font", "Andika Compact", "Interface\\Addons\\Midget\\media\\Andika-Compact.ttf")
 	LSM:Register("font", "Andika", "Interface\\Addons\\Midget\\media\\Andika.ttf")
 	LSM:Register("font", "Avant Garde", "Interface\\Addons\\Midget\\media\\AvantGarde.ttf")
 	LSM:Register("font", "Cibreo", "Interface\\Addons\\Midget\\media\\Cibreo.ttf")
+	LSM:Register("font", "DejaWeb", "Interface\\Addons\\Midget\\media\\DejaWeb.ttf")
 	LSM:Register("font", "Express", "Interface\\Addons\\Midget\\media\\express.ttf")
 	LSM:Register("font", "Futura Medium", "Interface\\Addons\\Midget\\media\\FuturaMedium.ttf")
 	LSM:Register("font", "Paralucent", "Interface\\Addons\\Midget\\media\\Paralucent.ttf")
-	LSM:Register("statusbar", "Smooth", "Interface\\Addons\\Midget\\media\\Smooth.tga")
-	LSM:Register("statusbar", "TukTex", "Interface\\Addons\\Midget\\media\\TukTexture.tga")
 end
 
 -- ================================================
@@ -495,9 +496,8 @@ local function AddMasque()
 end
 
 function InitItemButtonLevels()
-	-- TODO: horrible lockup on default UI's inventory
-	-- TODO: could also hook onto metatable's set handler for 'UpdateTooltip'
 	local LibItemUpgrade = LibStub('LibItemUpgradeInfo-1.0')
+	-- TODO: use different color scale
 	local buttons, colors = {}, { -- 0.55,0.55,0.55 -- gray
 		{1 ,0, 0}, 			-- red 			-- worst item
 		{1, 0.7, 0}, 		-- orange
@@ -520,12 +520,24 @@ function InitItemButtonLevels()
 			or (levelDiff > 0 and colors[#colors])
 		return unpack(color or colors[baseColorIndex])
 	end
+
+	local getItemLink = {
+		[PaperDollItemSlotButton_OnEnter] = function(self) return GetInventoryItemLink('player', self:GetID()) end,
+		[ContainerFrameItemButton_OnEnter] = function(self) return GetContainerItemLink(self:GetParent():GetID(), self:GetID()) end,
+		[BankFrameItemButton_OnEnter] = function(self) return GetInventoryItemLink('player', self:GetInventorySlot()) end,
+		--[[ -- FIXME: VS is not yet loaded
+		[VoidStorageItemButton_OnEnter] = function(self)
+			if not self.hasItem then return end
+			return GetVoidItemHyperlinkString(VoidStorageFrame.page, self.slot)
+		end, --]]
+	}
 	local function HideButtonLevel(self)
 		local button = (self.icon or self.Icon) and self or self:GetParent()
-		if button.itemLevel then
+		if button and button.itemLevel then
 			button.itemLevel:SetText('')
 		end
 	end
+
 	local function UpdateButtonLevel(self, texture)
 		local button = (self.icon or self.Icon) and self or self:GetParent()
 		if not texture or texture == '' or button.noItemLevel then
@@ -537,9 +549,9 @@ function InitItemButtonLevels()
 			table.insert(buttons, button)
 			local iLevel = button:CreateFontString(nil, 'OVERLAY', 'NumberFontNormalSmall')
 			      iLevel:SetPoint('TOPLEFT', -2, 1)
-			      iLevel:SetText('')
 			button.itemLevel = iLevel
 		end
+		button.itemLevel:SetText('')
 
 		local itemLink = button.link or button.hyperLink or button.hyperlink or button.itemlink or button.itemLink
 			or (button.item and type(button.item) == 'string' and button.item)
@@ -547,14 +559,19 @@ function InitItemButtonLevels()
 			itemLink = button:GetItem()
 		elseif not itemLink and button.UpdateTooltip then
 			-- tooltip scan as last resort
-			button:UpdateTooltip()
-			_, itemLink = GameTooltip:GetItem()
-			GameTooltip:Hide()
+			local itemLinkFunc = getItemLink[button.UpdateTooltip]
+			if itemLinkFunc then
+				itemLink = itemLinkFunc(button)
+			else
+				button:UpdateTooltip()
+				_, itemLink = GameTooltip:GetItem()
+				GameTooltip:Hide()
+			end
 		end
 
 		if itemLink then
 			local _, _, quality, itemLevel, _, _, _, _, equipSlot = GetItemInfo(itemLink)
-			if itemLevel > 1 and equipSlot ~= '' and equipSlot ~= 'INVTYPE_BAG' then
+			if itemLevel and itemLevel > 1 and equipSlot ~= '' and equipSlot ~= 'INVTYPE_BAG' then
 				-- local r, g, b = GetItemQualityColor(quality)
 				itemLevel = LibItemUpgrade:GetUpgradedItemLevel(itemLink) or itemLevel
 				button.itemLevel:SetText(itemLevel)
@@ -563,6 +580,7 @@ function InitItemButtonLevels()
 		end
 	end
 	hooksecurefunc('SetItemButtonTexture', UpdateButtonLevel)
+	hooksecurefunc('BankFrameItemButton_Update', function(self) UpdateButtonLevel(self, true) end)
 	hooksecurefunc('EquipmentFlyout_DisplayButton', UpdateButtonLevel)
 	hooksecurefunc('EquipmentFlyout_DisplaySpecialButton', HideButtonLevel)
 

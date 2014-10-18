@@ -142,9 +142,22 @@ function plugin:OnEnable()
 	ItemRefTooltip:HookScript('OnTooltipSetItem', TooltipItemInfo)
 	if ShoppingTooltip1 then ShoppingTooltip1:HookScript('OnTooltipSetItem', TooltipItemInfo) end
 	if ShoppingTooltip2 then ShoppingTooltip2:HookScript('OnTooltipSetItem', TooltipItemInfo) end
-	if ShoppingTooltip3 then ShoppingTooltip3:HookScript('OnTooltipSetItem', TooltipItemInfo) end
-end
 
+	-- tooltip position
+	hooksecurefunc('GameTooltip_SetDefaultAnchor', function(self, parent)
+		self:SetPoint('BOTTOMRIGHT', 'UIParent', 'BOTTOMRIGHT', -72, 152)
+	end)
+
+	GameTooltip:HookScript('OnTooltipSetUnit', function(self)
+		local _, unit = GameTooltip:GetUnit()
+		local r, g, b
+		if UnitIsPlayer(unit) and UnitHealth(unit) > 0 and not UnitIsDeadOrGhost(unit) then
+			local _, class = UnitClass(unit)
+			local color = (CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS)[class]
+			self.statusBar:SetStatusBarColor(color.r, color.g, color.b)
+		end
+	end)
+end
 
 --[[
 	local border, borderSize, borderInset = 'Interface\\Addons\\Midget\\media\\glow', 4, 4
@@ -152,12 +165,33 @@ end
 	-- local border, borderSize, borderInset = 'Interface\\Addons\\Midget\\media\\grayborder', 16, nil
 
 	-- default colors
-	TOOLTIP_DEFAULT_COLOR.r = 0 -- border color
-	TOOLTIP_DEFAULT_COLOR.g = 0
-	TOOLTIP_DEFAULT_COLOR.b = 0
-	TOOLTIP_DEFAULT_BACKGROUND_COLOR.r = 0 -- border background color
-	TOOLTIP_DEFAULT_BACKGROUND_COLOR.g = 0
-	TOOLTIP_DEFAULT_BACKGROUND_COLOR.b = 0
+	-- TOOLTIP_DEFAULT_COLOR.r = 0 -- border color
+	-- TOOLTIP_DEFAULT_COLOR.g = 0
+	-- TOOLTIP_DEFAULT_COLOR.b = 0
+	-- TOOLTIP_DEFAULT_BACKGROUND_COLOR.r = 0 -- border background color
+	-- TOOLTIP_DEFAULT_BACKGROUND_COLOR.g = 0
+	-- TOOLTIP_DEFAULT_BACKGROUND_COLOR.b = 0
+
+	-- default backdrop
+	local backdrop = GameTooltip:GetBackdrop()
+	      backdrop.edgeFile = border or 'Interface\\Addons\\Midget\\media\\glow'
+	      backdrop.edgeSize = borderSize
+	      backdrop.insets.left   = borderInset or backdrop.insets.left
+	      backdrop.insets.right  = borderInset or backdrop.insets.right
+	      backdrop.insets.top    = borderInset or backdrop.insets.top
+	      backdrop.insets.bottom = borderInset or backdrop.insets.bottom
+	GameTooltip:SetBackdrop(backdrop)
+	-- GameTooltip:SetBackdropColor(TOOLTIP_DEFAULT_BACKGROUND_COLOR.r, TOOLTIP_DEFAULT_BACKGROUND_COLOR.g, TOOLTIP_DEFAULT_BACKGROUND_COLOR.b)
+	-- GameTooltip:SetBackdropBorderColor(TOOLTIP_DEFAULT_COLOR.r, TOOLTIP_DEFAULT_COLOR.g, TOOLTIP_DEFAULT_COLOR.b)
+	-- local tooltips = { GameTooltip, ItemRefTooltip, ShoppingTooltip1, ShoppingTooltip2, ShoppingTooltip3, WorldMapTooltip, EventTraceTooltip, FrameStackTooltip }
+	-- for _, tooltip in pairs(tooltips) do
+	-- 	tooltip:SetBackdrop(backdrop)
+	-- end
+
+	-- tooltip position
+	hooksecurefunc('GameTooltip_SetDefaultAnchor', function(self, parent)
+		self:SetPoint('BOTTOMRIGHT', 'UIParent', 'BOTTOMRIGHT', -72, 152)
+	end)
 
 	-- default statusbar
 	local statusBar = GameTooltipStatusBar
@@ -172,30 +206,6 @@ end
 	      bg:SetVertexColor(0, 0, 0, 0.7)
 	GameTooltip.statusBar.bg = bg
 
-	-- default backdrop
-	local backdrop = GameTooltip:GetBackdrop()
-	      backdrop.edgeFile = border or 'Interface\\Addons\\Midget\\media\\glow'
-	      backdrop.edgeSize = borderSize
-	      backdrop.insets.left   = borderInset or backdrop.insets.left
-	      backdrop.insets.right  = borderInset or backdrop.insets.right
-	      backdrop.insets.top    = borderInset or backdrop.insets.top
-	      backdrop.insets.bottom = borderInset or backdrop.insets.bottom
-	GameTooltip:SetBackdrop(backdrop)
-	GameTooltip:SetBackdropColor(TOOLTIP_DEFAULT_BACKGROUND_COLOR.r, TOOLTIP_DEFAULT_BACKGROUND_COLOR.g, TOOLTIP_DEFAULT_BACKGROUND_COLOR.b)
-	GameTooltip:SetBackdropBorderColor(TOOLTIP_DEFAULT_COLOR.r, TOOLTIP_DEFAULT_COLOR.g, TOOLTIP_DEFAULT_COLOR.b)
-	-- local tooltips = { GameTooltip, ItemRefTooltip, ShoppingTooltip1, ShoppingTooltip2, ShoppingTooltip3, WorldMapTooltip, EventTraceTooltip, FrameStackTooltip }
-	-- for _, tooltip in pairs(tooltips) do
-	-- 	tooltip:SetBackdrop(backdrop)
-	-- end
-
-	-- tooltip position
-	hooksecurefunc('GameTooltip_SetDefaultAnchor', function(self, parent)
-		self:SetPoint('BOTTOMRIGHT', 'UIParent', 'BOTTOMRIGHT', -72, 152)
-	end)
-
-	hooksecurefunc(getmetatable(GameTooltip).__index, 'SetUnit', function(self, unit, _)
-		-- print('unit set', ...)
-	end)
 	hooksecurefunc(getmetatable(_G['GameTooltip']).__index, 'Show', function(self)
 		self:SetBackdropColor(
 			TOOLTIP_DEFAULT_BACKGROUND_COLOR.r,
@@ -210,8 +220,16 @@ end
 		--end
 	end)
 
-	-- color health bar
+	-- unit specifics
+	hooksecurefunc(getmetatable(GameTooltip).__index, 'SetUnit', function(self, unit)
+		print('unit set', unit)
+	end)
 	GameTooltip:HookScript('OnTooltipSetUnit', function(self)
+		if self:IsUnit('mouseover') then
+			-- _G[self:GetName().."TextLeft1"]:SetTextColor(GameTooltip_UnitColor("mouseover"))
+			-- print('tooltip is mouseover', _G[self:GetName()..'TextLeft1']:GetTextColor())
+		end
+
 		local _, unit = GameTooltip:GetUnit()
 		local r, g, b
 		if UnitIsPlayer(unit) and UnitHealth(unit) > 0 and not UnitIsDeadOrGhost(unit) then
