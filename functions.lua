@@ -398,7 +398,7 @@ local function AddSpellHUDImportance()
 
 	local IMPORTANT = LibPlayerSpells.constants.IMPORTANT
 	local importantSpells = {
-		116257, -- Mage: Invoker's Energy
+		-- 116257, -- Mage: Invoker's Energy
 	}
 
 	for _, spellID in pairs(importantSpells) do
@@ -494,8 +494,92 @@ local function AddMasque()
 	end
 end
 
+function InitItemButtonLevels()
+	local LibItemUpgrade = LibStub('LibItemUpgradeInfo-1.0')
+	local function UpdateButton(self)
+		local button = self.icon and self or self:GetParent()
+		if button.noItemLevel then return end
+
+		if not button.itemLevel then
+			local iLevel = button:CreateFontString(nil, 'OVERLAY', 'NumberFontNormalSmall')
+			      iLevel:SetPoint('TOPLEFT', -2, 1)
+			      iLevel:SetText('')
+			button.itemLevel = iLevel
+		else
+			button.itemLevel:SetText('')
+		end
+
+		local itemLink = button.link or button.hyperlink or button.itemLink
+			or (button.item and type(button.item) == 'string' and button.item)
+		if not itemLink and button.GetItem then
+			itemLink = button:GetItem()
+		elseif not itemLink and button.UpdateTooltip then
+			-- tooltip scan as last resort
+			button:UpdateTooltip()
+			_, itemLink = GameTooltip:GetItem()
+			GameTooltip:Hide()
+		end
+
+		if itemLink then
+			-- TODO: coloring using relative levels
+			local itemLevel = LibItemUpgrade:GetUpgradedItemLevel(itemLink)
+			button.itemLevel:SetText(itemLevel)
+		end
+	end
+	hooksecurefunc('SetItemButtonTexture', UpdateButton)
+
+	hooksecurefunc('CreateFrame', function(frameType, name, parent, templates, id)
+		if frameType:lower() == 'button' and templates and templates:lower():find('itembutton') then
+			if not name then return end
+			if parent and type(parent) == 'table' then
+				name = name:gsub('$parent', parent:GetName())
+			end
+			local button = _G[name]
+			if button.SetTexture then hooksecurefunc(button, 'SetTexture', UpdateButton) end
+			if button.icon.SetTexture then hooksecurefunc(button.icon, 'SetTexture', UpdateButton) end
+			hooksecurefunc(button, 'Hide', UpdateButton)
+			hooksecurefunc(button.icon, 'Hide', UpdateButton)
+		end
+	end)
+end
+
+local function CalendarIconFlash()
+	-- minimap calendar flashing:
+	--[[ GameTimeCalendarInvitesTexture:Show()
+	GameTimeCalendarInvitesGlow:Show()
+	GameTimeFrame.flashInvite = true
+	self.pendingCalendarInvites = 1337 --]]
+end
+
+local function InitTooltipStyle()
+	-- heavily inspired by rTooltip
+	if true then return end
+	-- GameTooltipHeaderText:SetFont(cfg.font.family, 14, 'THINOUTLINE')
+	-- GameTooltipText:SetFont(cfg.font.family, 12, 'THINOUTLINE')
+	-- Tooltip_Small:SetFont(cfg.font.family, 11, 'THINOUTLINE')
+
+	-- /run DAMAGE_TEXT_FONT = 'Interface\\Addons\\Midget\\media\\express.ttf'
+
+	-- health statusbar
+	local statusBar = GameTooltipStatusBar
+	      statusBar:ClearAllPoints()
+	      statusBar:SetPoint('LEFT', 5, 0)
+	      statusBar:SetPoint('RIGHT', -5, 0)
+	      statusBar:SetPoint('BOTTOM', statusBar:GetParent(), 'TOP', 0, -6)
+	      statusBar:SetHeight(4)
+	local bg = statusBar:CreateTexture(nil, 'BACKGROUND', nil, -8)
+	      bg:SetPoint('TOPLEFT',-1,1)
+	      bg:SetPoint('BOTTOMRIGHT',1,-1)
+	      bg:SetTexture(1,1,1)
+	      bg:SetVertexColor(0,0,0,0.7)
+	statusBar.bg = bg
+end
+
 -- ================================================
 function plugin:OnEnable()
+	InitTooltipStyle()
+	InitItemButtonLevels()
+	CalendarIconFlash()
 	CreateCorkButton()
 	AddUndressButtons()
 	FixModelLighting()
