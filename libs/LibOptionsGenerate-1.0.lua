@@ -1,4 +1,4 @@
-local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 6
+local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 7
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
@@ -44,6 +44,7 @@ local function SetSettingDefault(info, value, dataPath)
 	data[ info[#info] ] = value
 end
 
+-- LibSharedMedia Widgets
 local function GetMediaKey(mediaType, value)
 	local keyList = SharedMedia:List(mediaType)
 	for _, key in pairs(keyList) do
@@ -52,18 +53,27 @@ local function GetMediaKey(mediaType, value)
 		end
 	end
 end
-local function GetFontSetting(info)
-	local getter = info.options.args[ info[1] ].get
-	return GetMediaKey('font', getter(info))
-end
-local function SetFontSetting(info, value)
+local function GetFontSetting(info) return GetMediaKey('font', info.options.args[ info[1] ].get(info)) end
+local function SetFontSetting(info, value) info.options.args[ info[1] ].set(info, SharedMedia:Fetch('font', value)) end
+local function GetBarTexSetting(info) return GetMediaKey('statusbar', info.options.args[ info[1] ].get(info)) end
+local function SetBarTexSetting(info, value) info.options.args[ info[1] ].set(info, SharedMedia:Fetch('statusbar', value)) end
+local function GetBorderSetting(info) return GetMediaKey('border', info.options.args[ info[1] ].get(info)) end
+local function SetBorderSetting(info, value) info.options.args[ info[1] ].set(info, SharedMedia:Fetch('border', value)) end
+local function GetBackgroundSetting(info) return GetMediaKey('background', info.options.args[ info[1] ].get(info)) end
+local function SetBackgroundSetting(info, value) info.options.args[ info[1] ].set(info, SharedMedia:Fetch('background', value)) end
+local function GetSoundSetting(info) return GetMediaKey('sound', info.options.args[ info[1] ].get(info)) end
+local function SetSoundSetting(info, value) info.options.args[ info[1] ].set(info, SharedMedia:Fetch('sound', value))end
+
+local function GetColorSetting(info) return unpack(info.options.args[ info[1] ].get(info)) end
+local function SetColorSetting(info, r, g, b, a)
 	local setter = info.options.args[ info[1] ].set
-	setter(info, SharedMedia:Fetch('font', value))
+	local getter = info.options.args[ info[1] ].get
+	local color = getter(info)
+	color[1], color[2], color[3], color[4] = r, g, b, a
+	setter(info, color)
 end
 
-local function GetTableFromList(dataString, seperator)
-	return { strsplit(seperator, dataString) }
-end
+local function GetTableFromList(dataString, seperator) return { strsplit(seperator, dataString) } end
 local function GetListFromTable(dataTable, seperator)
 	local output = ''
 	for _, value in pairs(dataTable) do
@@ -71,14 +81,8 @@ local function GetListFromTable(dataTable, seperator)
 	end
 	return output
 end
-local function GetListSetting(info)
-	local getter = info.options.args[ info[1] ].get
-	return GetListFromTable(getter(info), '\n')
-end
-local function SetListSetting(info, value)
-	local setter = info.options.args[ info[1] ].set
-	setter(info, GetTableFromList(value, '\n'))
-end
+local function GetListSetting(info) return GetListFromTable(info.options.args[ info[1] ].get(info), '\n') end
+local function SetListSetting(info, value) info.options.args[ info[1] ].set(info, GetTableFromList(value, '\n')) end
 
 local function Widget(key, option, typeMappings)
 	local key, widget = typeMappings and typeMappings[key] or key:lower(), nil
@@ -111,7 +115,13 @@ local function Widget(key, option, typeMappings)
 			min = 5,
 			max = 24, -- Blizz won't go any larger
 		}
-	elseif key == 'font' and SharedMedia then
+	elseif key == 'fontstyle' then
+		widget = {
+			type = 'select',
+			name = 'Font Style',
+			values = {['NONE'] = 'NONE', ['OUTLINE'] = 'OUTLINE', ['THICKOUTLINE'] = 'THICKOUTLINE', ['MONOCHROME'] = 'MONOCHROME'},
+		}
+	elseif key == 'font'          and type(option) == 'string' and SharedMedia then
 		widget = {
 			type = 'select',
 			dialogControl = 'LSM30_Font',
@@ -120,16 +130,53 @@ local function Widget(key, option, typeMappings)
 			get = GetFontSetting,
 			set = SetFontSetting,
 		}
-	elseif key == 'fontstyle' then
+	elseif key:find('border')     and type(option) == 'string' and SharedMedia then
 		widget = {
 			type = 'select',
-			name = 'Font Style',
-			values = {['NONE'] = 'NONE', ['OUTLINE'] = 'OUTLINE', ['THICKOUTLINE'] = 'THICKOUTLINE', ['MONOCHROME'] = 'MONOCHROME'},
+			dialogControl = 'LSM30_Border',
+			name = 'Border Texture',
+			values = SharedMedia:HashTable('border'),
+			get = GetBorderSetting,
+			set = SetBorderSetting,
+		}
+	elseif key:find('background') and type(option) == 'string' and SharedMedia then
+		widget = {
+			type = 'select',
+			dialogControl = 'LSM30_Background',
+			name = 'Background Texture',
+			values = SharedMedia:HashTable('background'),
+			get = GetBackgroundSetting,
+			set = SetBackgroundSetting,
+		}
+	elseif key:find('statusbar')  and type(option) == 'string' and SharedMedia then
+		widget = {
+			type = 'select',
+			dialogControl = 'LSM30_Statusbar',
+			name = 'Statusbar Texture',
+			values = SharedMedia:HashTable('statusbar'),
+			get = GetBarTexSetting,
+			set = SetBarTexSetting,
+		}
+	elseif key:find('sound')      and type(option) == 'string' and SharedMedia then
+		widget = {
+			type = 'select',
+			dialogControl = 'LSM30_Sound',
+			name = 'Sound',
+			values = SharedMedia:HashTable('sound'),
+			get = GetSoundSetting,
+			set = SetSoundSetting,
 		}
 	elseif key == 'itemquality' or (key:find('quality') and type(option) == 'number') then
 		widget = {
 			type = 'select',
 			values = itemQualities,
+		}
+	elseif key:find('color') then
+		widget = {
+			type = 'color',
+			hasAlpha = true,
+			get = GetColorSetting,
+			set = SetColorSetting,
 		}
 	elseif key == 'money' then
 		-- TODO: this needs some more intuition. Use GetCoinTextureString(amount)?
@@ -147,10 +194,6 @@ local function Widget(key, option, typeMappings)
 			get = GetListSetting,
 			set = SetListSetting,
 		}
-	elseif type(option) == 'string' then
-		widget = {
-			type = 'input',
-		}
 	end
 
 	return widget
@@ -165,17 +208,20 @@ local function ParseOption(key, option, L, typeMappings)
 		return nil
 	elseif widget then
 		widget.name = widget.name or key
+	elseif type(option) == 'string' then
+		widget = {
+			type = 'input',
+			name = key,
+		}
 	elseif type(option) == 'boolean' then
 		widget = {
 			type = 'toggle',
 			name = key,
-			-- desc = '',
 		}
 	elseif type(option) == 'number' then
 		widget = {
 			type = 'range',
 			name = key,
-			-- desc = '',
 			min = -200,
 			max = 200,
 			bigStep = 10,
