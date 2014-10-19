@@ -110,12 +110,70 @@ end
 -- Chat link icons
 -- ================================================
 local function AddLootIcons(self, event, message, ...)
+	if not MidgetDB.chatLinkIcons then return end
 	local function Icon(link)
 		local texture = GetItemIcon(link)
 		return "\124T" .. texture .. ":" .. 12 .. "\124t" .. link
 	end
 	message = message:gsub("(\124c%x+\124Hitem:.-\124h\124r)", Icon)
 	return false, message, ...
+end
+
+local function AddChatLinkHoverTooltips()
+	if not MidgetDB.chatHoverTooltips then return end
+	-- see link types here: http://www.townlong-yak.com/framexml/19033/ItemRef.lua#162
+	local gameTips = {item = true, spell = true, trade = true, enchant = true, talent = true, glyph = true, achievement = true, unit = true, quest = true, instancelock = true}
+	local function OnHyperlinkEnter(self, linkData, link)
+		local linkType = linkData:match('^([^:]+)')
+		if not linkType then return end
+
+		-- this makes sure all tooltips are anchored here
+		GameTooltip:SetOwner(self, 'CURSOR') -- 'ANCHOR_RIGHT')
+
+		if gameTips[linkType] then
+			GameTooltip:SetHyperlink(link)
+			if linkType == 'item' and GetCVarBool('alwaysCompareItems') then
+				GameTooltip_ShowCompareItem(GameTooltip)
+			end
+		elseif linkType == 'battlePetAbil' then
+			local _, abilityID, maxHealth, power, speed = strsplit(':', linkData)
+			         abilityID, maxHealth, power, speed = tonumber(abilityID), tonumber(maxHealth), tonumber(power), tonumber(speed)
+			FloatingPetBattleAbility_Show(abilityID, maxHealth, power, speed)
+			FloatingPetBattleAbilityTooltip:SetPoint(GameTooltip:GetPoint())
+			FloatingPetBattleAbilityTooltip.chatTip = true
+		elseif linkType == 'battlepet' then
+			local name = string.gsub(string.gsub(link, '^(.*)%[', ''), '%](.*)$', '')
+			local _, speciesID, level, breedQuality, maxHealth, power, speed = strsplit(':', linkData)
+			         speciesID, level, breedQuality, maxHealth, power, speed = tonumber(speciesID), tonumber(level), tonumber(breedQuality), tonumber(maxHealth), tonumber(power), tonumber(speed)
+			BattlePetToolTip_Show(speciesID, level, breedQuality, maxHealth, power, speed, name)
+		else
+			-- SetItemRef(linkData, link, 'LeftButton', self)
+		end
+	end
+	local function OnHyperlinkLeave()
+		GameTooltip:Hide()
+		BattlePetTooltip:Hide()
+		if FloatingPetBattleAbilityTooltip.chatTip then
+			FloatingPetBattleAbilityTooltip.chatTip = nil
+			FloatingPetBattleAbilityTooltip:Hide()
+		end
+	end
+
+	local function InitChatHoverTips(chatFrame)
+		if chatFrame.hoverTipsEnabled then return end
+		chatFrame:SetScript('OnHyperlinkEnter', OnHyperlinkEnter)
+		chatFrame:SetScript('OnHyperlinkLeave', OnHyperlinkLeave)
+		chatFrame.hoverTipsEnabled = true
+	end
+	for i = 1, _G.NUM_CHAT_WINDOWS do
+		InitChatHoverTips(_G['ChatFrame'..i])
+	end
+	-- hooksecurefunc('FloatingChatFrame_Update', function(index) InitChatHoverTips(_G['ChatFrame'..index]) end)
+	hooksecurefunc('FCF_OpenTemporaryWindow', function(chatType)
+		for _, frameName in pairs(_G.CHAT_FRAMES) do
+			InitChatHoverTips(_G[frameName])
+		end
+	end)
 end
 
 -- ================================================
@@ -525,8 +583,8 @@ function InitItemButtonLevels()
 		[PaperDollItemSlotButton_OnEnter] = function(self) return GetInventoryItemLink('player', self:GetID()) end,
 		[ContainerFrameItemButton_OnEnter] = function(self) return GetContainerItemLink(self:GetParent():GetID(), self:GetID()) end,
 		[BankFrameItemButton_OnEnter] = function(self) return GetInventoryItemLink('player', self:GetInventorySlot()) end,
-		--[[ -- FIXME: VS is not yet loaded
-		[VoidStorageItemButton_OnEnter] = function(self)
+		--[[ -- FIXME: Blizzard_VoidStorageUI might not yet be loaded
+		getItemLink[VoidStorageItemButton_OnEnter] = function(self)
 			if not self.hasItem then return end
 			return GetVoidItemHyperlinkString(VoidStorageFrame.page, self.slot)
 		end, --]]
@@ -590,7 +648,6 @@ function InitItemButtonLevels()
 		end
 	end)
 
-	-- QuestInfoRewardsFrame
 	hooksecurefunc('CreateFrame', function(frameType, name, parent, templates, id)
 		if frameType:lower() == 'button' and templates and templates:lower():find('itembutton') then
 			if not name then return end
@@ -643,5 +700,8 @@ function plugin:OnEnable()
 	InterfaceOptionsFrame:CreateTitleRegion():SetAllPoints(InterfaceOptionsFrameHeaderText)
 
 	ChatFrame_AddMessageEventFilter('CHAT_MSG_LOOT', AddLootIcons)
+	AddChatLinkHoverTooltips()
+
+	-- FIXME: doesn't work when triggered by SHIFT+Click
 	hooksecurefunc('StaticPopup_Show', AutoAcceptPopup)
 end

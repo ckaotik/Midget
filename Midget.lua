@@ -19,8 +19,10 @@ local globalDefaults = {
 	PetBattleFrameOffset = -16,
 	menuBarHeight = true,
 
+	chatHoverTooltips = true,
+	chatLinkIcons = true,
+
 	autoCheckSpells = true,
-	autoScanProfessions = false,
 
 	undressButton = true,
 	modelLighting = true,
