@@ -85,7 +85,7 @@ function addon:OnInitialize()
 end
 
 function addon:OnEnable()
-	self:AddCriteria('itemID',    function(itemLink, scope, container, slot) return ns.GetItemID(itemLink) end)
+	self:AddCriteria('itemID',    function(itemLink, scope, container, slot) return select(2, ns.GetLinkData(itemLink)) end)
 	-- self:AddCriteria('container', function(itemLink, scope, container, slot) return container end)
 	-- self:AddCriteria('slot',      function(itemLink, scope, container, slot) return slot end)
 
@@ -245,8 +245,8 @@ function addon:Run(scope, ...)
 end
 
 function addon:GenerateSortKey(scope, container, slot)
-	local itemLink = scopes[scope or SCOPE_INVENTORY].GetLink(container, slot)
-	local itemID   = ns.GetItemID(itemLink)
+	local itemLink  = scopes[scope or SCOPE_INVENTORY].GetLink(container, slot)
+	local _, itemID = ns.GetLinkData(itemLink)
 	if addon:IsSlotIgnored(scope, container, slot) or addon:IsItemIgnored(itemID) then return end
 
 	local key
@@ -370,8 +370,8 @@ function addon:ApplySort(sortedItems, scope, ...)
 			local wantedItem = sortedItems[listIndex]
 			if not wantedItem then break end -- TODO: really?
 
-			local itemLink = scopes[scope].GetLink(container, slot)
-			local itemID   = ns.GetItemID(itemLink)
+			local itemLink  = scopes[scope].GetLink(container, slot)
+			local _, itemID = ns.GetLinkData(itemLink)
 			if not addon:IsSlotIgnored(scope, container, slot) and not addon:IsItemIgnored(itemID) then
 				local currentItem = addon:GenerateSortKey(scope, container, slot)
 				local currentData = strsplit(META_DELIMITER, currentItem)

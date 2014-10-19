@@ -1,76 +1,45 @@
 local addonName, addon, _ = ...
 _G[addonName] = LibStub('AceAddon-3.0'):NewAddon(addon, addonName, 'AceEvent-3.0')
 
--- GLOBALS: _G, Midget, MidgetDB, MidgetLocalDB, DEFAULT_CHAT_FRAME, C_PetJournal
--- GLOBALS: GameTooltip, CreateFrame, GetItemInfo
+-- GLOBALS: _G, LibStub
+-- GLOBALS: C_PetJournal, GameTooltip, CreateFrame, GetItemInfo
 -- GLOBALS: table, string, math, strsplit, type, tonumber, pairs, assert, tostring, tostringall
 
--- settings -- TODO: put into ns. so modules can have settings, too
-local globalDefaults = {
-	tradeskillCosts = false,
-	tradeskillLevels = true,
-	tradeskillTooltips = true,
-
-	CorkButton = false,
-	TipTacStyles = true,
-	moreSharedMedia = true,
-
-	movePetBattleFrame = true,
-	PetBattleFrameOffset = -16,
-	menuBarHeight = true,
-
-	chatHoverTooltips = true,
-	chatLinkIcons = true,
-
-	autoCheckSpells = true,
-
-	undressButton = true,
-	modelLighting = true,
-	shortenLFRNames = true,
-	outgoingWhisperColor = true,
-	InterfaceOptionsScrolling = true,
-	SHIFTAcceptPopups = true,
-	hideUnusableCompareTips = true,
-	showRaidBuffIndicators = true,
-
-	scanGems = false,
+local defaults = {
+	profile = {
+		CorkButton = false,
+		TipTacStyles = true,
+		moreSharedMedia = true,
+		movePetBattleFrame = true,
+		PetBattleFrameOffset = -16,
+		menuBarHeight = true,
+		chatHoverTooltips = true,
+		chatLinkIcons = true,
+		autoCheckSpells = true,
+		undressButton = true,
+		modelLighting = true,
+		shortenLFRNames = true,
+		outgoingWhisperColor = true,
+		InterfaceOptionsScrolling = true,
+		InterfaceOptionsDragging = true,
+		SHIFTAcceptPopups = true,
+		hideUnusableCompareTips = true,
+		showRaidBuffIndicators = true,
+	},
+	char = {
+		trackBattlePetTeams = true,
+		trackProfessionSkills = true,
+		trackProfession = {},
+	}
 }
-local localDefaults = {
-	trackBattlePetTeams = true,
-	trackProfessionSkills = true,
-	trackProfession = {},
-}
-
-local function UpdateDatabase()
-	-- keep database up to date, i.e. remove artifacts + add new options
-	if MidgetDB == nil then
-		MidgetDB = globalDefaults
-	else
-		--[[for key,value in pairs(MidgetDB) do
-			if globalDefaults[key] == nil then MidgetDB[key] = nil end
-		end--]]
-		for key,value in pairs(globalDefaults) do
-			if MidgetDB[key] == nil then MidgetDB[key] = value end
-		end
-	end
-
-	if MidgetLocalDB == nil then
-		MidgetLocalDB = localDefaults
-	else
-		--[[for key,value in pairs(MidgetLocalDB) do
-			if localDefaults[key] == nil then MidgetLocalDB[key] = nil end
-		end--]]
-		for key,value in pairs(localDefaults) do
-			if MidgetLocalDB[key] == nil then MidgetLocalDB[key] = value end
-		end
-	end
-end
 
 function addon:OnInitialize()
-	UpdateDatabase()
+	-- nothing yet
 end
 
 function addon:OnEnable()
+	self.db = LibStub('AceDB-3.0'):New(addonName..'DB', defaults, true)
+
 	local types = {
 		craftables = '*none*',
 		petBattleTeams = '*none*',
@@ -81,15 +50,15 @@ function addon:OnEnable()
 	LibStub('AceConfig-3.0'):RegisterOptionsTable(addonName, {
 		type = 'group',
 		args = {
-			main = LibStub('LibOptionsGenerate-1.0'):GetOptionsTable(addonName..'DB', types),
-			char = LibStub('LibOptionsGenerate-1.0'):GetOptionsTable(addonName..'LocalDB', charTypes),
-			-- profiles = LibStub('AceDBOptions-3.0'):GetOptionsTable(self.db), -- this is not an AceAddon (yet)
+			main = LibStub('LibOptionsGenerate-1.0'):GetOptionsTable(addonName..'.db.profile', types),
+			char = LibStub('LibOptionsGenerate-1.0'):GetOptionsTable(addonName..'.db.char', charTypes),
+			profiles = LibStub('AceDBOptions-3.0'):GetOptionsTable(self.db),
 		},
 	})
 	local AceConfigDialog = LibStub('AceConfigDialog-3.0')
 	      AceConfigDialog:AddToBlizOptions(addonName, addonName, nil, 'main')
 	      AceConfigDialog:AddToBlizOptions(addonName, 'Character Settings', addonName, 'char')
-	      -- AceConfigDialog:AddToBlizOptions(addonName, 'Profiles', addonName, 'profiles')
+	      AceConfigDialog:AddToBlizOptions(addonName, 'Profiles', addonName, 'profiles')
 end
 
 -- ================================================
@@ -101,13 +70,7 @@ function addon:Print(text, ...)
 	elseif ... then
 		text = string.join(", ", tostringall(text, ...))
 	end
-	DEFAULT_CHAT_FRAME:AddMessage("|cff22CCDDMidget|r "..text)
-end
-
-function addon:Debug(...)
-  if true then
-	addon.Print("! "..string.join(", ", tostringall(...)))
-  end
+	_G.DEFAULT_CHAT_FRAME:AddMessage("|cff22CCDDMidget|r "..text)
 end
 
 -- convenient and smart tooltip handling
@@ -140,12 +103,6 @@ function addon.ShowTooltip(self, anchor)
 end
 function addon.HideTooltip() GameTooltip:Hide() end
 
-function addon.GetItemID(itemLink)
-	if not itemLink or type(itemLink) ~= "string" then return end
-	local itemID = string.gsub(itemLink, ".-Hitem:([0-9]*):.*", "%1")
-	return tonumber(itemID)
-end
-
 function addon.GetLinkData(link)
 	if not link or type(link) ~= "string" then return end
 	local linkType, id, data = link:match("(%l+):([^:\124]*):?([^\124]*)")
@@ -153,6 +110,7 @@ function addon.GetLinkData(link)
 end
 
 local BATTLEPET = select(11, GetAuctionItemClasses())
+-- this is a wrapper for battle pets, so you can use them like you would regular items
 function addon.GetItemInfo(link)
 	if not link or type(link) ~= "string" then return end
 	local linkType, itemID, data = addon.GetLinkData(link)

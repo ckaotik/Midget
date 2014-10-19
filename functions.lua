@@ -28,7 +28,7 @@ local function AddMoreSharedMedia()
 end
 
 -- ================================================
---  Interface Options Scrolling
+--  Interface Options Frame
 -- ================================================
 local function InterfaceOptionsScrolling()
 	if not MidgetDB.InterfaceOptionsScrolling then return end
@@ -41,6 +41,12 @@ local function InterfaceOptionsScrolling()
 			ScrollFrameTemplate_OnMouseWheel(InterfaceOptionsFrameAddOnsList, val)
 		end)
 	end
+end
+
+local function InterfaceOptionsDragging()
+	if not MidgetDB.InterfaceOptionsDragging then return end
+	InterfaceOptionsFrame:SetMovable(true)
+	InterfaceOptionsFrame:CreateTitleRegion():SetAllPoints(InterfaceOptionsFrameHeader)
 end
 
 -- ================================================
@@ -451,26 +457,6 @@ local function ExtendLibItemSearch()
 	}
 end
 
-local function AddSpellHUDImportance()
-	local LibPlayerSpells = LibStub('LibPlayerSpells-1.0', true)
-	if not LibPlayerSpells then return end
-
-	local IMPORTANT = LibPlayerSpells.constants.IMPORTANT
-	local importantSpells = {
-		-- 116257, -- Mage: Invoker's Energy
-	}
-
-	for _, spellID in pairs(importantSpells) do
-		for category, db in pairs(LibPlayerSpells.__categories) do
-			if db[spellID] then
-				db[spellID] = bit.bor(db[spellID], IMPORTANT)
-				local link = GetSpellLink(spellID)
-				print(link, 'is pretty darn important.')
-			end
-		end
-	end
-end
-
 -- apply basic Masque styles to LibSpellWidget frames
 local function AddMasque()
 	local LibMasque       = LibStub('Masque', true)
@@ -685,19 +671,15 @@ function plugin:OnEnable()
 	AddTipTacStyles()
 	OutgoingWhisperColor()
 	InterfaceOptionsScrolling()
+	InterfaceOptionsDragging()
 	AddMoreSharedMedia()
 	HideUnusableCompareTips()
 	SetupBigWigs()
 	ExtendLibItemSearch()
-	-- AddSpellHUDImportance()
 	AddMasque()
 
 	-- SLASH_ROLECHECK1 = "/rolecheck"
 	-- SlashCmdList.ROLECHECK = InitiateRolePoll
-
-	-- move the options panel!
-	InterfaceOptionsFrame:SetMovable(true)
-	InterfaceOptionsFrame:CreateTitleRegion():SetAllPoints(InterfaceOptionsFrameHeaderText)
 
 	ChatFrame_AddMessageEventFilter('CHAT_MSG_LOOT', AddLootIcons)
 	AddChatLinkHoverTooltips()
