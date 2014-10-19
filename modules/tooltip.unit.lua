@@ -159,32 +159,36 @@ function plugin:OnEnable()
 	end)
 end
 
---[[
+-- [[
+	local statusBarMargin, statusBarBorderWidth = 0, 0 -- 1, 1
 	local border, borderSize, borderInset = 'Interface\\Addons\\Midget\\media\\glow', 4, 4
 	-- local border, borderSize, borderInset = 'Interface\\Addons\\Midget\\media\\double_border', 16, nil
 	-- local border, borderSize, borderInset = 'Interface\\Addons\\Midget\\media\\grayborder', 16, nil
+	local backgroundColor = _G.TOOLTIP_DEFAULT_BACKGROUND_COLOR
+	local borderColor     = _G.TOOLTIP_DEFAULT_COLOR
 
 	-- default colors
-	-- TOOLTIP_DEFAULT_COLOR.r = 0 -- border color
+	-- TOOLTIP_DEFAULT_COLOR.r = 0
 	-- TOOLTIP_DEFAULT_COLOR.g = 0
 	-- TOOLTIP_DEFAULT_COLOR.b = 0
-	-- TOOLTIP_DEFAULT_BACKGROUND_COLOR.r = 0 -- border background color
+	-- TOOLTIP_DEFAULT_BACKGROUND_COLOR.r = 0
 	-- TOOLTIP_DEFAULT_BACKGROUND_COLOR.g = 0
 	-- TOOLTIP_DEFAULT_BACKGROUND_COLOR.b = 0
 
 	-- default backdrop
 	local backdrop = GameTooltip:GetBackdrop()
-	      backdrop.edgeFile = border or 'Interface\\Addons\\Midget\\media\\glow'
-	      backdrop.edgeSize = borderSize
+	      backdrop.edgeFile      = border or backdrop.edgeFile
+	      backdrop.edgeSize      = borderSize or backdrop.edgeSize
 	      backdrop.insets.left   = borderInset or backdrop.insets.left
 	      backdrop.insets.right  = borderInset or backdrop.insets.right
 	      backdrop.insets.top    = borderInset or backdrop.insets.top
 	      backdrop.insets.bottom = borderInset or backdrop.insets.bottom
 	GameTooltip:SetBackdrop(backdrop)
-	-- GameTooltip:SetBackdropColor(TOOLTIP_DEFAULT_BACKGROUND_COLOR.r, TOOLTIP_DEFAULT_BACKGROUND_COLOR.g, TOOLTIP_DEFAULT_BACKGROUND_COLOR.b)
-	-- GameTooltip:SetBackdropBorderColor(TOOLTIP_DEFAULT_COLOR.r, TOOLTIP_DEFAULT_COLOR.g, TOOLTIP_DEFAULT_COLOR.b)
+	GameTooltip:SetBackdropColor(backgroundColor.r, backgroundColor.g, backgroundColor.b)
+	GameTooltip:SetBackdropBorderColor(borderColor.r, borderColor.g, borderColor.b)
 	-- local tooltips = { GameTooltip, ItemRefTooltip, ShoppingTooltip1, ShoppingTooltip2, ShoppingTooltip3, WorldMapTooltip, EventTraceTooltip, FrameStackTooltip }
 	-- for _, tooltip in pairs(tooltips) do
+	-- 	-- apply changed settings to existing tooltips
 	-- 	tooltip:SetBackdrop(backdrop)
 	-- end
 
@@ -193,27 +197,29 @@ end
 		self:SetPoint('BOTTOMRIGHT', 'UIParent', 'BOTTOMRIGHT', -72, 152)
 	end)
 
+	hooksecurefunc('GameTooltip_OnHide', function(self)
+		-- self:SetBackdropColor(backgroundColor.r, backgroundColor.g, backgroundColor.b)
+		-- self:SetBackdropBorderColor(borderColor.r, borderColor.g, borderColor.b)
+	end)
+
 	-- default statusbar
+	local statusBarInset = (borderInset or 5) + (statusBarMargin or 0)
 	local statusBar = GameTooltipStatusBar
-	      statusBar:SetPoint('BOTTOMLEFT', 5, 5)
-	      statusBar:SetPoint('BOTTOMRIGHT', -5, 5)
+	      statusBar:SetPoint('BOTTOMLEFT', statusBarInset, statusBarInset)
+	      statusBar:SetPoint('BOTTOMRIGHT', -statusBarInset, statusBarInset)
 	      statusBar:SetStatusBarTexture('Interface\\Addons\\Midget\\media\\TukTexture')
 	GameTooltip.statusBar = statusBar
 	local bg = GameTooltip.statusBar:CreateTexture(nil, 'BACKGROUND', nil, -8)
-	      bg:SetPoint('TOPLEFT', -1, 1)
-	      bg:SetPoint('BOTTOMRIGHT', 1, -1)
+	      bg:SetPoint('TOPLEFT', -statusBarBorderWidth, statusBarBorderWidth)
+	      bg:SetPoint('BOTTOMRIGHT', statusBarBorderWidth, -statusBarBorderWidth)
 	      bg:SetTexture(1, 1, 1)
 	      bg:SetVertexColor(0, 0, 0, 0.7)
 	GameTooltip.statusBar.bg = bg
 
 	hooksecurefunc(getmetatable(_G['GameTooltip']).__index, 'Show', function(self)
-		self:SetBackdropColor(
-			TOOLTIP_DEFAULT_BACKGROUND_COLOR.r,
-			TOOLTIP_DEFAULT_BACKGROUND_COLOR.g,
-			TOOLTIP_DEFAULT_BACKGROUND_COLOR.b
-		)
+		self:SetBackdropColor(backgroundColor.r,backgroundColor.g,backgroundColor.b)
 		if not self:GetItem() and not self:GetUnit() then
-			self:SetBackdropBorderColor(TOOLTIP_DEFAULT_COLOR.r, TOOLTIP_DEFAULT_COLOR.g, TOOLTIP_DEFAULT_COLOR.b)
+			self:SetBackdropBorderColor(borderColor.r, borderColor.g, borderColor.b)
 		end
 		--if self.addHeight then
 		--	self.newHeight = self:GetHeight() + self.addHeight
@@ -221,29 +227,24 @@ end
 	end)
 
 	-- unit specifics
-	hooksecurefunc(getmetatable(GameTooltip).__index, 'SetUnit', function(self, unit)
-		print('unit set', unit)
-	end)
+	-- hooksecurefunc(getmetatable(GameTooltip).__index, 'SetUnit', function(self, unit)
+	-- 	print('unit set', unit)
+	-- end)
 	GameTooltip:HookScript('OnTooltipSetUnit', function(self)
-		if self:IsUnit('mouseover') then
-			-- _G[self:GetName().."TextLeft1"]:SetTextColor(GameTooltip_UnitColor("mouseover"))
-			-- print('tooltip is mouseover', _G[self:GetName()..'TextLeft1']:GetTextColor())
-		end
-
-		local _, unit = GameTooltip:GetUnit()
+		local _, unit = self:GetUnit()
 		local r, g, b
 		if UnitIsPlayer(unit) and UnitHealth(unit) > 0 and not UnitIsDeadOrGhost(unit) then
 			local _, class = UnitClass(unit)
 			local color = (CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS)[class]
 			r, g, b = color.r, color.g, color.b
-			self.statusBar:SetStatusBarColor(r, g, b)
-			self:SetBackdropBorderColor(r, g, b)
-		else
+		elseif unit then
+			-- FIXME: sometimes, targettargettarget has no unit?
 			r, g, b = GameTooltip_UnitColor(unit)
 		end
-		_G[self:GetName()..'TextLeft1']:SetTextColor(r, g, b)
-		self.statusBar:SetStatusBarColor(r, g, b)
-		self:SetBackdropBorderColor(r, g, b)
-		GameTooltip:SetBackdropColor(0, 0, 0)
+		if r then
+			_G[self:GetName()..'TextLeft1']:SetTextColor(r, g, b)
+			self.statusBar:SetStatusBarColor(r, g, b)
+			self:SetBackdropBorderColor(r, g, b)
+		end
 	end)
 --]]
