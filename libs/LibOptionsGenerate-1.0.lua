@@ -1,4 +1,4 @@
-local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 7
+local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 8
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
@@ -72,6 +72,8 @@ local function SetColorSetting(info, r, g, b, a)
 	color[1], color[2], color[3], color[4] = r, g, b, a
 	setter(info, color)
 end
+local function GetColorSetting(info) return info.options.args[ info[1] ].get(info) * 100 end
+local function SetColorSetting(info, value) info.options.args[ info[1] ].set(info, value/100) end
 
 local function GetTableFromList(dataString, seperator) return { strsplit(seperator, dataString) } end
 local function GetListFromTable(dataTable, seperator)
@@ -172,6 +174,16 @@ local function Widget(key, option, typeMappings)
 			hasAlpha = true,
 			get = GetColorSetting,
 			set = SetColorSetting,
+		}
+	elseif key:find('percent')    and type(option) == 'number' and option >= 0 and option <= 1 then
+		widget = {
+			type = 'range',
+			name = 'Percent',
+			step = 1,
+			min = 0,
+			max = 100,
+			get = GetPercentSetting,
+			set = SetPercentSetting,
 		}
 	elseif key == 'money' then
 		-- TODO: this needs some more intuition. Use GetCoinTextureString(amount)?
