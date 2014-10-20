@@ -255,6 +255,13 @@ local function ParseOption(key, option, L, typeMappings)
 	if L and type(L) == 'table' then
 		widget.name = L[key..'Name'] or widget.name
 		widget.desc = L[key..'Desc'] or widget.desc
+		if widget.type == 'group' and widget.desc then
+			widget.args.groupDescription = {
+				type = 'description',
+				name = widget.desc,
+				order = 0,
+			}
+		end
 	end
 
 	return widget
