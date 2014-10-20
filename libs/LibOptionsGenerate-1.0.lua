@@ -72,8 +72,8 @@ local function SetColorSetting(info, r, g, b, a)
 	color[1], color[2], color[3], color[4] = r, g, b, a
 	setter(info, color)
 end
-local function GetColorSetting(info) return info.options.args[ info[1] ].get(info) * 100 end
-local function SetColorSetting(info, value) info.options.args[ info[1] ].set(info, value/100) end
+local function GetPercentSetting(info) return info.options.args[ info[1] ].get(info) * 100 end
+local function SetPercentSetting(info, value) info.options.args[ info[1] ].set(info, value/100) end
 
 local function GetTableFromList(dataString, seperator) return { strsplit(seperator, dataString) } end
 local function GetListFromTable(dataTable, seperator)
