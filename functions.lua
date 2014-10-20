@@ -138,7 +138,7 @@ local function AddChatLinkHoverTooltips()
 
 		if gameTips[linkType] then
 			GameTooltip:SetHyperlink(link)
-			if linkType == 'item' and GetCVarBool('alwaysCompareItems') then
+			if linkType == 'item' and GetCVarBool('alwaysCompareItems') and not self:IsEquippedItem() then
 				GameTooltip_ShowCompareItem(GameTooltip)
 			end
 		elseif linkType == 'battlePetAbil' then
