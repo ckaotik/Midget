@@ -114,6 +114,7 @@ local function TooltipItemInfo(self)
 
 	wipe(itemSpecs)
 	GetItemSpecInfo(itemLink, itemSpecs)
+	-- TODO: only show own specializations GetNumSpecializations()
 	if #itemSpecs > 4 then return end
 	for i, specID in ipairs(itemSpecs) do
 		local _, _, _, icon, _, role, class = GetSpecializationInfoByID(specID)
@@ -159,9 +160,172 @@ function plugin:OnEnable()
 	end)
 end
 
--- [[
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- "tooltip filter" as a name?
+local tooltips = addon:NewModule('Tooltips', 'AceEvent-3.0')
+local defaults = {
+	profile = {
+		border = 'Interface\\Addons\\Midget\\media\\glow',
+		borderSize = 4,
+		borderInset = 4,
+		borderColor = {0, 0, 0},
+		backgroundColor = {0, 0, 0},
+		item = {
+			-- reforgeColor = {1, 0.5, 1},
+			enchantColor = {0, 0.8, 1},
+			primaryStatsColor = {1, 1, 1},
+			secondaryStatsColor = {0, 1, 0},
+			hideLines = {
+				-- durability, equipment sets, item level, item upgrades, socketing info, purchase/return info, vendor price, raid difficulty/warforged, created by, reforged, binding/soulbound, unique, set name, set items list, set bonuses, requirements, transmogrification
+			},
+		},
+	},
+}
+
+-- hiding tooltip lines in plain sight
+local hiddenLines, emptyTable = {}, {}
+local function HideLine(lineNum, hide, left, right)
+	local offset = hide and 3 or -3 -- = 2px margin + 1px height
+	local point, relativeTo, relativePoint, xOffset, yOffset = left:GetPoint()
+	      left:SetPoint(point, relativeTo, relativePoint, xOffset, yOffset + offset)
+	local point, relativeTo, relativePoint, xOffset, yOffset = right:GetPoint()
+          right:SetPoint(point, relativeTo, relativePoint, xOffset, yOffset + offset)
+
+	local tooltip = left:GetParent()
+	if hide or tooltip.addHeight then
+		tooltip.addHeight = (tooltip.addHeight or 0) - offset
+		tooltip:Show()
+	end
+	hiddenLines[tooltip][lineNum] = hide or nil
+end
+local function ShowHideTooltipLine(lineFontString, text)
+	local tooltip = lineFontString:GetParent()
+	local tipName = tooltip:GetName()
+	local lineNum = lineFontString:GetName():match('^'..tipName..'Text.-(%d+)$')
+	local left, right = _G[tipName..'TextLeft'..lineNum], _G[tipName..'TextRight'..lineNum]
+
+	-- make sure both sides are empty when hiding
+	local hide = not text or text == '' or nil
+	local otherText = (lineFontString == left and right or left):GetText()
+	if (hide and otherText and otherText ~= '') 		-- other side still displays text
+		or (hide == hiddenLines[tooltip][lineNum]) then -- state remains unchanged
+		return
+	end
+	HideLine(lineNum, hide, left, right)
+end
+
+local function TooltipOnUpdate(self, elapsed)
+	if self.newHeight and abs(self:GetHeight() - self.newHeight) > 0.1 then
+		self:SetHeight(self.newHeight)
+	end
+end
+local function TooltipOnShow(self)
+	self.newHeight = self.addHeight and (self:GetHeight() + self.addHeight) or nil
+	TooltipOnUpdate(self, 0) -- to fix static tooltips, e.g. ItemRefTooltip
+end
+local function TooltipOnClear(self)
+	local tipName = self:GetName()
+	self.addHeight, self.newHeight = nil, nil
+	-- fix line anchors
+	for lineNum in pairs(hiddenLines[self] or emptyTable) do
+		local left, right = _G[tipName..'TextLeft'..lineNum], _G[tipName..'TextRight'..lineNum]
+		HideLine(lineNum, false, left, right)
+	end
+end
+
+-- sets hooks to completely hide empty lines
+local function RegisterTooltipLine(tooltip, lineNum)
+	local tipName = type(tooltip) == 'string' and tooltip or tooltip:GetName()
+	local left, right = _G[tipName..'TextLeft'..lineNum], _G[tipName..'TextRight'..lineNum]
+	if left and not left.canHide then
+		hooksecurefunc(left,  'SetText', ShowHideTooltipLine)
+		hooksecurefunc(right, 'SetText', ShowHideTooltipLine)
+		left.canHide = true
+	end
+	return (left or right) and true or nil
+end
+
+function tooltips:RegisterTooltip()
+	local tipName, lineNum = self:GetName(), 1
+	while RegisterTooltipLine(tipName, lineNum) do
+		lineNum = lineNum + 1
+	end
+	if self.isRegistered then return end
+	hiddenLines[self] = {}
+	-- self:HookScript('OnShow', TooltipOnShow)
+	hooksecurefunc(self, 'Show', TooltipOnShow)
+	self:HookScript('OnUpdate', TooltipOnUpdate)
+	self:HookScript('OnTooltipCleared', TooltipOnClear)
+	self.isRegistered = true
+end
+
+-- --------------------------------------------------------
+--  Addon Setup
+-- --------------------------------------------------------
+function tooltips:OnInitialize()
+	-- nothing yet
+end
+
+function tooltips:OnEnable()
+	print('tooltips name:', self:GetName())
+	self.db = addon.db:RegisterNamespace('Tooltips', defaults)
+
+	-- don't add spacing for closing 'x'
+	ItemRefTooltip:SetPadding(0)
+
+	-- allow to completely hide empty lines
+	-- note: if you still want to add empty lines that use up space, set the text to ' '(space)
+	local function OnTooltipAddLine(self) RegisterTooltipLine(self:GetName(), self:NumLines()) end
+	local tooltips = { 'GameTooltip', 'ItemRefTooltip', 'ShoppingTooltip1', 'ShoppingTooltip2' }
+	for _, tipName in pairs(tooltips) do
+		local tooltip = _G[tipName]
+		if tooltip then
+			-- we need to hook into every situation when a line (i.e. font string) is created...
+			-- OnTooltipSet*: Achievement, EquipmentSet, Quest, Spell, Item, Unit
+			tooltip:HookScript('OnTooltipSetItem', self.RegisterTooltip)
+			self.RegisterTooltip(tooltip)
+		end
+	end
+
+	-- GameTooltipTexture1:GetTexture() = 'Interface\\ItemSocketingFrame\\UI-EmptySocket-Red'
+
+	LibStub('AceConfig-3.0'):RegisterOptionsTable(self:GetName(), {
+		type = 'group',
+		args = {
+			main = LibStub('LibOptionsGenerate-1.0'):GetOptionsTable(addonName..'.db.children.Tooltips.profile', types),
+		},
+	})
+	LibStub('AceConfigDialog-3.0'):AddToBlizOptions(self:GetName(), 'Tooltips', addonName, 'main')
+end
+
+
+
+
+
+--[[
 	local statusBarMargin, statusBarBorderWidth = 0, 0 -- 1, 1
-	local border, borderSize, borderInset = 'Interface\\Addons\\Midget\\media\\glow', 4, 4
+	-- local border, borderSize, borderInset = 'Interface\\Addons\\Midget\\media\\glow', 4, 4
 	-- local border, borderSize, borderInset = 'Interface\\Addons\\Midget\\media\\double_border', 16, nil
 	-- local border, borderSize, borderInset = 'Interface\\Addons\\Midget\\media\\grayborder', 16, nil
 	local backgroundColor = _G.TOOLTIP_DEFAULT_BACKGROUND_COLOR
@@ -184,8 +348,8 @@ end
 	      backdrop.insets.top    = borderInset or backdrop.insets.top
 	      backdrop.insets.bottom = borderInset or backdrop.insets.bottom
 	GameTooltip:SetBackdrop(backdrop)
-	GameTooltip:SetBackdropColor(backgroundColor.r, backgroundColor.g, backgroundColor.b)
-	GameTooltip:SetBackdropBorderColor(borderColor.r, borderColor.g, borderColor.b)
+	-- GameTooltip:SetBackdropColor(backgroundColor.r, backgroundColor.g, backgroundColor.b)
+	-- GameTooltip:SetBackdropBorderColor(borderColor.r, borderColor.g, borderColor.b)
 	-- local tooltips = { GameTooltip, ItemRefTooltip, ShoppingTooltip1, ShoppingTooltip2, ShoppingTooltip3, WorldMapTooltip, EventTraceTooltip, FrameStackTooltip }
 	-- for _, tooltip in pairs(tooltips) do
 	-- 	-- apply changed settings to existing tooltips
@@ -217,9 +381,9 @@ end
 	GameTooltip.statusBar.bg = bg
 
 	hooksecurefunc(getmetatable(_G['GameTooltip']).__index, 'Show', function(self)
-		self:SetBackdropColor(backgroundColor.r,backgroundColor.g,backgroundColor.b)
+		-- self:SetBackdropColor(backgroundColor.r,backgroundColor.g,backgroundColor.b)
 		if not self:GetItem() and not self:GetUnit() then
-			self:SetBackdropBorderColor(borderColor.r, borderColor.g, borderColor.b)
+			-- self:SetBackdropBorderColor(borderColor.r, borderColor.g, borderColor.b)
 		end
 		--if self.addHeight then
 		--	self.newHeight = self:GetHeight() + self.addHeight
@@ -244,7 +408,7 @@ end
 		if r then
 			_G[self:GetName()..'TextLeft1']:SetTextColor(r, g, b)
 			self.statusBar:SetStatusBarColor(r, g, b)
-			self:SetBackdropBorderColor(r, g, b)
+			-- self:SetBackdropBorderColor(r, g, b)
 		end
 	end)
 --]]
