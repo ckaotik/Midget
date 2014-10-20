@@ -288,8 +288,8 @@ function tooltips:OnInitialize()
 end
 
 function tooltips:OnEnable()
-	print('tooltips name:', self:GetName())
-	self.db = addon.db:RegisterNamespace('Tooltips', defaults)
+	local moduleName = self:GetName()
+	self.db = addon.db:RegisterNamespace(moduleName, defaults)
 
 	-- don't add spacing for closing 'x'
 	ItemRefTooltip:SetPadding(0)
@@ -313,10 +313,10 @@ function tooltips:OnEnable()
 	LibStub('AceConfig-3.0'):RegisterOptionsTable(self:GetName(), {
 		type = 'group',
 		args = {
-			main = LibStub('LibOptionsGenerate-1.0'):GetOptionsTable(addonName..'.db.children.Tooltips.profile', types),
+			main = LibStub('LibOptionsGenerate-1.0'):GetOptionsTable(addonName..'.db.children.'..moduleName..'.profile', types),
 		},
 	})
-	LibStub('AceConfigDialog-3.0'):AddToBlizOptions(self:GetName(), 'Tooltips', addonName, 'main')
+	LibStub('AceConfigDialog-3.0'):AddToBlizOptions(self:GetName(), moduleName, addonName, 'main')
 end
 
 
