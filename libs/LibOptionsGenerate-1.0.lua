@@ -166,12 +166,7 @@ local function Widget(key, option, typeMappings)
 			get = GetSoundSetting,
 			set = SetSoundSetting,
 		}
-	elseif key == 'itemquality' or (key:find('quality') and type(option) == 'number') then
-		widget = {
-			type = 'select',
-			values = itemQualities,
-		}
-	elseif key:find('color') then
+	elseif key:find('color')      and type(option) == 'table' then
 		widget = {
 			type = 'color',
 			hasAlpha = true,
@@ -185,6 +180,11 @@ local function Widget(key, option, typeMappings)
 			multiline = false,
 			usage = 'Insert value in coppers, e.g. 10000 for 1|TInterface\\MoneyFrame\\UI-GoldIcon:0|t.',
 			pattern = '%d',
+		}
+	elseif key == 'itemquality' or (key:find('quality') and type(option) == 'number') then
+		widget = {
+			type = 'select',
+			values = itemQualities,
 		}
 	elseif key == 'values' or key:find('list$') then
 		widget = {
