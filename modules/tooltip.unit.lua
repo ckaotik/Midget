@@ -179,8 +179,8 @@ end
 
 
 
-
-
+-- for now since tooltip height calc is weird
+if true then return end
 
 -- "tooltip filter" as a name?
 local tooltips = addon:NewModule('Tooltips', 'AceEvent-3.0')
