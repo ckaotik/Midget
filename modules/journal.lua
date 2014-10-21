@@ -1,7 +1,7 @@
 local addonName, addon, _ = ...
 local plugin = addon:NewModule('EncounterJournal', 'AceEvent-3.0')
 
--- GLOBALS: _G, EncounterJournal, MidgetLocalDB
+-- GLOBALS: _G, EncounterJournal
 -- GLOBALS: CreateFrame, UnitName, IsAddOnLoaded, EncounterJournal_DisplayInstance, EJ_GetCurrentInstance, EJ_GetDifficulty, EJ_GetEncounterInfo, EJ_GetCreatureInfo, EJ_GetEncounterInfoByIndex, EJ_GetInstanceByIndex, EJ_InstanceIsRaid, NavBar_Reset, GetInstanceInfo, GetTexCoordsForRoleSmallCircle, GetLootSpecialization, SetLootSpecialization, GetSpecialization, GetSpecializationInfo, GetSpecializationInfoByID
 -- GLOBALS: pairs, hooksecurefunc
 
@@ -51,19 +51,19 @@ end
 -- ================================================
 local function ManageLootRoles(self, btn)
 	local bossButton = self:GetParent()
-	if not MidgetLocalDB.LFRLootSpecs then MidgetLocalDB.LFRLootSpecs = {} end
+	if not addon.db.char.LFRLootSpecs then addon.db.char.LFRLootSpecs = {} end
 
 	if btn == 'RightButton' then
 		-- remove specialization preference
-		MidgetLocalDB.LFRLootSpecs[ bossButton.encounterID ] = nil
+		addon.db.char.LFRLootSpecs[ bossButton.encounterID ] = nil
 	else
 		-- switch to next specialization
 		-- TODO: save prefs per difficulty?
 		-- spec: local index of spec in player's spec choices
-		local spec = MidgetLocalDB.LFRLootSpecs[ bossButton.encounterID ] or 0 -- [ EJ_GetDifficulty() ]
+		local spec = addon.db.char.LFRLootSpecs[ bossButton.encounterID ] or 0 -- [ EJ_GetDifficulty() ]
 		spec = spec + 1
 		spec = GetSpecializationInfo(spec) and spec or 1
-		MidgetLocalDB.LFRLootSpecs[ bossButton.encounterID ] = spec
+		addon.db.char.LFRLootSpecs[ bossButton.encounterID ] = spec
 	end
 end
 local function UpdateLootSpecIcon(bossButton)
@@ -83,7 +83,7 @@ local function UpdateLootSpecIcon(bossButton)
 	end
 	local roleButton = bossButton.roleButton
 
-	local lootSpec = MidgetLocalDB.LFRLootSpecs and MidgetLocalDB.LFRLootSpecs[ bossButton.encounterID ] or nil
+	local lootSpec = addon.db.char.LFRLootSpecs and addon.db.char.LFRLootSpecs[ bossButton.encounterID ] or nil
 	if lootSpec then
 		local specID, _, _, icon = GetSpecializationInfo(lootSpec)
 		roleButton:SetNormalTexture(icon)
@@ -134,7 +134,7 @@ local function CheckUpdateLootSpec(event, id, name, difficulty, groupSize)
 
 	local currentLoot = GetLootSpecialization()
 	local currentSpec = GetSpecializationInfo(GetSpecialization())
-	local specPreference = MidgetLocalDB.LFRLootSpecs and MidgetLocalDB.LFRLootSpecs[ encounterID ] or 0
+	local specPreference = addon.db.char.LFRLootSpecs and addon.db.char.LFRLootSpecs[ encounterID ] or 0
 		  specPreference = GetSpecializationInfo(specPreference)
 
 	-- don't change if we have no preference set
