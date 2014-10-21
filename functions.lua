@@ -539,7 +539,7 @@ local function AddMasque()
 	end
 end
 
-function InitItemButtonLevels()
+local function InitItemButtonLevels()
 	local LibItemUpgrade = LibStub('LibItemUpgradeInfo-1.0')
 	-- TODO: use different color scale
 	local buttons, colors = {}, { -- 0.55,0.55,0.55 -- gray
@@ -569,12 +569,27 @@ function InitItemButtonLevels()
 		[PaperDollItemSlotButton_OnEnter] = function(self) return GetInventoryItemLink('player', self:GetID()) end,
 		[ContainerFrameItemButton_OnEnter] = function(self) return GetContainerItemLink(self:GetParent():GetID(), self:GetID()) end,
 		[BankFrameItemButton_OnEnter] = function(self) return GetInventoryItemLink('player', self:GetInventorySlot()) end,
-		--[[ -- FIXME: Blizzard_VoidStorageUI might not yet be loaded
+	}
+
+	-- HACK: registering ADDON_LOADED within OnEnable does not work, so we register 1s later
+	local function AddVoidStorageCallback()
+		if not IsAddOnLoaded('Blizzard_VoidStorageUI') then
+			plugin:RegisterEvent('ADDON_LOADED', function(event, arg1, ...)
+				if arg1 == 'Blizzard_VoidStorageUI' then
+					AddVoidStorageCallback()
+					plugin:UnregisterEvent(event)
+				end
+			end)
+			return
+		end
+		-- now, void storage is definitely loaded
 		getItemLink[VoidStorageItemButton_OnEnter] = function(self)
 			if not self.hasItem then return end
 			return GetVoidItemHyperlinkString(VoidStorageFrame.page, self.slot)
-		end, --]]
-	}
+		end
+	end
+	C_Timer.After(1, AddVoidStorageCallback)
+
 	local function HideButtonLevel(self)
 		local button = (self.icon or self.Icon) and self or self:GetParent()
 		if button and button.itemLevel then
