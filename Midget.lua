@@ -30,6 +30,7 @@ local defaults = {
 		trackBattlePetTeams = true,
 		trackProfessionSkills = true,
 		trackProfession = {},
+		LFRLootSpecs = {},
 	}
 }
 
