@@ -74,6 +74,8 @@ local function SetColorSetting(info, r, g, b, a)
 end
 local function GetPercentSetting(info) return info.options.args[ info[1] ].get(info) * 100 end
 local function SetPercentSetting(info, value) info.options.args[ info[1] ].set(info, value/100) end
+local function GetNumberSetting(info) return tostring(info.options.args[ info[1] ].get(info)) end
+local function SetNumberSetting(info, value) info.options.args[ info[1] ].set(info, tonumber(value)) end
 
 local function GetTableFromList(dataString, seperator) return { strsplit(seperator, dataString) } end
 local function GetListFromTable(dataTable, seperator)
@@ -192,6 +194,8 @@ local function Widget(key, option, typeMappings)
 			multiline = false,
 			usage = 'Insert value in coppers, e.g. 10000 for 1|TInterface\\MoneyFrame\\UI-GoldIcon:0|t.',
 			pattern = '%d',
+			get = GetNumerSetting,
+			set = SetNumberSetting,
 		}
 	elseif key == 'itemquality' or (key:find('quality') and type(option) == 'number') then
 		widget = {
