@@ -41,14 +41,14 @@ StaticPopupDialogs['MIDGET_PETTEAM_RENAME'] = {
 	button1 = _G.OKAY,
 	button2 = _G.CANCEL,
 	OnShow = function(self, teamIndex)
-		local team = MidgetDB.petBattleTeams[teamIndex]
+		local team = addon.db.global.petBattleTeams[teamIndex]
 		self.editBox:SetText(team.name or '')
 		self.editBox:SetFocus()
 	end,
 	OnAccept = function(self, teamIndex)
 		local name = self.editBox:GetText()
 		if name and name ~= '' then
-			MidgetDB.petBattleTeams[teamIndex].name = (name and name ~= '') and name or nil
+			addon.db.global.petBattleTeams[teamIndex].name = (name and name ~= '') and name or nil
 			plugin.UpdateTabs()
 		end
 		self:Hide()
@@ -67,7 +67,7 @@ StaticPopupDialogs['MIDGET_PETTEAM_RENAME'] = {
 
 local function CheckPets()
 	local missingPets, scanSlot = {}, 1
-	for teamIndex, team in ipairs(MidgetDB.petBattleTeams) do
+	for teamIndex, team in ipairs(addon.db.global.petBattleTeams) do
 		for slotIndex = 1, MAX_ACTIVE_PETS do
 			local pet = team[slotIndex]
 			if pet and pet.petID and not (C_PetJournal.GetPetInfoByPetID(pet.petID)) then
@@ -116,7 +116,7 @@ local function CheckPets()
 						-- print('looking for', skill1, skill2, skill3)
 						if skill1 == ability1 and skill2 == ability2 and skill3 == ability3 then
 							print(GREEN_FONT_COLOR_CODE, 'Matched!|r', data.team..'/'..data.slot, 'with skills', skill1, skill2, skill3)
-							MidgetDB.petBattleTeams[data.team][data.slot].petID = petID
+							addon.db.global.petBattleTeams[data.team][data.slot].petID = petID
 
 							wipe(missingPets[oldPetID])
 							missingPets[oldPetID] = nil
@@ -166,7 +166,7 @@ local function OnClick(tab, btn)
 	elseif IsControlKeyDown() and btn == 'RightButton' then
 		StaticPopup_Show('MIDGET_PETTEAM_DELETE', tab.teamIndex, nil, tab.teamIndex)
 		-- plugin.DeleteTeam(tab.teamIndex)
-	elseif tab.teamIndex == MidgetDB.petBattleTeams.selected then
+	elseif tab.teamIndex == addon.db.global.petBattleTeams.selected then
 		-- refresh active team
 		plugin.SaveTeam(tab.teamIndex)
 		plugin.UpdateTabs()
@@ -225,7 +225,7 @@ end
 
 local function SetTeamTooltip(tab, tooltip)
 	if not tab.teamIndex then return end
-	local team = MidgetDB.petBattleTeams[tab.teamIndex]
+	local team = addon.db.global.petBattleTeams[tab.teamIndex]
 	local weaknesses = ''
 
 	tooltip:AddDoubleLine(team.name or "Team "..tab.teamIndex, '|TInterface\\PetBattles\\BattleBar-AbilityBadge-Weak:20|t ')
@@ -275,16 +275,16 @@ local function SetTeamTooltip(tab, tooltip)
 end
 
 function plugin.AddTeam()
-	table.insert(MidgetDB.petBattleTeams, {})
-	local index = #MidgetDB.petBattleTeams
+	table.insert(addon.db.global.petBattleTeams, {})
+	local index = #addon.db.global.petBattleTeams
 	plugin.SaveTeam(index)
 	plugin.LoadTeam(index)
 end
 function plugin.SaveTeam(index, name)
-	index = index or MidgetDB.petBattleTeams.selected
+	index = index or addon.db.global.petBattleTeams.selected
 	if not index then return end
 
-	local team = MidgetDB.petBattleTeams[index]
+	local team = addon.db.global.petBattleTeams[index]
 		  team.name = (name and name ~= '') and name or nil
 	-- ipairs: clear old pets but keep other team attributes
 	for i, member in ipairs(team) do
@@ -297,13 +297,13 @@ function plugin.SaveTeam(index, name)
 	end
 end
 function plugin.DeleteTeam(index)
-	if MidgetDB.petBattleTeams[index] then
-		table.remove(MidgetDB.petBattleTeams, index)
-		plugin.LoadTeam(#MidgetDB.petBattleTeams)
+	if addon.db.global.petBattleTeams[index] then
+		table.remove(addon.db.global.petBattleTeams, index)
+		plugin.LoadTeam(#addon.db.global.petBattleTeams)
 	end
 end
 function plugin.LoadTeam(index)
-	local team = MidgetDB.petBattleTeams[index]
+	local team = addon.db.global.petBattleTeams[index]
 	for i = 1, MAX_ACTIVE_PETS do
 		if team[i] and team[i].petID then
 			local petID = team[i].petID
@@ -318,12 +318,12 @@ function plugin.LoadTeam(index)
 			-- FIXME: C_PetJournal.SetPetLoadOutInfo(i, 0) used to work but doesn't any more
 		end
 	end
-	MidgetDB.petBattleTeams.selected = index
+	addon.db.global.petBattleTeams.selected = index
 	PetJournal_UpdatePetLoadOut()
 end
 function plugin.DumpTeam(index)
 	local output = ''
-	local team = MidgetDB.petBattleTeams[index]
+	local team = addon.db.global.petBattleTeams[index]
 	for i = 1, MAX_ACTIVE_PETS do
 		if team[i] and team[i].petID then
 			output = output .. C_PetJournal.GetBattlePetLink(team[i].petID)
@@ -334,8 +334,8 @@ function plugin.DumpTeam(index)
 end
 
 function plugin.UpdateTabs()
-	local selected = MidgetDB.petBattleTeams.selected
-	for index, team in ipairs(MidgetDB.petBattleTeams) do
+	local selected = addon.db.global.petBattleTeams.selected
+	for index, team in ipairs(addon.db.global.petBattleTeams) do
 		local speciesID, _, _, _, _, _, _, _, icon = C_PetJournal.GetPetInfoByPetID(team[1].petID)
 		local tab = GetTab(index)
 		      tab:SetChecked(index == selected)
@@ -349,7 +349,7 @@ function plugin.UpdateTabs()
 		end
 	end
 
-	local numTeams = #MidgetDB.petBattleTeams + 1
+	local numTeams = #addon.db.global.petBattleTeams + 1
 	local tab = GetTab(numTeams)
 	tab:SetChecked(nil)
 	tab:GetNormalTexture():SetTexture("Interface\\GuildBankFrame\\UI-GuildBankFrame-NewTab") -- "Interface\\PaperDollInfoFrame\\Character-Plus"
@@ -376,8 +376,8 @@ end
 --  move pet battle frame down a little
 -- ================================================
 local function MovePetBatteFrame()
-	local offset = MidgetDB.PetBattleFrameOffset
-	if not MidgetDB.movePetBattleFrame or offset == 0 then return end
+	local offset = addon.db.global.PetBattleFrameOffset
+	if not addon.db.global.movePetBattleFrame or offset == 0 then return end
 	PetBattleFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 0, offset)
 end
 
@@ -403,8 +403,8 @@ end
 local function InitializePetJournal(event, arg1)
 	if arg1 ~= 'Blizzard_PetJournal' then return end
 
-	if not MidgetDB.petBattleTeams then MidgetDB.petBattleTeams = {} end
-	for teamIndex, team in ipairs(MidgetDB.petBattleTeams) do
+	if not addon.db.global.petBattleTeams then addon.db.global.petBattleTeams = {} end
+	for teamIndex, team in ipairs(addon.db.global.petBattleTeams) do
 		for memberIndex = 1, MAX_ACTIVE_PETS do
 			local petID = team[memberIndex].petID
 			if petID:find('^0x') then

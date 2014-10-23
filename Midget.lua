@@ -6,6 +6,21 @@ _G[addonName] = LibStub('AceAddon-3.0'):NewAddon(addon, addonName, 'AceEvent-3.0
 -- GLOBALS: table, string, math, strsplit, type, tonumber, pairs, assert, tostring, tostringall
 
 local defaults = {
+	global = {
+		petBattleTeams = {
+			['*'] = { -- team
+				name = 'Team',
+				['*'] = { -- pet
+					petID = '',
+					-- selected skills
+					[1] = nil,
+					[2] = nil,
+					[3] = nil,
+				},
+			},
+			selected = 1,
+		},
+	},
 	profile = {
 		CorkButton = false,
 		TipTacStyles = true,
@@ -42,7 +57,6 @@ function addon:OnEnable()
 	self.db = LibStub('AceDB-3.0'):New(addonName..'DB', defaults, true)
 
 	local types = {
-		craftables = '*none*',
 		petBattleTeams = '*none*',
 	}
 	local charTypes = {
