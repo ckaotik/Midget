@@ -51,10 +51,11 @@ StaticPopupDialogs['MIDGET_PETTEAM_RENAME'] = {
 			addon.db.global.petBattleTeams[teamIndex].name = (name and name ~= '') and name or nil
 			plugin.UpdateTabs()
 		end
-		self:Hide()
 	end,
 	EditBoxOnEnterPressed = function(self)
-		StaticPopupDialogs['MIDGET_PETTEAM_RENAME'].OnAccept(self:GetParent(), self:GetParent().data)
+		local popup = self:GetParent()
+		StaticPopupDialogs['MIDGET_PETTEAM_RENAME'].OnAccept(popup, popup.data)
+		popup:Hide()
 	end,
 	EditBoxOnEscapePressed = function(self) self:GetParent():Hide() end,
 	timeout = 0,
@@ -63,7 +64,6 @@ StaticPopupDialogs['MIDGET_PETTEAM_RENAME'] = {
 	preferredIndex = 3,
 	hasEditBox = true,
 }
-
 
 local function CheckPets()
 	local missingPets, scanSlot = {}, 1

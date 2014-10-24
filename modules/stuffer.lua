@@ -104,7 +104,7 @@ function addon:OnEnable()
 	self:AddCriteria('stack', function(itemLink, scope, container, slot) return scopes[scope].GetCount(container, slot) end)
 
 	--[[ local frame = CreateFrame('Frame', addonName..'Frame', UIParent, "ButtonFrameTemplate")
-	      frame:EnableMouse()
+	      frame:EnableMouse(true)
 	      frame:SetFrameLevel(17)
 	      frame:Hide()
 	self.frame = frame
