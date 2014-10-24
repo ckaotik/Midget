@@ -8,16 +8,16 @@ _G[addonName] = LibStub('AceAddon-3.0'):NewAddon(addon, addonName, 'AceEvent-3.0
 local defaults = {
 	global = {
 		petBattleTeams = {
-			['*'] = { -- team
-				name = 'Team',
-				['*'] = { -- pet
+			--[[ ['*'] = { -- team
+				name = nil,
+				[1] = {
 					petID = '',
 					-- selected skills
 					[1] = nil,
 					[2] = nil,
 					[3] = nil,
 				},
-			},
+			}, --]]
 			selected = 1,
 		},
 	},
@@ -48,10 +48,6 @@ local defaults = {
 		LFRLootSpecs = {},
 	}
 }
-
-function addon:OnInitialize()
-	-- nothing yet
-end
 
 function addon:OnEnable()
 	self.db = LibStub('AceDB-3.0'):New(addonName..'DB', defaults, true)

@@ -10,7 +10,7 @@ local plugin = addon:NewModule('Functions', 'AceEvent-3.0')
 -- ================================================
 local LSM = LibStub("LibSharedMedia-3.0", true)
 local function AddMoreSharedMedia()
-	if not MidgetDB.moreSharedMedia or not LSM then return end
+	if not addon.db.profile.moreSharedMedia or not LSM then return end
 	LSM:Register("border", "Glow", "Interface\\Addons\\Midget\\media\\glow.tga")
 	LSM:Register("border", "Double", "Interface\\Addons\\Midget\\media\\double_border.tga")
 	LSM:Register("border", "Single Gray", "Interface\\Addons\\Midget\\media\\grayborder.tga")
@@ -31,12 +31,12 @@ end
 --  Interface Options Frame
 -- ================================================
 local function InterfaceOptionsScrolling()
-	if not MidgetDB.InterfaceOptionsScrolling then return end
+	if not addon.db.profile.InterfaceOptionsScrolling then return end
 
 	local f
 	for i = 1, 31 do
 		f = _G["InterfaceOptionsFrameAddOnsButton"..i]
-		f:EnableMouseWheel()
+		f:EnableMouseWheel(true)
 		f:SetScript("OnMouseWheel", function(self, val)
 			ScrollFrameTemplate_OnMouseWheel(InterfaceOptionsFrameAddOnsList, val)
 		end)
@@ -44,7 +44,7 @@ local function InterfaceOptionsScrolling()
 end
 
 local function InterfaceOptionsDragging()
-	if not MidgetDB.InterfaceOptionsDragging then return end
+	if not addon.db.profile.InterfaceOptionsDragging then return end
 	InterfaceOptionsFrame:SetMovable(true)
 	InterfaceOptionsFrame:CreateTitleRegion():SetAllPoints(InterfaceOptionsFrameHeader)
 end
@@ -53,7 +53,7 @@ end
 --  Cork
 -- ================================================
 local function CreateCorkButton()
-	if not MidgetDB.CorkButton or not IsAddOnLoaded("Cork") then return end
+	if not addon.db.profile.CorkButton or not IsAddOnLoaded("Cork") then return end
 
 	local buffButton = _G["CorkFrame"]
 
@@ -82,7 +82,7 @@ end
 -- 	Whisper (outgoing) Color
 -- ================================================
 local function OutgoingWhisperColor()
-	if not MidgetDB.outgoingWhisperColor then return end
+	if not addon.db.profile.outgoingWhisperColor then return end
 	local list = CHAT_CONFIG_CHAT_LEFT
 	for i = #list, 1, -1 do
 		if list[i].type == "WHISPER" then
@@ -103,7 +103,7 @@ end
 -- Raid Finder texts are too long!
 -- ================================================
 local function ShortenLFRNames()
-	if not MidgetDB.shortenLFRNames then return end
+	if not addon.db.profile.shortenLFRNames then return end
 	hooksecurefunc("LFGRewardsFrame_UpdateFrame", function(frame, raidID, background)
 		local title = frame.title:GetText()
 		if string.len(title) > 25 then
@@ -116,7 +116,7 @@ end
 -- Chat link icons
 -- ================================================
 local function AddLootIcons(self, event, message, ...)
-	if not MidgetDB.chatLinkIcons then return end
+	if not addon.db.profile.chatLinkIcons then return end
 	local function Icon(link)
 		local texture = GetItemIcon(link)
 		return "\124T" .. texture .. ":" .. 12 .. "\124t" .. link
@@ -126,7 +126,7 @@ local function AddLootIcons(self, event, message, ...)
 end
 
 local function AddChatLinkHoverTooltips()
-	if not MidgetDB.chatHoverTooltips then return end
+	if not addon.db.profile.chatHoverTooltips then return end
 	-- see link types here: http://www.townlong-yak.com/framexml/19033/ItemRef.lua#162
 	local gameTips = {item = true, spell = true, trade = true, enchant = true, talent = true, glyph = true, achievement = true, unit = true, quest = true, instancelock = true}
 	local function OnHyperlinkEnter(self, linkData, link)
@@ -186,7 +186,7 @@ end
 -- ValidateFramePosition with no menu bar
 -- ================================================
 local function FixMenuBarHeight()
-	if not MidgetDB.menuBarHeight then return end
+	if not addon.db.profile.menuBarHeight then return end
 	hooksecurefunc("ValidateFramePosition", function(frame, offscreenPadding, returnOffscreen)
 		if not offscreenPadding then
 			if math.abs(frame:GetBottom() - MainMenuBar:GetHeight()) < 1 then
@@ -202,7 +202,7 @@ end
 -- Apply TipTac styling to other frames as well
 -- ================================================
 local function AddTipTacStyles()
-	if not MidgetDB.TipTacStyles then return end
+	if not addon.db.profile.TipTacStyles then return end
 	if IsAddOnLoaded("TipTac") then
 		-- "Corkboard", "ReagentMaker_tooltipRecipe", "FloatingBattlePetTooltip", "BattlePetTooltip",
 		hooksecurefunc("CreateFrame", function(objectType, name, parent, template)
@@ -218,7 +218,7 @@ end
 -- Hide unusable item comparison
 -- ================================================
 local function HideUnusableCompareTips()
-	if not MidgetDB.hideUnusableCompareTips then return end
+	if not addon.db.profile.hideUnusableCompareTips then return end
 	local function HookCompareItems(shoppingtip)
 		if not shoppingtip then return end
 		local old = shoppingtip.SetHyperlinkCompareItem
@@ -257,7 +257,7 @@ end
 
 
 local function AddUndressButtons()
-	if not MidgetDB.undressButton then return end
+	if not addon.db.profile.undressButton then return end
 	-- these models are create before we can hook
 	for _, name in pairs({"DressUpModel", "SideDressUpModel"}) do
 		if not _G[name.."ControlFrameUndressButton"] then
@@ -271,7 +271,7 @@ local function AddUndressButtons()
 	end)
 end
 local function FixModelLighting()
-	if not MidgetDB.modelLighting then return end
+	if not addon.db.profile.modelLighting then return end
 	for _, name in pairs({"DressUpModel", "CharacterModelFrame", "SideDressUpModel", "InspectModelFrame"}) do
 		local frame = _G[name]
 		if frame then
@@ -290,7 +290,8 @@ end
 -- ================================================
 local openPopup
 local function AutoAcceptPopup(which, arg1, arg2, data)
-	if not MidgetDB.SHIFTAcceptPopups then return end
+	-- TODO: this fails when popups are triggered by SHIFT+anything
+	if not addon.db.profile.SHIFTAcceptPopups then return end
 	if type(which) == 'table' then
 		data  = which.data
 		which = which.which
