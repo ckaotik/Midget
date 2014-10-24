@@ -3,7 +3,7 @@
 ## Title: Midget
 ## Version: dev
 ## OptionalDeps: Cork, TipTac, BigWigs, Dominos
-## Dependencies: Blizzard_TradeSkillUI
+## Dependencies:
 ## SavedVariables: MidgetDB, StufferDB
 ## SavedVariablesPerCharacter: MidgetLocalDB
 
