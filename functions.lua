@@ -202,16 +202,14 @@ end
 -- Apply TipTac styling to other frames as well
 -- ================================================
 local function AddTipTacStyles()
-	if not addon.db.profile.TipTacStyles then return end
-	if IsAddOnLoaded("TipTac") then
-		-- "Corkboard", "ReagentMaker_tooltipRecipe", "FloatingBattlePetTooltip", "BattlePetTooltip",
-		hooksecurefunc("CreateFrame", function(objectType, name, parent, template)
-			if objectType ~= 'GameTooltip' then return end
-			if name == "ReagentMaker_tooltipRecipe" then
-				TipTac:AddModifiedTip(_G[name])
-			end
-		end)
-	end
+	if not addon.db.profile.TipTacStyles or not IsAddOnLoaded("TipTac") then return end
+	-- "Corkboard", "ReagentMaker_tooltipRecipe", "FloatingBattlePetTooltip", "BattlePetTooltip",
+	hooksecurefunc("CreateFrame", function(objectType, name, parent, template)
+		if objectType ~= 'GameTooltip' then return end
+		if name == "ReagentMaker_tooltipRecipe" then
+			TipTac:AddModifiedTip(_G[name])
+		end
+	end)
 end
 
 -- ================================================
@@ -415,6 +413,9 @@ local function AddMasque()
 	end
 end
 
+LibStub("CallbackHandler-1.0"):New(plugin)
+plugin:RegisterCallback('ITEM_SLOT_UPDATE', print) -- bag, slot, link, count, locked, coolingDown
+
 local function InitItemButtonLevels()
 	local LibItemUpgrade = LibStub('LibItemUpgradeInfo-1.0')
 	-- TODO: use different color scale
@@ -442,29 +443,16 @@ local function InitItemButtonLevels()
 	end
 
 	local getItemLink = {
-		[PaperDollItemSlotButton_OnEnter] = function(self) return GetInventoryItemLink('player', self:GetID()) end,
-		[ContainerFrameItemButton_OnEnter] = function(self) return GetContainerItemLink(self:GetParent():GetID(), self:GetID()) end,
-		[BankFrameItemButton_OnEnter] = function(self) return GetInventoryItemLink('player', self:GetInventorySlot()) end,
+		[PaperDollItemSlotButton_OnEnter]  = function(self)
+			return GetInventoryItemLink('player', self:GetID())
+		end,
+		[ContainerFrameItemButton_OnEnter] = function(self)
+			return GetContainerItemLink(self:GetParent():GetID(), self:GetID())
+		end,
+		[BankFrameItemButton_OnEnter] = function(self)
+			return GetInventoryItemLink('player', self:GetInventorySlot())
+		end,
 	}
-
-	-- HACK: registering ADDON_LOADED within OnEnable does not work, so we register 1s later
-	local function AddVoidStorageCallback()
-		if not IsAddOnLoaded('Blizzard_VoidStorageUI') then
-			plugin:RegisterEvent('ADDON_LOADED', function(event, arg1, ...)
-				if arg1 == 'Blizzard_VoidStorageUI' then
-					plugin:UnregisterEvent(event)
-					AddVoidStorageCallback()
-				end
-			end)
-			return
-		end
-		-- now, void storage is definitely loaded
-		getItemLink[VoidStorageItemButton_OnEnter] = function(self)
-			if not self.hasItem then return end
-			return GetVoidItemHyperlinkString(VoidStorageFrame.page, self.slot)
-		end
-	end
-	C_Timer.After(1, AddVoidStorageCallback)
 
 	local function HideButtonLevel(self)
 		local button = (self.icon or self.Icon) and self or self:GetParent()
@@ -475,13 +463,13 @@ local function InitItemButtonLevels()
 
 	local function UpdateButtonLevel(self, texture)
 		local button = (self.icon or self.Icon) and self or self:GetParent()
+		if not button then return end
 		if not texture or texture == '' or button.noItemLevel then
 			HideButtonLevel(button)
 			return
 		end
 
 		if not button.itemLevel then
-			table.insert(buttons, button)
 			local iLevel = button:CreateFontString(nil, 'OVERLAY', 'NumberFontNormalSmall')
 			      iLevel:SetPoint('TOPLEFT', -2, 1)
 			button.itemLevel = iLevel
@@ -514,16 +502,28 @@ local function InitItemButtonLevels()
 			end
 		end
 	end
+
+	function UpdateButtonLevels()
+		for _, button in pairs(buttons) do
+			UpdateButtonLevel(button, true)
+		end
+	end
+	plugin:RegisterEvent('PLAYER_AVG_ITEM_LEVEL_UPDATE', UpdateButtonLevels)
+
 	hooksecurefunc('SetItemButtonTexture', UpdateButtonLevel)
 	hooksecurefunc('BankFrameItemButton_Update', function(self) UpdateButtonLevel(self, true) end)
 	hooksecurefunc('EquipmentFlyout_DisplayButton', UpdateButtonLevel)
 	hooksecurefunc('EquipmentFlyout_DisplaySpecialButton', HideButtonLevel)
 
-	plugin:RegisterEvent('PLAYER_AVG_ITEM_LEVEL_UPDATE', function()
-		for _, button in pairs(buttons) do
-			UpdateButtonLevel(button, true)
-		end
-	end)
+	local function AddButton(button)
+		local icon = button and (button.icon or button.Icon)
+		if not button or not icon then return end
+		if button.SetTexture then hooksecurefunc(button, 'SetTexture', UpdateButtonLevel) end
+		if icon.SetTexture   then hooksecurefunc(icon,   'SetTexture', UpdateButtonLevel) end
+		hooksecurefunc(button, 'Hide', HideButtonLevel)
+		hooksecurefunc(icon,   'Hide', HideButtonLevel)
+		table.insert(buttons, button)
+	end
 
 	hooksecurefunc('CreateFrame', function(frameType, name, parent, templates, id)
 		if frameType:lower() == 'button' and templates and templates:lower():find('itembutton') then
@@ -531,15 +531,32 @@ local function InitItemButtonLevels()
 			if parent and type(parent) == 'table' then
 				name = name:gsub('$parent', parent:GetName())
 			end
-			local button = _G[name]
-			local icon = button.icon or button.Icon
-			if not button or not icon then return end
-			if button.SetTexture then hooksecurefunc(button, 'SetTexture', UpdateButtonLevel) end
-			if icon.SetTexture then hooksecurefunc(icon, 'SetTexture', UpdateButtonLevel) end
-			hooksecurefunc(button, 'Hide', HideButtonLevel)
-			hooksecurefunc(icon, 'Hide', HideButtonLevel)
+			AddButton(_G[name])
 		end
 	end)
+
+	-- HACK: registering ADDON_LOADED within OnEnable does not work, so we register 1s later
+	local function AddVoidStorageCallback()
+		if not IsAddOnLoaded('Blizzard_VoidStorageUI') then
+			plugin:RegisterEvent('ADDON_LOADED', function(event, arg1, ...)
+				if arg1 == 'Blizzard_VoidStorageUI' then
+					plugin:UnregisterEvent(event)
+					AddVoidStorageCallback()
+				end
+			end)
+			return
+		end
+		-- now, void storage is definitely loaded
+		AddButton(_G.VoidStorageStorageButton1)
+		getItemLink[VoidStorageItemButton_OnEnter] = function(self)
+			if not self.hasItem then return end
+			local itemID = GetVoidItemInfo(VoidStorageFrame.page, self.slot)
+			local _, itemLink = GetItemInfo(itemID)
+			return itemLink or itemID
+		end
+		hooksecurefunc('VoidStorageFrame_Update', UpdateButtonLevels)
+	end
+	C_Timer.After(1, AddVoidStorageCallback)
 end
 
 local function CalendarIconFlash()
