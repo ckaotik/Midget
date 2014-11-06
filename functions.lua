@@ -526,7 +526,7 @@ local function InitItemButtonLevels()
 		if frameType:lower() == 'button' and templates and templates:lower():find('itembutton') then
 			if not name then return end
 			if parent and type(parent) == 'table' then
-				name = name:gsub('$parent', parent:GetName())
+				name = name:gsub('$parent', parent:GetName() or '')
 			end
 			AddButton(_G[name])
 		end
