@@ -46,6 +46,7 @@ local function TooltipUnitInfo(tooltip)
 		end
 
 		if tooltip.talents then
+			-- reuse existing line
 			_G[tooltip:GetName()..'TextLeft'..tooltip.talents]:SetText(left)
 			_G[tooltip:GetName()..'TextRight'..tooltip.talents]:SetText(right)
 		else
@@ -76,11 +77,16 @@ function plugin:INSPECT_READY(event, guid)
 	if not className or not unitCache[guid] then return end
 
 	local unit = unitCache[guid].unit
+	-- unit has changed since request, unit and guid do not match
+	if UnitGUID(unit) ~= guid then return end
+
 	if unit then
+		-- get unit specialization
 		local specID = GetInspectSpecialization(unit)
 		unitCache[guid].spec = specID ~= 0 and specID or unitCache[guid].spec
 
 		-- TODO: fix heirloom item levels
+		-- get unit average item level
 		local itemLevels, mainHandLevel, complete = 0, nil, true
 		local numSlots = _G.INVSLOT_LAST_EQUIPPED - 3 -- tabard, ranged, body don't provide iLvl
 		for slot = _G.INVSLOT_FIRST_EQUIPPED, _G.INVSLOT_LAST_EQUIPPED do

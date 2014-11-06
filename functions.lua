@@ -413,9 +413,6 @@ local function AddMasque()
 	end
 end
 
-LibStub("CallbackHandler-1.0"):New(plugin)
-plugin:RegisterCallback('ITEM_SLOT_UPDATE', print) -- bag, slot, link, count, locked, coolingDown
-
 local function InitItemButtonLevels()
 	local LibItemUpgrade = LibStub('LibItemUpgradeInfo-1.0')
 	-- TODO: use different color scale
