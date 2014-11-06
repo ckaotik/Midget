@@ -332,7 +332,7 @@ function tooltips:OnEnable()
 	LibStub('AceConfig-3.0'):RegisterOptionsTable(self:GetName(), {
 		type = 'group',
 		args = {
-			main = LibStub('LibOptionsGenerate-1.0'):GetOptionsTable(addonName..'.db.children.'..moduleName..'.profile', types),
+			main = LibStub('LibOptionsGenerate-1.0'):GetOptionsTable(self.db, types),
 		},
 	})
 	LibStub('AceConfigDialog-3.0'):AddToBlizOptions(self:GetName(), moduleName, addonName, 'main')

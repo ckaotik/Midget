@@ -51,25 +51,6 @@ local defaults = {
 
 function addon:OnEnable()
 	self.db = LibStub('AceDB-3.0'):New(addonName..'DB', defaults, true)
-
-	local types = {
-		petBattleTeams = '*none*',
-	}
-	local charTypes = {
-		LFRLootSpecs = '*none*',
-	}
-	LibStub('AceConfig-3.0'):RegisterOptionsTable(addonName, {
-		type = 'group',
-		args = {
-			main = LibStub('LibOptionsGenerate-1.0'):GetOptionsTable(addonName..'.db.profile', types),
-			char = LibStub('LibOptionsGenerate-1.0'):GetOptionsTable(addonName..'.db.char', charTypes),
-			profiles = LibStub('AceDBOptions-3.0'):GetOptionsTable(self.db),
-		},
-	})
-	local AceConfigDialog = LibStub('AceConfigDialog-3.0')
-	      AceConfigDialog:AddToBlizOptions(addonName, addonName, nil, 'main')
-	      AceConfigDialog:AddToBlizOptions(addonName, 'Character Settings', addonName, 'char')
-	      AceConfigDialog:AddToBlizOptions(addonName, 'Profiles', addonName, 'profiles')
 end
 
 -- ================================================
