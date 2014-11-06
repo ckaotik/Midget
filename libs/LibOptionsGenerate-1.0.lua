@@ -1,4 +1,4 @@
-local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 9
+local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 10
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
@@ -33,15 +33,19 @@ end
 
 local function GetSettingDefault(info, variable)
 	local data = type(variable) == 'string' and GetVariableFromPath(variable) or variable
-	for i = 2, #info do
-		data = data[ info[i] ]
+	for i = 1, #info - 1 do
+		if data[ info[i] ] then -- might have a container group
+			data = data[ info[i] ]
+		end
 	end
-	return data
+	return data[ info[#info] ]
 end
 local function SetSettingDefault(info, value, variable)
 	local data = type(variable) == 'string' and GetVariableFromPath(variable) or variable
-	for i = 2, #info - 1 do
-		data = data[ info[i] ]
+	for i = 1, #info - 1 do
+		if data[ info[i] ] then -- might not have a container group
+			data = data[ info[i] ]
+		end
 	end
 	data[ info[#info] ] = value
 end
@@ -217,9 +221,9 @@ local function Widget(key, option, typeMappings)
 	return widget
 end
 
+local AceDBScopes = { 'global', 'profile', 'char', 'class', a = 'race', b = 'realm', c = 'faction', d = 'factionrealm' }
 local function ParseOption(key, option, L, typeMappings)
 	if type(key) ~= 'string' or key == '*' or key == '**' then return end
-	-- if key == 'profileKeys' then return end
 
 	local widget = Widget(key, option, typeMappings)
 	if widget == true then
@@ -262,7 +266,7 @@ local function ParseOption(key, option, L, typeMappings)
 		if not hasContents then widget = nil end
 	end
 
-	if widget and L and type(L) == 'table' then
+	if widget and L and type(L) == 'table' and not tContains(AceDBScopes, key) then
 		widget.name = L[key..'Name'] or widget.name
 		widget.desc = L[key..'Desc'] or widget.desc
 		if widget.type == 'group' and widget.desc then
@@ -277,7 +281,6 @@ local function ParseOption(key, option, L, typeMappings)
 	return widget
 end
 
-local AceDBScopes = { 'global', 'profile', 'char', 'class', a = 'race', b = 'realm', c = 'faction', d = 'factionrealm' }
 local function AddScopeHeaders(optionsTable)
 	-- TODO: also available: race, realm, faction, factionrealm (remove keys in AceDBScopes table)
 	local playerName, playerRealm = UnitFullName('player')
@@ -302,6 +305,7 @@ local function AddScopeHeaders(optionsTable)
 	end
 end
 
+local AceDBExcludes = {'sv', 'callbacks', 'children', 'parent', 'keys', 'profiles', 'defaults'}
 function lib:GetOptionsTable(variable, typeMappings, L)
 	if type(variable) == 'string' then
 		variable = GetVariableFromPath(variable)
@@ -320,9 +324,9 @@ function lib:GetOptionsTable(variable, typeMappings, L)
 	if not isSecure and taintedBy == 'Ace3' then
 		-- TODO/FIXME: will probably not always be this string?
 		isAceDB = true
-		typeMappings = typeMappings or {}
-		for _, property in pairs({'sv', 'callbacks', 'children', 'parent', 'keys', 'profiles', 'defaults'}) do
-			typeMappings[property] = '*none*'
+		-- typeMappings = typeMappings or {}
+		for _, property in pairs(AceDBExcludes) do
+		--	typeMappings[property] = '*none*'
 		end
 		-- trigger initialization
 		for _, scope in pairs(AceDBScopes) do
@@ -331,13 +335,13 @@ function lib:GetOptionsTable(variable, typeMappings, L)
 	end
 
 	for key, value in pairs(variable) do
-		optionsTable.args[key] = ParseOption(key, value, L, typeMappings)
+		if not isAceDB or not tContains(AceDBExcludes, key) then
+			optionsTable.args[key] = ParseOption(key, value, L, typeMappings)
+		end
 	end
 
 	if isAceDB then
 		AddScopeHeaders(optionsTable)
 	end
-
-	FOO = optionsTable
 	return optionsTable
 end
