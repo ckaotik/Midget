@@ -585,6 +585,9 @@ function plugin:OnEnable()
 	-- SLASH_ROLECHECK1 = "/rolecheck"
 	-- SlashCmdList.ROLECHECK = InitiateRolePoll
 
+	-- don't add spacing for closing 'x'
+	ItemRefTooltip:SetPadding(0)
+
 	ChatFrame_AddMessageEventFilter('CHAT_MSG_LOOT', AddLootIcons)
 	AddChatLinkHoverTooltips()
 
