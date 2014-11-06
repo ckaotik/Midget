@@ -39,7 +39,7 @@ local function TooltipUnitInfo(tooltip)
 		local _, specName, _, specIcon, _, role, _ = GetSpecializationInfoByID(data.spec or 0)
 		local left   = role and ('%s|T%s:0|t %s'):format(_G['INLINE_'.. role ..'_ICON'], specIcon, specName) or ''
 		local ilevel = data.ilevel
-		local right  = ilevel > 0 and ('%d |T%s:0|t'):format(ilevel, 'Interface\\GROUPFRAME\\UI-GROUP-MAINTANKICON') or ''
+		local right  = (ilevel and ilevel > 0) and ('%d |T%s:0|t'):format(ilevel, 'Interface\\GROUPFRAME\\UI-GROUP-MAINTANKICON') or ''
 
 		if not data.complete then
 			right = _G.RED_FONT_COLOR_CODE .. right .. '|r'
@@ -69,6 +69,8 @@ local function TooltipUnitInfo(tooltip)
 			statusBar:SetStatusBarColor(color.r, color.g, color.b)
 		end
 	end
+	-- r, g, b = GameTooltip_UnitColor(unit)
+	-- _G[tooltip:GetName()..'TextLeft1']:SetTextColor(r, g, b)
 end
 
 function plugin:INSPECT_READY(event, guid)
@@ -303,15 +305,12 @@ end
 --  Addon Setup
 -- --------------------------------------------------------
 function tooltips:OnInitialize()
-	-- nothing yet
+	-- hooksecurefunc(getmetatable(GameTooltip).__index, 'SetItemByID', print)
 end
 
 function tooltips:OnEnable()
 	local moduleName = self:GetName()
 	self.db = addon.db:RegisterNamespace(moduleName, defaults)
-
-	-- don't add spacing for closing 'x'
-	ItemRefTooltip:SetPadding(0)
 
 	-- allow to completely hide empty lines
 	-- note: if you still want to add empty lines that use up space, set the text to ' '(space)
@@ -337,10 +336,6 @@ function tooltips:OnEnable()
 	})
 	LibStub('AceConfigDialog-3.0'):AddToBlizOptions(self:GetName(), moduleName, addonName, 'main')
 end
-
-
-
-
 
 --[[
 	local statusBarMargin, statusBarBorderWidth = 0, 0 -- 1, 1
@@ -375,11 +370,6 @@ end
 	-- 	tooltip:SetBackdrop(backdrop)
 	-- end
 
-	-- tooltip position
-	hooksecurefunc('GameTooltip_SetDefaultAnchor', function(self, parent)
-		self:SetPoint('BOTTOMRIGHT', 'UIParent', 'BOTTOMRIGHT', -72, 152)
-	end)
-
 	hooksecurefunc('GameTooltip_OnHide', function(self)
 		-- self:SetBackdropColor(backgroundColor.r, backgroundColor.g, backgroundColor.b)
 		-- self:SetBackdropBorderColor(borderColor.r, borderColor.g, borderColor.b)
@@ -400,34 +390,12 @@ end
 	GameTooltip.statusBar.bg = bg
 
 	hooksecurefunc(getmetatable(_G['GameTooltip']).__index, 'Show', function(self)
-		-- self:SetBackdropColor(backgroundColor.r,backgroundColor.g,backgroundColor.b)
+		-- self:SetBackdropColor(backgroundColor.r, backgroundColor.g, backgroundColor.b)
 		if not self:GetItem() and not self:GetUnit() then
 			-- self:SetBackdropBorderColor(borderColor.r, borderColor.g, borderColor.b)
 		end
 		--if self.addHeight then
 		--	self.newHeight = self:GetHeight() + self.addHeight
 		--end
-	end)
-
-	-- unit specifics
-	-- hooksecurefunc(getmetatable(GameTooltip).__index, 'SetUnit', function(self, unit)
-	-- 	print('unit set', unit)
-	-- end)
-	GameTooltip:HookScript('OnTooltipSetUnit', function(self)
-		local _, unit = self:GetUnit()
-		local r, g, b
-		if UnitIsPlayer(unit) and UnitHealth(unit) > 0 and not UnitIsDeadOrGhost(unit) then
-			local _, class = UnitClass(unit)
-			local color = (CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS)[class]
-			r, g, b = color.r, color.g, color.b
-		elseif unit then
-			-- FIXME: sometimes, targettargettarget has no unit?
-			r, g, b = GameTooltip_UnitColor(unit)
-		end
-		if r then
-			_G[self:GetName()..'TextLeft1']:SetTextColor(r, g, b)
-			self.statusBar:SetStatusBarColor(r, g, b)
-			-- self:SetBackdropBorderColor(r, g, b)
-		end
 	end)
 --]]
