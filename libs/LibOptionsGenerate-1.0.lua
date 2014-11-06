@@ -1,8 +1,12 @@
-local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 8
+local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 9
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
 -- GLOBALS: _G, type, pairs, ipairs, wipe, strsplit
+
+--[[ Wishlist:
+	- automatically load and include namespaces
+--]]
 
 local SharedMedia     = LibStub('LibSharedMedia-3.0', true)
 local AceConfig       = LibStub('AceConfig-3.0')
@@ -27,17 +31,15 @@ local function GetVariableFromPath(path)
 	return variable
 end
 
-local function GetSettingDefault(info, dataPath)
-	local db = GetVariableFromPath(dataPath)
-	local data = db
+local function GetSettingDefault(info, variable)
+	local data = type(variable) == 'string' and GetVariableFromPath(variable) or variable
 	for i = 2, #info do
 		data = data[ info[i] ]
 	end
 	return data
 end
-local function SetSettingDefault(info, value, dataPath)
-	local db = GetVariableFromPath(dataPath)
-	local data = db
+local function SetSettingDefault(info, value, variable)
+	local data = type(variable) == 'string' and GetVariableFromPath(variable) or variable
 	for i = 2, #info - 1 do
 		data = data[ info[i] ]
 	end
@@ -250,13 +252,17 @@ local function ParseOption(key, option, L, typeMappings)
 			args 	= {},
 			order   = -1,
 		}
-
+		local hasContents = false
 		for subkey, value in pairs(option) do
 			widget.args[subkey] = ParseOption(subkey, value, L, typeMappings)
+			if widget.args[subkey] then
+				hasContents = true
+			end
 		end
+		if not hasContents then widget = nil end
 	end
 
-	if L and type(L) == 'table' then
+	if widget and L and type(L) == 'table' then
 		widget.name = L[key..'Name'] or widget.name
 		widget.desc = L[key..'Desc'] or widget.desc
 		if widget.type == 'group' and widget.desc then
@@ -271,24 +277,67 @@ local function ParseOption(key, option, L, typeMappings)
 	return widget
 end
 
-function lib:GetOptionsTable(variables, typeMappings, L)
-	local dataPath
-	if type(variables) == 'string' then
-		dataPath = variables
-		variables = GetVariableFromPath(dataPath)
+local AceDBScopes = { 'global', 'profile', 'char', 'class', a = 'race', b = 'realm', c = 'faction', d = 'factionrealm' }
+local function AddScopeHeaders(optionsTable)
+	-- TODO: also available: race, realm, faction, factionrealm (remove keys in AceDBScopes table)
+	local playerName, playerRealm = UnitFullName('player')
+	local className, class = UnitClass('player')
+
+	for weight, scope in ipairs(AceDBScopes) do
+		if optionsTable.args[scope] then
+			optionsTable.args[scope..'Header'] = {
+				type = 'header',
+				name = scope:gsub('^.', string.upper)..' Settings',
+				order = weight*10 - 1,
+			}
+			optionsTable.args[scope].order = weight*10
+			optionsTable.args[scope].name = ''
+
+			if scope == 'char' then
+				optionsTable.args[scope..'Header'].name = ('Settings for |c%s%s-%s|r'):format((CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS)[class].colorStr, playerName, playerRealm)
+			elseif scope == 'class' then
+				optionsTable.args[scope..'Header'].name = ('Settings for |c%s%s|r'):format((CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS)[class].colorStr, className)
+			end
+		end
+	end
+end
+
+function lib:GetOptionsTable(variable, typeMappings, L)
+	if type(variable) == 'string' then
+		variable = GetVariableFromPath(variable)
 	end
 
 	local optionsTable = {
-		name = 'Options',
+		name = 'Settings',
 		type = 'group',
 		args = {},
-		get = function(info) return GetSettingDefault(info, dataPath or info[1]) end,
-		set = function(info, value) return SetSettingDefault(info, value, dataPath or info[1]) end,
+		get = function(info) return GetSettingDefault(info, variable or info[1]) end,
+		set = function(info, value) return SetSettingDefault(info, value, variable or info[1]) end,
 	}
 
-	for key, value in pairs(variables) do
+	local isAceDB = false
+	local isSecure, taintedBy = issecurevariable(variable, '')
+	if not isSecure and taintedBy == 'Ace3' then
+		-- TODO/FIXME: will probably not always be this string?
+		isAceDB = true
+		typeMappings = typeMappings or {}
+		for _, property in pairs({'sv', 'callbacks', 'children', 'parent', 'keys', 'profiles', 'defaults'}) do
+			typeMappings[property] = '*none*'
+		end
+		-- trigger initialization
+		for _, scope in pairs(AceDBScopes) do
+			if variable[scope] then end
+		end
+	end
+
+	for key, value in pairs(variable) do
 		optionsTable.args[key] = ParseOption(key, value, L, typeMappings)
 	end
 
+	if isAceDB then
+		AddScopeHeaders(optionsTable)
+	end
+
+	FOO = optionsTable
 	return optionsTable
 end
