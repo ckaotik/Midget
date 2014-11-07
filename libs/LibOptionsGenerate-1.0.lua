@@ -1,17 +1,13 @@
-local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 10
+local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 11
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
 -- GLOBALS: _G, type, pairs, ipairs, wipe, strsplit
+local SharedMedia     = LibStub('LibSharedMedia-3.0', true)
 
 --[[ Wishlist:
 	- automatically load and include namespaces
 --]]
-
-local SharedMedia     = LibStub('LibSharedMedia-3.0', true)
-local AceConfig       = LibStub('AceConfig-3.0')
-local AceConfigDialog = LibStub('AceConfigDialog-3.0')
-if not AceConfig or not AceConfigDialog then return end
 
 local itemQualities = {}
 for quality, color in pairs(_G.ITEM_QUALITY_COLORS) do
@@ -254,7 +250,7 @@ local function ParseOption(key, option, L, typeMappings)
 			inline 	= true,
 			name 	= key,
 			args 	= {},
-			order   = -1,
+			order 	= -1,
 		}
 		local hasContents = false
 		for subkey, value in pairs(option) do
@@ -305,8 +301,40 @@ local function AddScopeHeaders(optionsTable)
 	end
 end
 
+local function AddNamespaces(optionsTable, variable, typeMappings, L)
+	for namespace, options in pairs(variable.children or emptyTable) do
+		-- we need to access different data
+		local get = function(info) FOO = info BAR = options return GetSettingDefault(info, options) end
+		local set = function(info, value) return SetSettingDefault(info, value, options) end
+		for weight, scope in pairs(AceDBScopes) do
+			if options[scope] then
+				local key = scope .. '_' .. namespace
+				local option = ParseOption(key, options[scope], L, typeMappings)
+				if option and next(option.args) then
+					if not optionsTable[scope] then
+						-- header is missing
+						optionsTable.args[scope] = {
+							type 	= 'group',
+							inline 	= true,
+							name 	= scope,
+							args 	= {},
+							order 	= -1,
+						}
+					end
+					option.name = namespace
+					option.get = get
+					option.set = set
+					option.order = -1
+					optionsTable.args[scope].args[namespace] = option
+				end
+			end
+		end
+	end
+end
+
+local emptyTable = {}
 local AceDBExcludes = {'sv', 'callbacks', 'children', 'parent', 'keys', 'profiles', 'defaults'}
-function lib:GetOptionsTable(variable, typeMappings, L)
+function lib:GetOptionsTable(variable, typeMappings, L, includeNamespaces)
 	if type(variable) == 'string' then
 		variable = GetVariableFromPath(variable)
 	end
@@ -324,14 +352,8 @@ function lib:GetOptionsTable(variable, typeMappings, L)
 	if not isSecure and taintedBy == 'Ace3' then
 		-- TODO/FIXME: will probably not always be this string?
 		isAceDB = true
-		-- typeMappings = typeMappings or {}
-		for _, property in pairs(AceDBExcludes) do
-		--	typeMappings[property] = '*none*'
-		end
-		-- trigger initialization
-		for _, scope in pairs(AceDBScopes) do
-			if variable[scope] then end
-		end
+		-- trigger initialization: tables might not exist when we iterate
+		for _, scope in pairs(AceDBScopes) do if variable[scope] then end end
 	end
 
 	for key, value in pairs(variable) do
@@ -341,6 +363,10 @@ function lib:GetOptionsTable(variable, typeMappings, L)
 	end
 
 	if isAceDB then
+		if includeNamespaces then
+			-- add namespace settings to core addon's scopes
+			AddNamespaces(optionsTable, variable, typeMappings, L)
+		end
 		AddScopeHeaders(optionsTable)
 	end
 	return optionsTable
