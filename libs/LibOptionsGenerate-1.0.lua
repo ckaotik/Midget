@@ -1,4 +1,4 @@
-local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 11
+local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 12
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
@@ -45,6 +45,14 @@ local function SetSettingDefault(info, value, variable)
 	end
 	data[ info[#info] ] = value
 end
+local function GetAncestorProperty(info, property)
+	local data, propertyValue = info.options.args, info.options[property]
+	for i = 1, #info - 1 do
+		data = data[ info[i] ]
+		propertyValue = data[property] or propertyValue
+	end
+	return propertyValue
+end
 
 -- LibSharedMedia Widgets
 local function GetMediaKey(mediaType, value)
@@ -55,29 +63,42 @@ local function GetMediaKey(mediaType, value)
 		end
 	end
 end
-local function GetFontSetting(info) return GetMediaKey('font', info.options.args[ info[1] ].get(info)) end
-local function SetFontSetting(info, value) info.options.args[ info[1] ].set(info, SharedMedia:Fetch('font', value)) end
-local function GetBarTexSetting(info) return GetMediaKey('statusbar', info.options.args[ info[1] ].get(info)) end
-local function SetBarTexSetting(info, value) info.options.args[ info[1] ].set(info, SharedMedia:Fetch('statusbar', value)) end
-local function GetBorderSetting(info) return GetMediaKey('border', info.options.args[ info[1] ].get(info)) end
-local function SetBorderSetting(info, value) info.options.args[ info[1] ].set(info, SharedMedia:Fetch('border', value)) end
-local function GetBackgroundSetting(info) return GetMediaKey('background', info.options.args[ info[1] ].get(info)) end
-local function SetBackgroundSetting(info, value) info.options.args[ info[1] ].set(info, SharedMedia:Fetch('background', value)) end
-local function GetSoundSetting(info) return GetMediaKey('sound', info.options.args[ info[1] ].get(info)) end
-local function SetSoundSetting(info, value) info.options.args[ info[1] ].set(info, SharedMedia:Fetch('sound', value))end
-
-local function GetColorSetting(info) return unpack(info.options.args[ info[1] ].get(info)) end
-local function SetColorSetting(info, r, g, b, a)
-	local setter = info.options.args[ info[1] ].set
-	local getter = info.options.args[ info[1] ].get
-	local color = getter(info)
-	color[1], color[2], color[3], color[4] = r, g, b, a
-	setter(info, color)
+local function GetMediaSetting(info, mediaType)
+	local get = GetAncestorProperty(info, 'get')
+	return GetMediaKey(mediaType, get(info))
 end
-local function GetPercentSetting(info) return info.options.args[ info[1] ].get(info) * 100 end
-local function SetPercentSetting(info, value) info.options.args[ info[1] ].set(info, value/100) end
-local function GetNumberSetting(info) return tostring(info.options.args[ info[1] ].get(info)) end
-local function SetNumberSetting(info, value) info.options.args[ info[1] ].set(info, tonumber(value)) end
+local function SetMediaSetting(info, value, mediaType)
+	local set = GetAncestorProperty(info, 'set')
+	set(info, SharedMedia:Fetch(mediaType, value))
+end
+
+local function GetFontSetting(info)              return GetMediaSetting(info, 'font') end
+local function SetFontSetting(info, value)       SetMediaSetting(info, value, 'font') end
+local function GetBarTexSetting(info)            return GetMediaSetting(info, 'statusbar') end
+local function SetBarTexSetting(info, value)     SetMediaSetting(info, value, 'statusbar') end
+local function GetBorderSetting(info)            return GetMediaSetting(info, 'border') end
+local function SetBorderSetting(info, value)     SetMediaSetting(info, value, 'border') end
+local function GetBackgroundSetting(info)        return GetMediaSetting(info, 'background') end
+local function SetBackgroundSetting(info, value) SetMediaSetting(info, value, 'background') end
+local function GetSoundSetting(info)             return GetMediaSetting(info, 'sound') end
+local function SetSoundSetting(info, value)      SetMediaSetting(info, value, 'sound') end
+
+-- other widget handlers
+local function GetColorSetting(info)
+	local get = GetAncestorProperty(info, 'get')
+	return unpack(get(info))
+end
+local function SetColorSetting(info, r, g, b, a)
+	local get = GetAncestorProperty(info, 'get')
+	local set = GetAncestorProperty(info, 'set')
+	local color = get(info)
+	color[1], color[2], color[3], color[4] = r, g, b, a
+	set(info, color)
+end
+local function GetPercentSetting(info)        local get = GetAncestorProperty(info, 'get'); return get(info) * 100 end
+local function SetPercentSetting(info, value) local set = GetAncestorProperty(info, 'set'); set(info, value/100) end
+local function GetNumberSetting(info)         local get = GetAncestorProperty(info, 'get'); return tostring(get(info)) end
+local function SetNumberSetting(info, value)  local set = GetAncestorProperty(info, 'set'); set(info, tonumber(value)) end
 
 local function GetTableFromList(dataString, seperator) return { strsplit(seperator, dataString) } end
 local function GetListFromTable(dataTable, seperator)
@@ -196,7 +217,7 @@ local function Widget(key, option, typeMappings)
 			multiline = false,
 			usage = 'Insert value in coppers, e.g. 10000 for 1|TInterface\\MoneyFrame\\UI-GoldIcon:0|t.',
 			pattern = '%d',
-			get = GetNumerSetting,
+			get = GetNumberSetting,
 			set = SetNumberSetting,
 		}
 	elseif key == 'itemquality' or (key:find('quality') and type(option) == 'number') then
@@ -301,10 +322,11 @@ local function AddScopeHeaders(optionsTable)
 	end
 end
 
+local emptyTable = {}
 local function AddNamespaces(optionsTable, variable, typeMappings, L)
 	for namespace, options in pairs(variable.children or emptyTable) do
 		-- we need to access different data
-		local get = function(info) FOO = info BAR = options return GetSettingDefault(info, options) end
+		local get = function(info) return GetSettingDefault(info, options) end
 		local set = function(info, value) return SetSettingDefault(info, value, options) end
 		for weight, scope in pairs(AceDBScopes) do
 			if options[scope] then
@@ -322,9 +344,9 @@ local function AddNamespaces(optionsTable, variable, typeMappings, L)
 						}
 					end
 					option.name = namespace
+					option.order = -1
 					option.get = get
 					option.set = set
-					option.order = -1
 					optionsTable.args[scope].args[namespace] = option
 				end
 			end
@@ -332,7 +354,6 @@ local function AddNamespaces(optionsTable, variable, typeMappings, L)
 	end
 end
 
-local emptyTable = {}
 local AceDBExcludes = {'sv', 'callbacks', 'children', 'parent', 'keys', 'profiles', 'defaults'}
 function lib:GetOptionsTable(variable, typeMappings, L, includeNamespaces)
 	if type(variable) == 'string' then
