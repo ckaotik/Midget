@@ -282,10 +282,10 @@ function plugin.AddTeam()
 end
 function plugin.SaveTeam(index, name)
 	index = index or addon.db.global.petBattleTeams.selected
-	if not index then return end
+	local team = index and addon.db.global.petBattleTeams[index]
+	if not index or not team then return end
 
-	local team = addon.db.global.petBattleTeams[index]
-		  team.name = (name and name ~= '') and name or nil
+	team.name = (name and name ~= '') and name or nil
 	-- ipairs: clear old pets but keep other team attributes
 	for i, member in ipairs(team) do
 		wipe(team[i])
@@ -304,6 +304,7 @@ function plugin.DeleteTeam(index)
 end
 function plugin.LoadTeam(index)
 	local team = addon.db.global.petBattleTeams[index]
+	if not team then return end
 	for i = 1, MAX_ACTIVE_PETS do
 		if team[i] and team[i].petID then
 			local petID = team[i].petID
