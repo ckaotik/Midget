@@ -368,11 +368,8 @@ function lib:GetOptionsTable(variable, typeMappings, L, includeNamespaces)
 		set = function(info, value) return SetSettingDefault(info, value, variable or info[1]) end,
 	}
 
-	local isAceDB = false
-	local isSecure, taintedBy = issecurevariable(variable, '')
-	if not isSecure and taintedBy == 'Ace3' then
-		-- TODO/FIXME: will probably not always be this string?
-		isAceDB = true
+	local isAceDB = variable.GetCurrentProfile and variable.RegisterNamespace
+	if isAceDB then
 		-- trigger initialization: tables might not exist when we iterate
 		for _, scope in pairs(AceDBScopes) do if variable[scope] then end end
 	end
