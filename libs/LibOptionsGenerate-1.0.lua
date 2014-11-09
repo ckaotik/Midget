@@ -368,7 +368,7 @@ function lib:GetOptionsTable(variable, typeMappings, L, includeNamespaces)
 		set = function(info, value) return SetSettingDefault(info, value, variable or info[1]) end,
 	}
 
-	local isAceDB = variable.GetCurrentProfile and variable.RegisterNamespace
+	local isAceDB = variable.sv and variable.defaults
 	if isAceDB then
 		-- trigger initialization: tables might not exist when we iterate
 		for _, scope in pairs(AceDBScopes) do if variable[scope] then end end
