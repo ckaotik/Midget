@@ -47,7 +47,7 @@ local function TooltipAchievementExtras(tooltip, hyperlink)
 	_G[tooltipName..'TextLeft2']:SetFormattedText('<%s>', categoryString)
 
 	if not playerGUID then playerGUID = UnitGUID('player') end
-	local isPlayer = guid == playerGUID:sub(3)
+	local isPlayer = guid == playerGUID
 	local numCriteria, numSelfCompleted = GetAchievementNumCriteria(linkID), 0
 	if not isPlayer and not earnedBy then
 		-- show our own achievement progress comparison
