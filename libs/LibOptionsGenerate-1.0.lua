@@ -1,13 +1,9 @@
-local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 12
+local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 13
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
 -- GLOBALS: _G, type, pairs, ipairs, wipe, strsplit
-local SharedMedia     = LibStub('LibSharedMedia-3.0', true)
-
---[[ Wishlist:
-	- automatically load and include namespaces
---]]
+local SharedMedia = LibStub('LibSharedMedia-3.0', true)
 
 local itemQualities = {}
 for quality, color in pairs(_G.ITEM_QUALITY_COLORS) do
@@ -271,7 +267,7 @@ local function ParseOption(key, option, L, typeMappings)
 			inline 	= true,
 			name 	= key,
 			args 	= {},
-			order 	= -1,
+			order 	= 80,
 		}
 		local hasContents = false
 		for subkey, value in pairs(option) do
@@ -283,6 +279,9 @@ local function ParseOption(key, option, L, typeMappings)
 		if not hasContents then widget = nil end
 	end
 
+	if widget then
+		widget.order = widget.order or 1
+	end
 	if widget and L and type(L) == 'table' and not tContains(AceDBScopes, key) then
 		widget.name = L[key..'Name'] or widget.name
 		widget.desc = L[key..'Desc'] or widget.desc
@@ -303,8 +302,12 @@ local function AddScopeHeaders(optionsTable)
 	local playerName, playerRealm = UnitFullName('player')
 	local className, class = UnitClass('player')
 
+	local lastScope, hasMultipleScopes = nil, false
 	for weight, scope in ipairs(AceDBScopes) do
 		if optionsTable.args[scope] then
+			if lastScope then hasMultipleScopes = true end
+			lastScope = scope
+
 			optionsTable.args[scope..'Header'] = {
 				type = 'header',
 				name = scope:gsub('^.', string.upper)..' Settings',
@@ -320,6 +323,11 @@ local function AddScopeHeaders(optionsTable)
 			end
 		end
 	end
+
+	if not hasMultipleScopes and lastScope then
+		-- don't show header for single scope
+		optionsTable.args[lastScope..'Header'] = nil
+	end
 end
 
 local emptyTable = {}
@@ -333,18 +341,16 @@ local function AddNamespaces(optionsTable, variable, typeMappings, L)
 				local key = scope .. '_' .. namespace
 				local option = ParseOption(key, options[scope], L, typeMappings)
 				if option and next(option.args) then
-					if not optionsTable[scope] then
-						-- header is missing
-						optionsTable.args[scope] = {
-							type 	= 'group',
-							inline 	= true,
-							name 	= scope,
-							args 	= {},
-							order 	= -1,
-						}
-					end
+					optionsTable.args[scope] = optionsTable.args[scope] or {
+						type 	= 'group',
+						inline 	= true,
+						name 	= scope,
+						args 	= {},
+						order 	= -1,
+					}
+
 					option.name = namespace
-					option.order = -1
+					option.order = 90
 					option.get = get
 					option.set = set
 					optionsTable.args[scope].args[namespace] = option
@@ -371,7 +377,7 @@ function lib:GetOptionsTable(variable, typeMappings, L, includeNamespaces)
 	local isAceDB = variable.sv and variable.defaults
 	if isAceDB then
 		-- trigger initialization: tables might not exist when we iterate
-		for _, scope in pairs(AceDBScopes) do if variable[scope] then end end
+		for _, scope in pairs(AceDBScopes) do if not next(variable[scope]) then variable[scope] = nil end end
 	end
 
 	for key, value in pairs(variable) do
