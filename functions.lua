@@ -548,7 +548,7 @@ local function InitItemButtonLevels()
 		getItemLink[VoidStorageItemButton_OnEnter] = function(self)
 			if not self.hasItem then return end
 			local itemID = GetVoidItemInfo(VoidStorageFrame.page, self.slot)
-			local _, itemLink = GetItemInfo(itemID)
+			local itemLink = itemID and select(2, GetItemInfo(itemID))
 			return itemLink or itemID
 		end
 		hooksecurefunc('VoidStorageFrame_Update', UpdateButtonLevels)
@@ -587,6 +587,10 @@ function plugin:OnEnable()
 
 	-- don't add spacing for closing 'x'
 	ItemRefTooltip:SetPadding(0)
+
+	-- allow opening other panels while map is open
+	tinsert(UISpecialFrames, 'WorldMapFrame')
+	WorldMapFrame:SetAttribute('UIPanelLayout-area', 'left')
 
 	ChatFrame_AddMessageEventFilter('CHAT_MSG_LOOT', AddLootIcons)
 	AddChatLinkHoverTooltips()
