@@ -13,6 +13,9 @@ local unitCache = setmetatable({}, {
 
 local function TooltipUnitInfo(tooltip)
 	local _, unit = tooltip:GetUnit()
+	if not unit then
+		-- TODO: try GetMouseFocus().unit
+	end
 	if not unit then return end
 
 	-- move faction text up one line
@@ -57,6 +60,7 @@ local function TooltipUnitInfo(tooltip)
 	end
 	if (not data or not data.complete) and (not _G.InspectFrame or not _G.InspectFrame:IsShown())
 		and CanInspect(unit) and (UnitInParty(unit) or UnitInRaid(unit) or IsShiftKeyDown()) then
+		-- TODO: use item data received event instead of new inspect when not data.complete
 		NotifyInspect(unit)
 	end
 
