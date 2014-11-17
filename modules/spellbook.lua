@@ -140,7 +140,7 @@ end
 
 local function NotifyUnusedSpell(spellID, ...)
 	local link = GetSpellLink(spellID)
-	local msg = string.format("Unused spell detected: %s", link or spellID)
+	local msg = string.format("Unused spell detected: %s", link or spellID or '?')
 	addon:Print(msg)
 end
 
@@ -164,7 +164,7 @@ local function ScanSpellBook()
 			spell = GetSpellInfo(spell) or GetSpellInfo(actionID) -- gets the spell base name
 			spellID = GetSpellID(spell) -- can now get overlayed spell info
 			-- print('spellbook', index, spell, spellID, actionID, ';', IsSpellKnown(actionID), IsSpellKnown(spellID))
-			if IsSpellKnown(actionID) and not IsPassiveSpell(actionID) and not usedSpells[spellID] and not usedSpells[actionID] then
+			if spellID and IsSpellKnown(actionID) and not IsPassiveSpell(actionID) and not usedSpells[spellID] and not usedSpells[actionID] then
 				hasMissing = true
 				NotifyUnusedSpell(spellID)
 			end
@@ -219,7 +219,8 @@ local filters = {
 	},
 }
 local function SearchInSpell(index, searchString)
-	if not index or not searchString then return end
+	-- TODO: scan embedded flyout spells
+	if not index or not searchString or not GetSpellInfo(index, _G.BOOKTYPE_SPELL) then return end
 	local spellLink, tradeLink = GetSpellLink(index, _G.BOOKTYPE_SPELL)
 	return CustomSearch:Matches(spellLink, searchString, filters)
 end
