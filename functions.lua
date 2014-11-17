@@ -482,7 +482,7 @@ local function InitItemButtonLevels()
 			local itemLinkFunc = getItemLink[button.UpdateTooltip]
 			if itemLinkFunc then
 				itemLink = itemLinkFunc(button)
-			else
+			elseif not GameTooltip:IsShown() then
 				button:UpdateTooltip()
 				_, itemLink = GameTooltip:GetItem()
 				GameTooltip:Hide()
@@ -556,6 +556,85 @@ local function InitItemButtonLevels()
 	C_Timer.After(1, AddVoidStorageCallback)
 end
 
+local function InitGarrisonChanges()
+	local plugin = addon:NewModule('Garrison', 'AceEvent-3.0')
+
+	local abilities = {
+		ability = {},
+		trait = {},
+	}
+	local function ScanFollowerAbilities()
+		wipe(abilities.ability)
+		wipe(abilities.trait)
+		for index, follower in pairs(C_Garrison.GetFollowers()) do
+			if follower.isCollected then
+				local color = _G.ITEM_QUALITY_COLORS[follower.quality]
+				local label = ('%1$d %2$s%3$s|r'):format(follower.level, RGBTableToColorCode(color), follower.name)
+
+				for abilityIndex, ability in pairs(C_Garrison.GetFollowerAbilities(follower.followerID)) do
+					local dataTable = abilities[ability.isTrait and 'trait' or 'ability']
+					for _, threat in pairs(ability.counters) do -- '|T%1$s:0|t %2$s'
+						local threatLabel = ('%s|%s|%s'):format(threat.icon, threat.name, threat.description)
+						if not dataTable[threatLabel] then dataTable[threatLabel] = {} end
+						table.insert(dataTable[threatLabel], label)
+						table.sort(dataTable[threatLabel])
+					end
+				end
+			end
+		end
+		return abilities
+	end
+	-- display known abilities when recruiting new followers
+	plugin:RegisterEvent('GARRISON_RECRUITMENT_NPC_OPENED', function()
+		local frame = GarrisonRecruiterFrame
+		ScanFollowerAbilities()
+		local index = 1
+		for threat, abilities in pairs(abilities.ability) do
+			local tab = frame[index]
+			if not tab then
+				tab = CreateFrame('CheckButton', nil, frame, 'SpellBookSkillLineTabTemplate', index)
+				tab:SetPoint('TOPLEFT', frame, 'TOPRIGHT', 0, 16 - 44*index)
+				tab:RegisterForClicks() -- unregister all
+				tab:Show()
+				local count = tab:CreateFontString(nil, nil, 'NumberFontNormal')
+				count:SetPoint('BOTTOMRIGHT', -2, 2)
+				tab.count = count
+				frame[index] = tab
+			end
+			local icon, name, description = strsplit('|', threat)
+			local followers = table.concat(abilities, '|n')
+			tab:SetNormalTexture(icon)
+			tab.tooltip = ('|T%1$s:0|t%2$s|n|n%4$s'):format(icon, name, description, followers)
+			tab.count:SetText(#abilities)
+			index = index + 1
+		end
+	end)
+
+	-- HACK: registering ADDON_LOADED within OnEnable does not work, so we register 1s later
+	local function GarrisonLoadedCallback()
+		plugin:RegisterEvent('ADDON_LOADED', function(event, arg1, ...)
+			if arg1 == 'Blizzard_GarrisonUI' then
+				plugin:UnregisterEvent(event)
+				plugin:OnEnable()
+			end
+		end)
+	end
+	function plugin:OnEnable()
+		if not IsAddOnLoaded('Blizzard_GarrisonUI') then
+			C_Timer.After(1, GarrisonLoadedCallback)
+			return
+		end
+		-- allow to immediately click the reward chest
+		hooksecurefunc('GarrisonMissionComplete_Initialize', function(missionList, index)
+			local self = GarrisonMissionFrame.MissionComplete
+			self.BonusRewards.ChestModel.Lock:Hide()
+			self.BonusRewards.ChestModel:SetAnimation(0, 0)
+			self.BonusRewards.ChestModel.ClickFrame:Show()
+			self.Stage.EncountersFrame:Hide()
+		end)
+	end
+end
+
 local function CalendarIconFlash()
 	-- minimap calendar flashing:
 	--[[ GameTimeCalendarInvitesTexture:Show()
@@ -581,6 +660,7 @@ function plugin:OnEnable()
 	HideUnusableCompareTips()
 	ExtendLibItemSearch()
 	AddMasque()
+	InitGarrisonChanges()
 
 	-- SLASH_ROLECHECK1 = "/rolecheck"
 	-- SlashCmdList.ROLECHECK = InitiateRolePoll
@@ -588,8 +668,9 @@ function plugin:OnEnable()
 	-- don't add spacing for closing 'x'
 	ItemRefTooltip:SetPadding(0)
 
-	-- allow opening other panels while map is open
+	-- allow closing map with 'ESC'
 	tinsert(UISpecialFrames, 'WorldMapFrame')
+	-- allow opening other panels while map is open
 	WorldMapFrame:SetAttribute('UIPanelLayout-area', 'left')
 
 	ChatFrame_AddMessageEventFilter('CHAT_MSG_LOOT', AddLootIcons)
