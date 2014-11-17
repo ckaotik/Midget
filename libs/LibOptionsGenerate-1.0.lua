@@ -1,4 +1,4 @@
-local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 13
+local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 14
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
@@ -257,8 +257,8 @@ local function ParseOption(key, option, L, typeMappings)
 		widget = {
 			type = 'range',
 			name = key,
-			min = -200,
-			max = 200,
+			softMin = -200,
+			softMax = 200,
 			bigStep = 10,
 		}
 	elseif type(option) == 'table' then
