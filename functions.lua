@@ -475,6 +475,7 @@ local function InitItemButtonLevels()
 
 		local itemLink = button.link or button.hyperLink or button.hyperlink or button.itemlink or button.itemLink
 			or (button.item and type(button.item) == 'string' and button.item)
+			or (button.hasItem and type(button.hasItem) == 'string' and button.hasItem)
 		if not itemLink and button.GetItem then
 			itemLink = button:GetItem()
 		elseif not itemLink and button.UpdateTooltip then
@@ -584,9 +585,8 @@ local function InitGarrisonChanges()
 		end
 		return abilities
 	end
-	-- display known abilities when recruiting new followers
-	plugin:RegisterEvent('GARRISON_RECRUITMENT_NPC_OPENED', function()
-		local frame = GarrisonRecruiterFrame
+
+	local function UpdateFollowerTabs(frame)
 		ScanFollowerAbilities()
 		local index = 1
 		for threat, abilities in pairs(abilities.ability) do
@@ -608,7 +608,10 @@ local function InitGarrisonChanges()
 			tab.count:SetText(#abilities)
 			index = index + 1
 		end
-	end)
+	end
+	-- display known abilities when recruiting new followers
+	plugin:RegisterEvent('GARRISON_RECRUITMENT_NPC_OPENED', function() UpdateFollowerTabs(GarrisonRecruiterFrame) end)
+	plugin:RegisterEvent('GARRISON_MISSION_NPC_OPENED', function() UpdateFollowerTabs(GarrisonMissionFrame) end)
 
 	-- HACK: registering ADDON_LOADED within OnEnable does not work, so we register 1s later
 	local function GarrisonLoadedCallback()
