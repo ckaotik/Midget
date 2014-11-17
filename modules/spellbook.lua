@@ -198,11 +198,11 @@ local CustomSearch = LibStub('CustomSearch-1.0')
 local ItemSearch   = LibStub('LibItemSearch-1.2')
 local filters = {
 	tooltip = {
-		tags      = ItemSearch.Filters.tooltip.tags,
-		onlyTags  = ItemSearch.Filters.tooltip.onlyTags,
-		canSearch = ItemSearch.Filters.tooltip.canSearch,
+		tags      = ItemSearch.Filters.tip.tags,
+		onlyTags  = ItemSearch.Filters.tip.onlyTags,
+		canSearch = ItemSearch.Filters.tip.canSearch,
 		match     = function(self, hyperlink, operator, search)
-			return ItemSearch.Filters.tooltip.match(self, hyperlink, operator, search)
+			return ItemSearch.Filters.tip.match(self, hyperlink, operator, search)
 		end
 	},
 	name = {
