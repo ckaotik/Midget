@@ -220,7 +220,7 @@ local filters = {
 }
 local function SearchInSpell(index, searchString)
 	-- TODO: scan embedded flyout spells
-	if not index or not searchString or not GetSpellInfo(index, _G.BOOKTYPE_SPELL) then return end
+	if not index or not searchString or not GetSpellInfo(index, _G.BOOKTYPE_SPELL) then return true end
 	local spellLink, tradeLink = GetSpellLink(index, _G.BOOKTYPE_SPELL)
 	return CustomSearch:Matches(spellLink, searchString, filters)
 end
