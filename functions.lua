@@ -634,13 +634,12 @@ local function InitGarrisonChanges()
 			return
 		end
 		-- allow to immediately click the reward chest
-		hooksecurefunc('GarrisonMissionComplete_Initialize', function(missionList, index)
-			local self = GarrisonMissionFrame.MissionComplete
-			-- if missionList[index].state == 0 then return end
-			self.BonusRewards.ChestModel.Lock:Hide()
-			self.BonusRewards.ChestModel:SetAnimation(0, 0)
-			self.BonusRewards.ChestModel.ClickFrame:Show()
-			self.Stage.EncountersFrame:Hide()
+		hooksecurefunc('GarrisonMissionComplete_OnMissionCompleteResponse', function(self, missionID, canComplete, success)
+			if addon.db.profile.skipGarrisonMissionEncounters then
+				self.Stage.EncountersFrame.FadeOut:Play()
+				self.animIndex = GarrisonMissionComplete_FindAnimIndexFor(GarrisonMissionComplete_AnimRewards) - 1
+				self.animTimeLeft = 0
+			end
 		end)
 	end
 end
