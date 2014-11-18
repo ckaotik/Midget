@@ -569,16 +569,12 @@ local function InitGarrisonChanges()
 		wipe(abilities.trait)
 		for index, follower in pairs(C_Garrison.GetFollowers()) do
 			if follower.isCollected then
-				local color = _G.ITEM_QUALITY_COLORS[follower.quality]
-				local label = ('%1$d %2$s%3$s|r'):format(follower.level, RGBTableToColorCode(color), follower.name)
-
 				for abilityIndex, ability in pairs(C_Garrison.GetFollowerAbilities(follower.followerID)) do
 					local dataTable = abilities[ability.isTrait and 'trait' or 'ability']
 					for _, threat in pairs(ability.counters) do -- '|T%1$s:0|t %2$s'
 						local threatLabel = ('%s|%s|%s'):format(threat.icon, threat.name, threat.description)
 						if not dataTable[threatLabel] then dataTable[threatLabel] = {} end
-						table.insert(dataTable[threatLabel], label)
-						table.sort(dataTable[threatLabel])
+						table.insert(dataTable[threatLabel], follower.followerID)
 					end
 				end
 			end
@@ -589,7 +585,7 @@ local function InitGarrisonChanges()
 	local function UpdateFollowerTabs(frame)
 		ScanFollowerAbilities()
 		local index = 1
-		for threat, abilities in pairs(abilities.ability) do
+		for threat, followers in pairs(abilities.ability) do
 			local tab = frame[index]
 			if not tab then
 				tab = CreateFrame('CheckButton', nil, frame, 'SpellBookSkillLineTabTemplate', index)
@@ -602,10 +598,20 @@ local function InitGarrisonChanges()
 				frame[index] = tab
 			end
 			local icon, name, description = strsplit('|', threat)
-			local followers = table.concat(abilities, '|n')
+			local followersList = '' -- table.concat(followers, '|n')
+			for index, followerID in pairs(followers) do
+				local data = C_Garrison.GetFollowerInfo(followerID)
+				local color = _G.ITEM_QUALITY_COLORS[data.quality]
+				local label = ('%1$d %2$s%3$s|r'):format(data.level, RGBTableToColorCode(color), data.name)
+				followersList =  followersList .. '|n' .. label
+				if data.status then
+					followersList = followersList .. ' ('..data.status..')'
+				end
+			end
+
 			tab:SetNormalTexture(icon)
-			tab.tooltip = ('|T%1$s:0|t%2$s|n|n%4$s'):format(icon, name, description, followers)
-			tab.count:SetText(#abilities)
+			tab.tooltip = ('|T%1$s:0|t%2$s|n%4$s'):format(icon, name, description, followersList)
+			tab.count:SetText(#followers)
 			index = index + 1
 		end
 	end
@@ -630,6 +636,7 @@ local function InitGarrisonChanges()
 		-- allow to immediately click the reward chest
 		hooksecurefunc('GarrisonMissionComplete_Initialize', function(missionList, index)
 			local self = GarrisonMissionFrame.MissionComplete
+			-- if missionList[index].state == 0 then return end
 			self.BonusRewards.ChestModel.Lock:Hide()
 			self.BonusRewards.ChestModel:SetAnimation(0, 0)
 			self.BonusRewards.ChestModel.ClickFrame:Show()
