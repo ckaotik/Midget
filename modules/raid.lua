@@ -71,6 +71,8 @@ local function OnEnterRaidBuff(self)
 	GameTooltip:Show()
 end
 function plugin:OnEnable()
+	if not addon.db.profile.showRaidBuffIndicators then return end
+
 	self.indicators = {}
 	for index = 1, _G.NUM_LE_RAID_BUFF_TYPES do
 		local indicator = CreateFrame('Frame', nil, UIParent, nil, index)
