@@ -1,4 +1,4 @@
-local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 14
+local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 15
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
@@ -44,7 +44,7 @@ end
 local function GetAncestorProperty(info, property)
 	local data, propertyValue = info.options.args, info.options[property]
 	for i = 1, #info - 1 do
-		data = data[ info[i] ]
+		data = data[ info[i] ] or data.args[ info[i] ]
 		propertyValue = data[property] or propertyValue
 	end
 	return propertyValue
@@ -95,6 +95,12 @@ local function GetPercentSetting(info)        local get = GetAncestorProperty(in
 local function SetPercentSetting(info, value) local set = GetAncestorProperty(info, 'set'); set(info, value/100) end
 local function GetNumberSetting(info)         local get = GetAncestorProperty(info, 'get'); return tostring(get(info)) end
 local function SetNumberSetting(info, value)  local set = GetAncestorProperty(info, 'set'); set(info, tonumber(value)) end
+local function GetMultiSelectSetting(info, key) local get = GetAncestorProperty(info, 'get'); return get(info)[key] end
+local function SetMultiSelectSetting(info, key, value)
+	-- we get the container table and then set the specific value
+	local get = GetAncestorProperty(info, 'get')
+	get(info)[key] = value
+end
 
 local function GetTableFromList(dataString, seperator) return { strsplit(seperator, dataString) } end
 local function GetListFromTable(dataTable, seperator)
@@ -107,30 +113,64 @@ end
 local function GetListSetting(info) return GetListFromTable(info.options.args[ info[1] ].get(info), '\n') end
 local function SetListSetting(info, value) info.options.args[ info[1] ].set(info, GetTableFromList(value, '\n')) end
 
-local function Widget(key, option, typeMappings)
-	local key, widget = typeMappings and typeMappings[key] or key:lower(), nil
+local function Widget(key, option, widgetInfo)
+	local widget, widgetType
+	key = tostring(key):lower()
+	widgetType = widgetInfo and type(widgetInfo) == 'string' and widgetInfo:lower() or key
 
-	if type(key) == 'table' then
+	-- detect multiselect table structures
+	if type(option) == 'table' then
+		local isMultiSelect = true
+		for k, v in pairs(option) do
+			if type(k) ~= 'number' or type(v) ~= 'boolean' then
+				isMultiSelect = false break
+			end
+		end
+		if isMultiSelect then
+			widgetType = 'multiselect'
+		end
+	end
+
+	if type(widgetType) == 'table' then
+		-- preset select options
 		widget = {
 			type = 'select',
-			values = key,
+			values = widgetType,
 		}
-	elseif key == '*none*' then
+	elseif widgetType == '*none*' then
 		-- hidden from display
 		return true
-	elseif key == 'justifyh' then
+	elseif widgetType == 'multiselect' then
+		-- TODO: this needs a custom get/set
+		local labels = {}
+		for selectKey, _ in pairs(option) do
+			labels[selectKey] = selectKey
+		end
+		widget = {
+			type = 'multiselect',
+			values = labels,
+			get = GetMultiSelectSetting,
+			set = SetMultiSelectSetting,
+		}
+	elseif (widgetType == 'justifyh' or key:find('justifyh')) then
 		widget = {
 			type = 'select',
 			name = 'Horiz. Justification',
 			values = {['LEFT'] = 'LEFT', ['CENTER'] = 'CENTER', ['RIGHT'] = 'RIGHT'},
 		}
-	elseif key == 'justifyv' then
+	elseif (widgetType == 'justifyv' or key:find('justifyv')) then
 		widget = {
 			type = 'select',
 			name = 'Vert. Justification',
 			values = {['TOP'] = 'TOP', ['MIDDLE'] = 'MIDDLE', ['BOTTOM'] = 'BOTTOM'},
 		}
-	elseif key == 'fontsize' or (key:find('font') and type(option) == 'number') then
+	elseif (widgetType == 'fontstyle' or key:find('fontstyle') or key:find('outline')) then
+		widget = {
+			type = 'select',
+			name = 'Font Style',
+			values = {['NONE'] = 'NONE', ['OUTLINE'] = 'OUTLINE', ['THICKOUTLINE'] = 'THICKOUTLINE', ['MONOCHROME'] = 'MONOCHROME'},
+		}
+	elseif (widgetType == 'fontsize' or key:find('fontsize')) and type(option) == 'number' then
 		widget = {
 			type = 'range',
 			name = 'Font Size',
@@ -138,13 +178,7 @@ local function Widget(key, option, typeMappings)
 			min = 5,
 			max = 24, -- Blizz won't go any larger
 		}
-	elseif key == 'fontstyle' then
-		widget = {
-			type = 'select',
-			name = 'Font Style',
-			values = {['NONE'] = 'NONE', ['OUTLINE'] = 'OUTLINE', ['THICKOUTLINE'] = 'THICKOUTLINE', ['MONOCHROME'] = 'MONOCHROME'},
-		}
-	elseif key == 'font'          and type(option) == 'string' and SharedMedia then
+	elseif (widgetType == 'font' or key:find('font')) and type(option) == 'string' and SharedMedia then
 		widget = {
 			type = 'select',
 			dialogControl = 'LSM30_Font',
@@ -153,7 +187,7 @@ local function Widget(key, option, typeMappings)
 			get = GetFontSetting,
 			set = SetFontSetting,
 		}
-	elseif key:find('border')     and type(option) == 'string' and SharedMedia then
+	elseif (widgetType == 'border' or key:find('border')) and type(option) == 'string' and SharedMedia then
 		widget = {
 			type = 'select',
 			dialogControl = 'LSM30_Border',
@@ -162,7 +196,7 @@ local function Widget(key, option, typeMappings)
 			get = GetBorderSetting,
 			set = SetBorderSetting,
 		}
-	elseif key:find('background') and type(option) == 'string' and SharedMedia then
+	elseif (widgetType == 'background' or key:find('background')) and type(option) == 'string' and SharedMedia then
 		widget = {
 			type = 'select',
 			dialogControl = 'LSM30_Background',
@@ -171,7 +205,7 @@ local function Widget(key, option, typeMappings)
 			get = GetBackgroundSetting,
 			set = SetBackgroundSetting,
 		}
-	elseif key:find('statusbar')  and type(option) == 'string' and SharedMedia then
+	elseif (widgetType == 'statusbar' or key:find('statusbar')) and type(option) == 'string' and SharedMedia then
 		widget = {
 			type = 'select',
 			dialogControl = 'LSM30_Statusbar',
@@ -180,7 +214,7 @@ local function Widget(key, option, typeMappings)
 			get = GetBarTexSetting,
 			set = SetBarTexSetting,
 		}
-	elseif key:find('sound')      and type(option) == 'string' and SharedMedia then
+	elseif (widgetType == 'sound' or key:find('sound')) and type(option) == 'string' and SharedMedia then
 		widget = {
 			type = 'select',
 			dialogControl = 'LSM30_Sound',
@@ -189,14 +223,14 @@ local function Widget(key, option, typeMappings)
 			get = GetSoundSetting,
 			set = SetSoundSetting,
 		}
-	elseif key:find('color')      and type(option) == 'table' then
+	elseif (widgetType == 'color' or key:find('color')) and type(option) == 'table' then
 		widget = {
 			type = 'color',
 			hasAlpha = true,
 			get = GetColorSetting,
 			set = SetColorSetting,
 		}
-	elseif key:find('percent')    and type(option) == 'number' and option >= 0 and option <= 1 then
+	elseif (widgetType == 'percent' or key:find('percent')) and type(option) == 'number' and option >= 0 and option <= 1 then
 		widget = {
 			type = 'range',
 			name = 'Percent',
@@ -206,7 +240,12 @@ local function Widget(key, option, typeMappings)
 			get = GetPercentSetting,
 			set = SetPercentSetting,
 		}
-	elseif key == 'money' then
+	elseif (widgetType == 'itemquality' or key:find('quality')) and type(option) == 'number' then
+		widget = {
+			type = 'select',
+			values = itemQualities,
+		}
+	elseif widgetType == 'money' then
 		-- TODO: this needs some more intuition. Use GetCoinTextureString(amount)?
 		widget = {
 			type = 'input',
@@ -216,12 +255,7 @@ local function Widget(key, option, typeMappings)
 			get = GetNumberSetting,
 			set = SetNumberSetting,
 		}
-	elseif key == 'itemquality' or (key:find('quality') and type(option) == 'number') then
-		widget = {
-			type = 'select',
-			values = itemQualities,
-		}
-	elseif key == 'values' or key:find('list$') then
+	elseif widgetType == 'values' or key:find('list$') then
 		widget = {
 			type = 'input',
 			multiline = true,
@@ -236,9 +270,9 @@ end
 
 local AceDBScopes = { 'global', 'profile', 'char', 'class', a = 'race', b = 'realm', c = 'faction', d = 'factionrealm' }
 local function ParseOption(key, option, L, typeMappings)
-	if type(key) ~= 'string' or key == '*' or key == '**' then return end
+	if type(key) ~= 'string' or (key == '*' or key == '**') then return end
 
-	local widget = Widget(key, option, typeMappings)
+	local widget = Widget(key, option, typeMappings and typeMappings[key])
 	if widget == true then
 		return nil
 	elseif widget then
@@ -269,14 +303,9 @@ local function ParseOption(key, option, L, typeMappings)
 			args 	= {},
 			order 	= 80,
 		}
-		local hasContents = false
-		for subkey, value in pairs(option) do
-			widget.args[subkey] = ParseOption(subkey, value, L, typeMappings)
-			if widget.args[subkey] then
-				hasContents = true
-			end
+		for subkey, subOption in pairs(option) do
+			widget.args[subkey] = ParseOption(subkey, subOption, L, typeMappings)
 		end
-		if not hasContents then widget = nil end
 	end
 
 	if widget then
@@ -336,25 +365,24 @@ local function AddNamespaces(optionsTable, variable, typeMappings, L)
 		-- we need to access different data
 		local get = function(info) return GetSettingDefault(info, options) end
 		local set = function(info, value) return SetSettingDefault(info, value, options) end
-		for weight, scope in pairs(AceDBScopes) do
-			if options[scope] then
-				local key = scope .. '_' .. namespace
-				local option = ParseOption(key, options[scope], L, typeMappings)
-				if option and next(option.args) then
-					optionsTable.args[scope] = optionsTable.args[scope] or {
-						type 	= 'group',
-						inline 	= true,
-						name 	= scope,
-						args 	= {},
-						order 	= -1,
-					}
+		for scope in pairs(options.defaults or emptyTable) do
+			-- note: this will create empty groups when empty defaults are defined
+			local key = scope .. '_' .. namespace
+			local option = ParseOption(key, options[scope], L, typeMappings)
+			if option and next(option.args) then
+				optionsTable.args[scope] = optionsTable.args[scope] or {
+					type 	= 'group',
+					inline 	= true,
+					name 	= scope,
+					args 	= {},
+					order 	= -1,
+				}
 
-					option.name = namespace
-					option.order = 90
-					option.get = get
-					option.set = set
-					optionsTable.args[scope].args[namespace] = option
-				end
+				option.name = namespace
+				option.order = 90
+				option.get = get
+				option.set = set
+				optionsTable.args[scope].args[namespace] = option
 			end
 		end
 	end
@@ -377,7 +405,9 @@ function lib:GetOptionsTable(variable, typeMappings, L, includeNamespaces)
 	local isAceDB = variable.sv and variable.defaults
 	if isAceDB then
 		-- trigger initialization: tables might not exist when we iterate
-		for _, scope in pairs(AceDBScopes) do if not next(variable[scope]) then variable[scope] = nil end end
+		for scope in pairs(variable.defaults) do
+			if variable[scope] then --[[ do nothing --]] end
+		end
 	end
 
 	for key, value in pairs(variable) do
