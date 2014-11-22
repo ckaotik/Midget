@@ -618,6 +618,13 @@ local function InitGarrisonChanges()
 	-- display known abilities when recruiting new followers
 	plugin:RegisterEvent('GARRISON_RECRUITMENT_NPC_OPENED', function() UpdateFollowerTabs(GarrisonRecruiterFrame) end)
 	plugin:RegisterEvent('GARRISON_MISSION_NPC_OPENED', function() UpdateFollowerTabs(GarrisonMissionFrame) end)
+	plugin:RegisterEvent('GARRISON_FOLLOWER_LIST_UPDATE', function()
+		for _, frameName in pairs({'GarrisonMissionFrame', 'GarrisonRecruiterFrame', 'GarrisonLandingPage'}) do
+			if _G[frameName]:IsShown() then
+				UpdateFollowerTabs(_G[frameName])
+			end
+		end
+	end)
 
 	-- HACK: registering ADDON_LOADED within OnEnable does not work, so we register 1s later
 	local function GarrisonLoadedCallback()
