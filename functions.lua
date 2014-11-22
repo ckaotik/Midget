@@ -599,19 +599,25 @@ local function InitGarrisonChanges()
 			end
 			local icon, name, description = strsplit('|', threat)
 			local followersList = '' -- table.concat(followers, '|n')
+			local numAvailable, numFollowers = #followers, #followers
 			for index, followerID in pairs(followers) do
 				local data = C_Garrison.GetFollowerInfo(followerID)
 				local color = _G.ITEM_QUALITY_COLORS[data.quality]
 				local label = ('%1$d %2$s%3$s|r'):format(data.level, RGBTableToColorCode(color), data.name)
 				followersList =  followersList .. '|n' .. label
 				if data.status then
+					if status ~= _G.GARRISON_FOLLOWER_IN_PARTY then
+						numAvailable = numAvailable - 1
+					end
 					followersList = followersList .. ' ('..data.status..')'
 				end
 			end
 
 			tab:SetNormalTexture(icon)
 			tab.tooltip = ('|T%1$s:0|t%2$s|n%4$s'):format(icon, name, description, followersList)
-			tab.count:SetText(#followers)
+			tab.count:SetText(numAvailable ~= numFollowers
+				and ('%d/%d'):format(numAvailable, numFollowers)
+				or numFollowers)
 			index = index + 1
 		end
 	end
