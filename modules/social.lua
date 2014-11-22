@@ -348,7 +348,7 @@ end
 function plugin:OnEnable()
 	local ldb = LDB:NewDataObject(addonName.."Social", {
 		type	= 'data source',
-		icon    = 'Interface\\FriendsFrame\\UI-Toast-FriendOnlineIcon',
+		icon    = 'Interface\\FriendsFrame\\UI-Toast-ChatInviteIcon',
 		label	= _G.SOCIAL_LABEL,
 		text 	= _G.SOCIAL_LABEL,
 
