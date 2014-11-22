@@ -440,7 +440,7 @@ function plugin:OnEnable()
 	-- table.insert(UnitPopupMenus["TARGET"], #UnitPopupMenus["TARGET"], "PET_SHOW_IN_JOURNAL")
 
 	if IsAddOnLoaded('Blizzard_PetJournal') then
-		InitializePetJournal()
+		InitializePetJournal(nil, 'Blizzard_PetJournal')
 	else
 		self:RegisterEvent('ADDON_LOADED', InitializePetJournal)
 	end
