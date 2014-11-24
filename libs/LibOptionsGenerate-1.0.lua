@@ -1,4 +1,4 @@
-local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 15
+local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 16
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
@@ -131,11 +131,11 @@ local function Widget(key, option, widgetInfo)
 		end
 	end
 
-	if type(widgetType) == 'table' then
+	if type(widgetInfo) == 'table' then
 		-- preset select options
 		widget = {
 			type = 'select',
-			values = widgetType,
+			values = widgetInfo,
 		}
 	elseif widgetType == '*none*' then
 		-- hidden from display
@@ -360,7 +360,7 @@ local function AddScopeHeaders(optionsTable)
 end
 
 local emptyTable = {}
-local function AddNamespaces(optionsTable, variable, typeMappings, L)
+local function AddNamespaces(optionsTable, variable, L, typeMappings)
 	for namespace, options in pairs(variable.children or emptyTable) do
 		-- we need to access different data
 		local get = function(info) return GetSettingDefault(info, options) end
@@ -419,7 +419,7 @@ function lib:GetOptionsTable(variable, typeMappings, L, includeNamespaces)
 	if isAceDB then
 		if includeNamespaces then
 			-- add namespace settings to core addon's scopes
-			AddNamespaces(optionsTable, variable, typeMappings, L)
+			AddNamespaces(optionsTable, variable, L, typeMappings)
 		end
 		AddScopeHeaders(optionsTable)
 	end
