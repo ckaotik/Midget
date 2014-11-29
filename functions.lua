@@ -557,12 +557,33 @@ local function InitItemButtonLevels()
 	C_Timer.After(1, AddVoidStorageCallback)
 end
 
+local postmaster = {
+	['The Postmaster'] = true,  -- enUS
+	['Der Postmeister'] = true, -- deDE
+}
+local function PostmasterSpamMaster()
+	local function DeleteEmptyPostmasterMails(event, ...)
+		if not addon.db.profile.deleteEmptyPostmasterMails then return end
+		for index = (GetInboxNumItems()), 1, -1 do
+			local _, _, sender, subject, money, _, _, itemCount, _, _, _, _, _, itemQuantity = GetInboxHeaderInfo(index)
+			if postmaster[sender] and money == 0 and not itemCount then
+				print('Deleted empty mail', subject, 'from', sender, money, itemCount, itemQuantity)
+				DeleteInboxItem(index)
+				break -- wait for MAIL_SUCCESS event to fire
+			end
+		end
+	end
+	plugin:RegisterEvent('MAIL_INBOX_UPDATE', DeleteEmptyPostmasterMails)
+	plugin:RegisterEvent('MAIL_SUCCESS', DeleteEmptyPostmasterMails)
+end
+
 local function CalendarIconFlash()
 	-- minimap calendar flashing:
-	--[[ GameTimeCalendarInvitesTexture:Show()
+	--[[
+	GameTimeCalendarInvitesTexture:Show()
 	GameTimeCalendarInvitesGlow:Show()
 	GameTimeFrame.flashInvite = true
-	self.pendingCalendarInvites = 1337 --]]
+	-- self.pendingCalendarInvites = 1337 --]]
 end
 
 -- ================================================
@@ -582,6 +603,7 @@ function plugin:OnEnable()
 	HideUnusableCompareTips()
 	ExtendLibItemSearch()
 	AddMasque()
+	PostmasterSpamMaster()
 
 	-- SLASH_ROLECHECK1 = "/rolecheck"
 	-- SlashCmdList.ROLECHECK = InitiateRolePoll

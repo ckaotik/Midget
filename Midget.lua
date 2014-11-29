@@ -40,7 +40,7 @@ local defaults = {
 		SHIFTAcceptPopups = true,
 		hideUnusableCompareTips = true,
 		showRaidBuffIndicators = true,
-		skipGarrisonMissionEncounters = true,
+		deleteEmptyPostmasterMails = false,
 	},
 	char = {
 		trackBattlePetTeams = true,
