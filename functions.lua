@@ -128,7 +128,7 @@ end
 local function AddChatLinkHoverTooltips()
 	if not addon.db.profile.chatHoverTooltips then return end
 	-- see link types here: http://www.townlong-yak.com/framexml/19033/ItemRef.lua#162
-	local gameTips = { item = true, spell = true, trade = true, enchant = true, talent = true, glyph = true, achievement = true, unit = true, quest = true, instancelock = true }
+	local gameTips = { item = true, spell = true, trade = false, enchant = true, talent = true, glyph = true, achievement = true, unit = true, quest = true, instancelock = true }
 	local function OnHyperlinkEnter(self, linkData, link)
 		local linkType = linkData:match('^([^:]+)')
 		if not linkType then return end
