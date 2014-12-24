@@ -29,8 +29,6 @@ functions.lua
 # modules
 # modules\procparser.lua
 # modules\tracker.lua
-modules\battlepets.lua
-modules\bigwigs.lua
 modules\configmode.lua
 modules\journal.lua
 modules\learner.lua

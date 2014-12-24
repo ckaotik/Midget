@@ -128,13 +128,13 @@ end
 local function AddChatLinkHoverTooltips()
 	if not addon.db.profile.chatHoverTooltips then return end
 	-- see link types here: http://www.townlong-yak.com/framexml/19033/ItemRef.lua#162
-	local gameTips = {item = true, spell = true, trade = true, enchant = true, talent = true, glyph = true, achievement = true, unit = true, quest = true, instancelock = true}
+	local gameTips = { item = true, spell = true, trade = false, enchant = true, talent = true, glyph = true, achievement = true, unit = true, quest = true, instancelock = true }
 	local function OnHyperlinkEnter(self, linkData, link)
 		local linkType = linkData:match('^([^:]+)')
 		if not linkType then return end
 
 		-- this makes sure all tooltips are anchored here
-		GameTooltip:SetOwner(self, 'CURSOR') -- 'ANCHOR_RIGHT')
+		GameTooltip:SetOwner(self, 'ANCHOR_RIGHT') -- 'CURSOR')
 
 		if gameTips[linkType] then
 			GameTooltip:SetHyperlink(link)
@@ -143,8 +143,7 @@ local function AddChatLinkHoverTooltips()
 			end
 		elseif linkType == 'battlePetAbil' then
 			local _, abilityID, maxHealth, power, speed = strsplit(':', linkData)
-			         abilityID, maxHealth, power, speed = tonumber(abilityID), tonumber(maxHealth), tonumber(power), tonumber(speed)
-			FloatingPetBattleAbility_Show(abilityID, maxHealth, power, speed)
+			FloatingPetBattleAbility_Show(tonumber(abilityID), tonumber(maxHealth), tonumber(power), tonumber(speed))
 			FloatingPetBattleAbilityTooltip:SetPoint(GameTooltip:GetPoint())
 			FloatingPetBattleAbilityTooltip.chatTip = true
 		elseif linkType == 'battlepet' then
@@ -152,23 +151,41 @@ local function AddChatLinkHoverTooltips()
 			local _, speciesID, level, breedQuality, maxHealth, power, speed = strsplit(':', linkData)
 			         speciesID, level, breedQuality, maxHealth, power, speed = tonumber(speciesID), tonumber(level), tonumber(breedQuality), tonumber(maxHealth), tonumber(power), tonumber(speed)
 			BattlePetToolTip_Show(speciesID, level, breedQuality, maxHealth, power, speed, name)
+		elseif linkType == 'garrmission' then
+			local _, missionID = strsplit(':', linkData)
+			FloatingGarrisonMission_Toggle(tonumber(missionID))
+			FloatingGarrisonMissionTooltip.chatTip = true
+			FloatingGarrisonMissionTooltip:SetPoint(GameTooltip:GetPoint())
+		elseif linkType == 'garrfollower' then
+			local _, followerID, quality, level, itemLevel, ability1, ability2, ability3, ability4, trait1, trait2, trait3, trait4 = strsplit(':', linkData)
+			FloatingGarrisonFollower_Toggle(tonumber(followerID), tonumber(quality), tonumber(level), tonumber(itemLevel), tonumber(ability1), tonumber(ability2), tonumber(ability3), tonumber(ability4), tonumber(trait1), tonumber(trait2), tonumber(trait3), tonumber(trait4))
+			FloatingGarrisonFollowerTooltip.chatTip = true
+			FloatingGarrisonFollowerTooltip:SetPoint(GameTooltip:GetPoint())
+		elseif linkType == 'garrfollowerability' then
+			local _, abilityID = strsplit(':', linkData)
+			FloatingGarrisonFollowerAbility_Toggle(tonumber(abilityID))
+			FloatingGarrisonFollowerAbilityTooltip.chatTip = true
+			FloatingGarrisonFollowerAbilityTooltip:SetPoint(GameTooltip:GetPoint())
 		else
 			-- SetItemRef(linkData, link, 'LeftButton', self)
 		end
 	end
+	local tooltips = { 'FloatingPetBattleAbilityTooltip', 'FloatingGarrisonMissionTooltip', 'FloatingGarrisonFollowerAbilityTooltip', 'FloatingGarrisonFollowerTooltip' }
 	local function OnHyperlinkLeave()
 		GameTooltip:Hide()
 		BattlePetTooltip:Hide()
-		if FloatingPetBattleAbilityTooltip.chatTip then
-			FloatingPetBattleAbilityTooltip.chatTip = nil
-			FloatingPetBattleAbilityTooltip:Hide()
+		for _, tipName in pairs(tooltips) do
+			local tip = _G[tipName]
+			if tip and tip.chatTip then
+				tip:Hide()
+			end
 		end
 	end
 
 	local function InitChatHoverTips(chatFrame)
 		if chatFrame.hoverTipsEnabled then return end
-		chatFrame:SetScript('OnHyperlinkEnter', OnHyperlinkEnter)
-		chatFrame:SetScript('OnHyperlinkLeave', OnHyperlinkLeave)
+		chatFrame:HookScript('OnHyperlinkEnter', OnHyperlinkEnter)
+		chatFrame:HookScript('OnHyperlinkLeave', OnHyperlinkLeave)
 		chatFrame.hoverTipsEnabled = true
 	end
 	for i = 1, _G.NUM_CHAT_WINDOWS do
@@ -557,12 +574,32 @@ local function InitItemButtonLevels()
 	C_Timer.After(1, AddVoidStorageCallback)
 end
 
+local postmaster = {
+	['The Postmaster'] = true,  -- enUS
+	['Der Postmeister'] = true, -- deDE
+}
+local function PostmasterSpamMaster()
+	local function DeleteEmptyPostmasterMails(event, ...)
+		if not addon.db.profile.deleteEmptyPostmasterMails then return end
+		for index = (GetInboxNumItems()), 1, -1 do
+			local _, _, sender, subject, money, _, _, itemCount, _, _, _, _, _, itemQuantity = GetInboxHeaderInfo(index)
+			if postmaster[sender] and money == 0 and not itemCount then
+				DeleteInboxItem(index)
+				break -- wait for MAIL_SUCCESS event to fire
+			end
+		end
+	end
+	plugin:RegisterEvent('MAIL_INBOX_UPDATE', DeleteEmptyPostmasterMails)
+	plugin:RegisterEvent('MAIL_SUCCESS', DeleteEmptyPostmasterMails)
+end
+
 local function CalendarIconFlash()
 	-- minimap calendar flashing:
-	--[[ GameTimeCalendarInvitesTexture:Show()
+	--[[
+	GameTimeCalendarInvitesTexture:Show()
 	GameTimeCalendarInvitesGlow:Show()
 	GameTimeFrame.flashInvite = true
-	self.pendingCalendarInvites = 1337 --]]
+	-- self.pendingCalendarInvites = 1337 --]]
 end
 
 -- ================================================
@@ -582,6 +619,7 @@ function plugin:OnEnable()
 	HideUnusableCompareTips()
 	ExtendLibItemSearch()
 	AddMasque()
+	PostmasterSpamMaster()
 
 	-- SLASH_ROLECHECK1 = "/rolecheck"
 	-- SlashCmdList.ROLECHECK = InitiateRolePoll
