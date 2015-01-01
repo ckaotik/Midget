@@ -11,20 +11,25 @@ local plugin = addon:NewModule('Functions', 'AceEvent-3.0')
 local LSM = LibStub("LibSharedMedia-3.0", true)
 local function AddMoreSharedMedia()
 	if not addon.db.profile.moreSharedMedia or not LSM then return end
-	LSM:Register("border", "Glow", "Interface\\Addons\\Midget\\media\\glow.tga")
-	LSM:Register("border", "Double", "Interface\\Addons\\Midget\\media\\double_border.tga")
-	LSM:Register("border", "Single Gray", "Interface\\Addons\\Midget\\media\\grayborder.tga")
-	LSM:Register("statusbar", "Smooth", "Interface\\Addons\\Midget\\media\\Smooth.tga")
-	LSM:Register("statusbar", "TukTex", "Interface\\Addons\\Midget\\media\\TukTexture.tga")
-	LSM:Register("font", "Accidental Presidency", "Interface\\Addons\\Midget\\media\\AccidentalPresidency.ttf")
-	LSM:Register("font", "Andika Compact", "Interface\\Addons\\Midget\\media\\Andika-Compact.ttf")
-	LSM:Register("font", "Andika", "Interface\\Addons\\Midget\\media\\Andika.ttf")
-	LSM:Register("font", "Avant Garde", "Interface\\Addons\\Midget\\media\\AvantGarde.ttf")
-	LSM:Register("font", "Cibreo", "Interface\\Addons\\Midget\\media\\Cibreo.ttf")
-	LSM:Register("font", "DejaWeb", "Interface\\Addons\\Midget\\media\\DejaWeb.ttf")
-	LSM:Register("font", "Express", "Interface\\Addons\\Midget\\media\\express.ttf")
-	LSM:Register("font", "Futura Medium", "Interface\\Addons\\Midget\\media\\FuturaMedium.ttf")
-	LSM:Register("font", "Paralucent", "Interface\\Addons\\Midget\\media\\Paralucent.ttf")
+	local path = 'Interface\\Addons\\Midget\\media\\'
+	LSM:Register("border", "Glow", path .. "glow.tga")
+	LSM:Register("border", "Double", path .. "double_border.tga")
+	LSM:Register("border", "Single Gray", path .. "grayborder.tga")
+	LSM:Register("statusbar", "Smooth", path .. "Smooth.tga")
+	LSM:Register("statusbar", "TukTex", path .. "TukTexture.tga")
+	LSM:Register("font", "Accidental Presidency", path .. "AccidentalPresidency.ttf")
+	LSM:Register("font", "Andika Compact", path .. "Andika-Compact.ttf")
+	LSM:Register("font", "Andika", path .. "Andika.ttf")
+	LSM:Register("font", "Avant Garde", path .. "AvantGarde.ttf")
+	LSM:Register("font", "Cibreo", path .. "Cibreo.ttf")
+	LSM:Register("font", "DejaWeb", path .. "DejaWeb.ttf")
+	LSM:Register("font", "Express", path .. "express.ttf")
+	LSM:Register("font", "Futura Medium", path .. "FuturaMedium.ttf")
+	LSM:Register("font", "Paralucent", path .. "Paralucent.ttf")
+	LSM:Register("font", "Calibri", path .. "Calibri.ttf")
+	LSM:Register("font", "Calibri Bold", path .. "CalibriBold.ttf")
+	LSM:Register("font", "Calibri Bold Italic", path .. "CalibriBoldItalic.ttf")
+	LSM:Register("font", "Calibri Italic", path .. "CalibriItalic.ttf")
 end
 
 -- ================================================
@@ -156,6 +161,21 @@ local function AddChatLinkHoverTooltips()
 			FloatingGarrisonMission_Toggle(tonumber(missionID))
 			FloatingGarrisonMissionTooltip.chatTip = true
 			FloatingGarrisonMissionTooltip:SetPoint(GameTooltip:GetPoint())
+		--[[
+		elseif linkType == 'garrfollower' then
+			local _, followerID, quality, level, itemLevel, ability1, ability2, ability3, ability4, trait1, trait2, trait3, trait4 = strsplit(':', linkData)
+			local collected, noAbilityDescriptions, xp, levelxp = false, true, 0, 0
+			-- C_Garrison.GetFollowerXP(self.info.followerID), C_Garrison.GetFollowerLevelXP(self.info.followerID), C_Garrison.GetFollowerInfo(followerID).collected
+			GarrisonFollowerTooltip_Show(followerID, collected, tonumber(quality), tonumber(level), xp, levelxp, tonumber(itemLevel), tonumber(ability1), tonumber(ability2), tonumber(ability3), tonumber(ability4), tonumber(trait1), tonumber(trait2), tonumber(trait3), tonumber(trait4), noAbilityDescriptions)
+
+			-- FloatingGarrisonFollower_Toggle(tonumber(followerID), tonumber(quality), tonumber(level), tonumber(itemLevel), tonumber(ability1), tonumber(ability2), tonumber(ability3), tonumber(ability4), tonumber(trait1), tonumber(trait2), tonumber(trait3), tonumber(trait4))
+			GarrisonFollowerTooltip:SetPoint(GameTooltip:GetPoint())
+		elseif linkType == 'garrfollowerability' then
+			local _, abilityID = strsplit(':', linkData)
+			GarrisonFollowerAbilityTooltip_Show(tonumber(abilityID))
+			GarrisonFollowerAbilityTooltip:SetPoint(GameTooltip:GetPoint())
+		else
+		--]]
 		elseif linkType == 'garrfollower' then
 			local _, followerID, quality, level, itemLevel, ability1, ability2, ability3, ability4, trait1, trait2, trait3, trait4 = strsplit(':', linkData)
 			FloatingGarrisonFollower_Toggle(tonumber(followerID), tonumber(quality), tonumber(level), tonumber(itemLevel), tonumber(ability1), tonumber(ability2), tonumber(ability3), tonumber(ability4), tonumber(trait1), tonumber(trait2), tonumber(trait3), tonumber(trait4))
@@ -620,6 +640,26 @@ function plugin:OnEnable()
 	ExtendLibItemSearch()
 	AddMasque()
 	PostmasterSpamMaster()
+
+	local unitNames = setmetatable({}, { __index = function(t, unit)
+		local name = unit and UnitName(unit)
+		if not name then return end
+		local _, class = UnitClass(unit)
+		if not class then return format("Cast by %s", name) end
+		local color = (CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS)[class]
+		if not color then return format("Cast by %s", name) end
+		return format("Cast by |cff%02x%02x%02x%s|r", color.r * 255, color.g * 255, color.b * 255, name)
+	end })
+	GameTooltip:HookScript('OnEnter', function(self)
+		local name, _, _, _, _, _, _, caster, _, _, spellID = UnitAura('player', self:GetID(), self.filter)
+	end)
+	hooksecurefunc(GameTooltip, 'SetUnitAura', function(self, unit, index, filter)
+		local name, _, _, _, _, _, _, caster, _, _, spellID = UnitAura(unit, index, filter)
+		if caster and unitNames[caster] then
+			self:AddLine(unitNames[caster])
+			self:Show()
+		end
+	end)
 
 	-- SLASH_ROLECHECK1 = "/rolecheck"
 	-- SlashCmdList.ROLECHECK = InitiateRolePoll
