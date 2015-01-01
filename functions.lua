@@ -132,78 +132,46 @@ end
 
 local function AddChatLinkHoverTooltips()
 	if not addon.db.profile.chatHoverTooltips then return end
+	local hoverTip = nil
 	-- see link types here: http://www.townlong-yak.com/framexml/19033/ItemRef.lua#162
-	local gameTips = { item = true, spell = true, trade = false, enchant = true, talent = true, glyph = true, achievement = true, unit = true, quest = true, instancelock = true }
+	local linkTypes = {
+		item = true, spell = true, enchant = true, talent = true, glyph = true, achievement = true, unit = true, quest = true, instancelock = true, trade = false, -- GameTooltip / ItemRefTooltip
+		battlepet           = 'FloatingBattlePetTooltip',
+		battlePetAbil       = 'FloatingPetBattleAbilityTooltip',
+		garrfollower        = 'FloatingGarrisonFollowerTooltip',
+		garrfollowerability = 'FloatingGarrisonFollowerAbilityTooltip',
+		garrmission         = 'FloatingGarrisonMissionTooltip',
+	}
 	local function OnHyperlinkEnter(self, linkData, link)
 		local linkType = linkData:match('^([^:]+)')
-		if not linkType then return end
-
-		-- this makes sure all tooltips are anchored here
-		GameTooltip:SetOwner(self, 'ANCHOR_RIGHT') -- 'CURSOR')
-
-		if gameTips[linkType] then
-			GameTooltip:SetHyperlink(link)
-			if linkType == 'item' and GetCVarBool('alwaysCompareItems') and not self:IsEquippedItem() then
-				GameTooltip_ShowCompareItem(GameTooltip)
-			end
-		elseif linkType == 'battlePetAbil' then
-			local _, abilityID, maxHealth, power, speed = strsplit(':', linkData)
-			FloatingPetBattleAbility_Show(tonumber(abilityID), tonumber(maxHealth), tonumber(power), tonumber(speed))
-			FloatingPetBattleAbilityTooltip:SetPoint(GameTooltip:GetPoint())
-			FloatingPetBattleAbilityTooltip.chatTip = true
-		elseif linkType == 'battlepet' then
-			local name = string.gsub(string.gsub(link, '^(.*)%[', ''), '%](.*)$', '')
-			local _, speciesID, level, breedQuality, maxHealth, power, speed = strsplit(':', linkData)
-			         speciesID, level, breedQuality, maxHealth, power, speed = tonumber(speciesID), tonumber(level), tonumber(breedQuality), tonumber(maxHealth), tonumber(power), tonumber(speed)
-			BattlePetToolTip_Show(speciesID, level, breedQuality, maxHealth, power, speed, name)
-		elseif linkType == 'garrmission' then
-			local _, missionID = strsplit(':', linkData)
-			FloatingGarrisonMission_Toggle(tonumber(missionID))
-			FloatingGarrisonMissionTooltip.chatTip = true
-			FloatingGarrisonMissionTooltip:SetPoint(GameTooltip:GetPoint())
-		--[[
-		elseif linkType == 'garrfollower' then
-			local _, followerID, quality, level, itemLevel, ability1, ability2, ability3, ability4, trait1, trait2, trait3, trait4 = strsplit(':', linkData)
-			local collected, noAbilityDescriptions, xp, levelxp = false, true, 0, 0
-			-- C_Garrison.GetFollowerXP(self.info.followerID), C_Garrison.GetFollowerLevelXP(self.info.followerID), C_Garrison.GetFollowerInfo(followerID).collected
-			GarrisonFollowerTooltip_Show(followerID, collected, tonumber(quality), tonumber(level), xp, levelxp, tonumber(itemLevel), tonumber(ability1), tonumber(ability2), tonumber(ability3), tonumber(ability4), tonumber(trait1), tonumber(trait2), tonumber(trait3), tonumber(trait4), noAbilityDescriptions)
-
-			-- FloatingGarrisonFollower_Toggle(tonumber(followerID), tonumber(quality), tonumber(level), tonumber(itemLevel), tonumber(ability1), tonumber(ability2), tonumber(ability3), tonumber(ability4), tonumber(trait1), tonumber(trait2), tonumber(trait3), tonumber(trait4))
-			GarrisonFollowerTooltip:SetPoint(GameTooltip:GetPoint())
-		elseif linkType == 'garrfollowerability' then
-			local _, abilityID = strsplit(':', linkData)
-			GarrisonFollowerAbilityTooltip_Show(tonumber(abilityID))
-			GarrisonFollowerAbilityTooltip:SetPoint(GameTooltip:GetPoint())
-		else
-		--]]
-		elseif linkType == 'garrfollower' then
-			local _, followerID, quality, level, itemLevel, ability1, ability2, ability3, ability4, trait1, trait2, trait3, trait4 = strsplit(':', linkData)
-			FloatingGarrisonFollower_Toggle(tonumber(followerID), tonumber(quality), tonumber(level), tonumber(itemLevel), tonumber(ability1), tonumber(ability2), tonumber(ability3), tonumber(ability4), tonumber(trait1), tonumber(trait2), tonumber(trait3), tonumber(trait4))
-			FloatingGarrisonFollowerTooltip.chatTip = true
-			FloatingGarrisonFollowerTooltip:SetPoint(GameTooltip:GetPoint())
-		elseif linkType == 'garrfollowerability' then
-			local _, abilityID = strsplit(':', linkData)
-			FloatingGarrisonFollowerAbility_Toggle(tonumber(abilityID))
-			FloatingGarrisonFollowerAbilityTooltip.chatTip = true
-			FloatingGarrisonFollowerAbilityTooltip:SetPoint(GameTooltip:GetPoint())
-		else
-			-- SetItemRef(linkData, link, 'LeftButton', self)
+		if not linkType or not linkTypes[linkType] then return end
+		local tooltip = linkTypes[linkType] == true and 'ItemRefTooltip' or linkTypes[linkType]
+		if true or tooltip == 'ItemRefTooltip' or IsShiftKeyDown() then
+			-- show special frames only with modifiers
+			ChatFrame_OnHyperlinkShow(self, linkData, link, 'LeftButton')
+			GameTooltip:SetOwner(self, 'ANCHOR_RIGHT') -- 'CURSOR')
+			_G[tooltip]:SetPoint(GameTooltip:GetPoint())
+			hoverTip = link
 		end
 	end
-	local tooltips = { 'FloatingPetBattleAbilityTooltip', 'FloatingGarrisonMissionTooltip', 'FloatingGarrisonFollowerAbilityTooltip', 'FloatingGarrisonFollowerTooltip' }
-	local function OnHyperlinkLeave()
-		GameTooltip:Hide()
-		BattlePetTooltip:Hide()
-		for _, tipName in pairs(tooltips) do
-			local tip = _G[tipName]
-			if tip and tip.chatTip then
-				tip:Hide()
-			end
+	local function OnHyperlinkLeave(self, linkData, link)
+		local linkType = linkData:match('^([^:]+)')
+		if not hoverTip or hoverTip ~= link or not linkType or not linkTypes[linkType] then return end
+		local tooltip = linkTypes[linkType] == true and 'ItemRefTooltip' or linkTypes[linkType]
+		_G[tooltip]:Hide()
+	end
+	local function OnHyperlinkClick(self, linkData, link, btn)
+		-- do not close popups that were intentionally shown
+		if hoverTip and hoverTip == link then
+			-- OnEnter (=> toggle on) > OnClick (=> toggle off) > OnEnter (=> toggle on)
+			OnHyperlinkEnter(self, linkData, link)
+			hoverTip = nil
 		end
 	end
 
 	local function InitChatHoverTips(chatFrame)
 		if chatFrame.hoverTipsEnabled then return end
+		chatFrame:HookScript('OnHyperlinkClick', OnHyperlinkClick)
 		chatFrame:HookScript('OnHyperlinkEnter', OnHyperlinkEnter)
 		chatFrame:HookScript('OnHyperlinkLeave', OnHyperlinkLeave)
 		chatFrame.hoverTipsEnabled = true
