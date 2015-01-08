@@ -149,7 +149,7 @@ local function AddChatLinkHoverTooltips()
 		if true or tooltip == 'ItemRefTooltip' or IsShiftKeyDown() then
 			-- show special frames only with modifiers
 			ChatFrame_OnHyperlinkShow(self, linkData, link, 'LeftButton')
-			GameTooltip:SetOwner(self, 'ANCHOR_RIGHT') -- 'CURSOR')
+			GameTooltip:SetOwner(self, 'CURSOR') -- 'ANCHOR_RIGHT') -- TODO
 			_G[tooltip]:SetPoint(GameTooltip:GetPoint())
 			hoverTip = link
 		end
