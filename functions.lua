@@ -143,16 +143,15 @@ local function AddChatLinkHoverTooltips()
 		garrmission         = 'FloatingGarrisonMissionTooltip',
 	}
 	local function OnHyperlinkEnter(self, linkData, link)
+		if IsModifiedClick() then return end
 		local linkType = linkData:match('^([^:]+)')
 		if not linkType or not linkTypes[linkType] then return end
 		local tooltip = linkTypes[linkType] == true and 'ItemRefTooltip' or linkTypes[linkType]
-		if true or tooltip == 'ItemRefTooltip' or IsShiftKeyDown() then
-			-- show special frames only with modifiers
-			ChatFrame_OnHyperlinkShow(self, linkData, link, 'LeftButton')
-			GameTooltip:SetOwner(self, 'CURSOR') -- 'ANCHOR_RIGHT') -- TODO
-			_G[tooltip]:SetPoint(GameTooltip:GetPoint())
-			hoverTip = link
-		end
+		-- show special frames only with modifiers
+		ChatFrame_OnHyperlinkShow(self, linkData, link, 'LeftButton')
+		GameTooltip:SetOwner(self, 'CURSOR') -- 'ANCHOR_RIGHT')
+		_G[tooltip]:SetPoint(GameTooltip:GetPoint())
+		hoverTip = link
 	end
 	local function OnHyperlinkLeave(self, linkData, link)
 		local linkType = linkData:match('^([^:]+)')
