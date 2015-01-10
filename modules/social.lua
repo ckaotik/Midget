@@ -29,6 +29,22 @@ local icons = {
 	['CONTACT']        = '|TInterface\\FriendsFrame\\UI-Toast-FriendOnlineIcon:0|t',
 }
 
+local wrapWidth
+local function WrapLine(text)
+	local start = strfind(text, '[ -.,;]', -wrapWidth)
+	if start then
+		text = WrapLine(strsub(text, 1, start-1)) .. '\n' .. strsub(text, start)
+	end
+	return text
+end
+local function WrapText(text, maxChars)
+	wrapWidth = maxChars
+	text = strrev(text)
+	text = text:gsub('([^\n]+)', WrapLine)
+	text = strrev(text)
+	return text
+end
+
 local function OnLDBEnter() end
 local function SortGuildList(self, sortType, btn, up)
 	SortGuildRoster(sortType)
@@ -99,7 +115,12 @@ end
 
 local function TooltipAddBNetContacts(tooltip)
 	local _, numBNetOnline = BNGetNumFriends()
-	local lineNum, currentBNContact
+	local numColumns, lineNum = #tooltip.columns
+	local currentBNContact
+
+	if numBNetOnline > 0 then
+		tooltip:SetCell(tooltip:AddHeader(), 1, _G.FRIENDS, 'LEFT', numColumns)
+	end
 
 	for friendIndex = 1, numBNetOnline do
 		local presenceID, presenceName, battleTag, isBattleTag, toonName, toonID, client, isOnline, lastOnline, isAFK, isDND, broadcastText, noteText = BNGetFriendInfo(friendIndex)
@@ -173,12 +194,16 @@ end
 
 local function TooltipAddContacts(tooltip, needsSeparator)
 	local _, numFriendsOnline = GetNumFriends()
-	local lineNum
+	local numColumns, lineNum = #tooltip.columns
 
 	for index = 1, numFriendsOnline do
-		if index == 1 and needsSeparator then
-			tooltip:AddLine(' ')
-			-- tooltip:AddSeparator(2)
+		if index == 1 then
+			if needsSeparator then
+				tooltip:AddLine()
+				-- tooltip:AddSeparator(2)
+			else
+				tooltip:SetCell(tooltip:AddHeader(), 1, _G.FRIENDS, 'LEFT', numColumns)
+			end
 		end
 		local name, level, class, area, connected, status, note, RAF = GetFriendInfo(index)
 
@@ -202,23 +227,23 @@ end
 
 local function TooltipAddGuildMembers(tooltip, needsSeparator)
 	local guildName = GetGuildInfo("player")
-	local numColumns = #tooltip.columns
-	local lineNum
+	local numColumns, lineNum = #tooltip.columns
 
 	if guildName then
-		local guildMOTD = GetGuildRosterMOTD()
-		      guildMOTD = guildMOTD and guildMOTD:gsub("(%s%s+)", "\n")
-
 		if needsSeparator then
-			lineNum = tooltip:AddLine(' ')
+			lineNum = tooltip:AddLine()
 			-- tooltip:AddSeparator(2)
 		end
-		lineNum = tooltip:AddHeader()
-		          tooltip:SetCell(lineNum, 1, guildName or '', 'LEFT', numColumns)
-		lineNum = tooltip:AddLine()
-		          tooltip:SetCell(lineNum, 1, guildMOTD or '', 'LEFT', numColumns)
-		lineNum = tooltip:AddLine(' ')
+		tooltip:SetCell(tooltip:AddHeader(), 1, guildName or '', 'LEFT', numColumns)
 
+		local guildMOTD = GetGuildRosterMOTD()
+		if guildMOTD then
+			guildMOTD = guildMOTD:gsub('(%s%s+)', '\n')
+			guildMOTD = WrapText(guildMOTD, 75)
+			tooltip:SetCell(tooltip:AddLine(' '), 1, guildMOTD or '', 'LEFT', numColumns)
+		end
+
+		lineNum = tooltip:AddLine()
 		lineNum = tooltip:AddLine('', _G.ITEM_LEVEL_ABBR, _G.CALENDAR_EVENT_NAME, _G.RANK, _G.ZONE, _G.LABEL_NOTE)
 
 		-- also available: class, wideName, online, weeklyxp, totalxp, arenarating, bgrating, achievement
@@ -276,11 +301,6 @@ local function OnLDBEnter(self)
 		tooltip:GetFont():SetTextColor(NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
 	end
 
-	local lineNum
-	lineNum = tooltip:AddHeader()
-			  tooltip:SetCell(lineNum, 1, addonName .. 'Social', 'CENTER', numColumns)
-	tooltip:AddSeparator(2)
-
 	-- battle.net friends
 	local numBNetOnline = TooltipAddBNetContacts(tooltip)
 
@@ -297,7 +317,7 @@ end
 
 local function OnLDBClick(self, btn, up)
 	if btn == 'RightButton' then
-		-- TODO: config
+		ToggleFriendsFrame(1)
 	else
 		local _, numFriendsOnline = GetNumFriends()
 		local _, _, numGuildMembers = GetNumGuildMembers()
