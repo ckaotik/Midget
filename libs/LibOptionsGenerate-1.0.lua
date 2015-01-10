@@ -1,4 +1,4 @@
-local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 16
+local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 17
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
@@ -144,7 +144,7 @@ local function Widget(key, option, widgetInfo)
 		-- TODO: this needs a custom get/set
 		local labels = {}
 		for selectKey, _ in pairs(option) do
-			labels[selectKey] = selectKey
+			labels[selectKey] = type(widgetInfo) == 'function' and widgetInfo(selectKey) or selectKey
 		end
 		widget = {
 			type = 'multiselect',
@@ -368,7 +368,9 @@ local function AddNamespaces(optionsTable, variable, L, typeMappings)
 		for scope in pairs(options.defaults or emptyTable) do
 			-- note: this will create empty groups when empty defaults are defined
 			local key = scope .. '_' .. namespace
-			local option = ParseOption(key, options[scope], L, typeMappings)
+			-- allow to separate settings with equal names in different namespaces
+			local namespaceMappings = typeMappings and (typeMappings[key] or typeMappings[namespace] or typeMappings)
+			local option = ParseOption(key, options[scope], L, namespaceMappings)
 			if option and next(option.args) then
 				optionsTable.args[scope] = optionsTable.args[scope] or {
 					type 	= 'group',
