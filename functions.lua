@@ -12,24 +12,27 @@ local LSM = LibStub("LibSharedMedia-3.0", true)
 local function AddMoreSharedMedia()
 	if not addon.db.profile.moreSharedMedia or not LSM then return end
 	local path = 'Interface\\Addons\\Midget\\media\\'
-	LSM:Register("border", "Glow", path .. "glow.tga")
-	LSM:Register("border", "Double", path .. "double_border.tga")
-	LSM:Register("border", "Single Gray", path .. "grayborder.tga")
-	LSM:Register("statusbar", "Smooth", path .. "Smooth.tga")
-	LSM:Register("statusbar", "TukTex", path .. "TukTexture.tga")
-	LSM:Register("font", "Accidental Presidency", path .. "AccidentalPresidency.ttf")
-	LSM:Register("font", "Andika Compact", path .. "Andika-Compact.ttf")
-	LSM:Register("font", "Andika", path .. "Andika.ttf")
-	LSM:Register("font", "Avant Garde", path .. "AvantGarde.ttf")
-	LSM:Register("font", "Cibreo", path .. "Cibreo.ttf")
-	LSM:Register("font", "DejaWeb", path .. "DejaWeb.ttf")
-	LSM:Register("font", "Express", path .. "express.ttf")
-	LSM:Register("font", "Futura Medium", path .. "FuturaMedium.ttf")
-	LSM:Register("font", "Paralucent", path .. "Paralucent.ttf")
-	LSM:Register("font", "Calibri", path .. "Calibri.ttf")
-	LSM:Register("font", "Calibri Bold", path .. "CalibriBold.ttf")
-	LSM:Register("font", "Calibri Bold Italic", path .. "CalibriBoldItalic.ttf")
-	LSM:Register("font", "Calibri Italic", path .. "CalibriItalic.ttf")
+	LSM:Register("border", "Glow", 			path .. "border\\glow.tga")
+	LSM:Register("border", "Inner Glow", 	path .. "border\\inner_glow.tga")
+	LSM:Register("border", "Double", 		path .. "border\\double_border.tga")
+	LSM:Register("border", "2px", 			path .. "border\\2px.tga")
+	LSM:Register("border", "Diablo", 		path .. "border\\diablo.tga")
+	LSM:Register("statusbar", "Smooth", 	path .. "statusbar\\Smooth.tga")
+	LSM:Register("statusbar", "TukTex", 	path .. "statusbar\\TukTexture.tga")
+	LSM:Register("statusbar", "Solid", 		path .. "statusbar\\solid.tga")
+	LSM:Register("font", "Andika Compact", 	path .. "Andika-font\\Compact.ttf")
+	LSM:Register("font", "Andika", 			path .. "font\\Andika.ttf")
+	LSM:Register("font", "Avant Garde", 	path .. "font\\AvantGarde.ttf")
+	LSM:Register("font", "Cibreo", 			path .. "font\\Cibreo.ttf")
+	LSM:Register("font", "DejaWeb", 		path .. "font\\DejaWeb.ttf")
+	LSM:Register("font", "Express", 		path .. "font\\express.ttf")
+	LSM:Register("font", "Futura Medium", 	path .. "font\\FuturaMedium.ttf")
+	LSM:Register("font", "Paralucent", 		path .. "font\\Paralucent.ttf")
+	LSM:Register("font", "Calibri", 		path .. "font\\Calibri.ttf")
+	LSM:Register("font", "Calibri Bold", 	path .. "font\\CalibriBold.ttf")
+	LSM:Register("font", "Calibri Italic", 	path .. "font\\CalibriItalic.ttf")
+	LSM:Register("font", "Calibri Bold Italic", path .. "font\\CalibriBoldItalic.ttf")
+	LSM:Register("font", "Accidental Presidency", path .. "font\\AccidentalPresidency.ttf")
 end
 
 -- ================================================
@@ -418,169 +421,6 @@ local function AddMasque()
 	end
 end
 
-local function InitItemButtonLevels()
-	local LibItemUpgrade = LibStub('LibItemUpgradeInfo-1.0')
-	-- TODO: use different color scale
-	local buttons, colors = {}, { -- 0.55,0.55,0.55 -- gray
-		{1 ,0, 0}, 			-- red 			-- worst item
-		{1, 0.7, 0}, 		-- orange
-		{1, 1, 0}, 			-- yellow
-		{0, 1, 0}, 			-- green
-		{0, 1, 1}, 			-- lightblue
-		{0.2, 0.2, 1}, 		-- blue 		-- base color
-		{0, 0.5, 1},		-- darkblue
-		{0.7, 0, 1},		-- purple
-		{1, 0, 1}, 			-- pink
-		{0.9, 0.8, 0.5}, 	-- heirloom
-		{1, 1, 1}, 			-- white 		-- best item
-	}
-	local baseColorIndex, stepSize = math.ceil(#colors/2), 8
-	local function GetItemLevelColor(itemLevel)
-		local total, equipped = GetAverageItemLevel()
-		local levelDiff = math.floor((itemLevel - equipped)/stepSize)
-		local color     = colors[baseColorIndex + levelDiff]
-			or (levelDiff < 0 and colors[1])
-			or (levelDiff > 0 and colors[#colors])
-		return unpack(color or colors[baseColorIndex])
-	end
-
-	local getItemLink = {
-		[PaperDollItemSlotButton_OnEnter]  = function(self)
-			return GetInventoryItemLink('player', self:GetID())
-		end,
-		[ContainerFrameItemButton_OnEnter] = function(self)
-			return GetContainerItemLink(self:GetParent():GetID(), self:GetID())
-		end,
-		[BankFrameItemButton_OnEnter] = function(self)
-			return GetInventoryItemLink('player', self:GetInventorySlot())
-		end,
-	}
-
-	local function HideButtonLevel(self)
-		local button = (self.icon or self.Icon) and self or self:GetParent()
-		if button and button.itemLevel then
-			button.itemLevel:SetText('')
-		end
-	end
-
-	local function UpdateButtonLevel(self, texture)
-		local button = (self.icon or self.Icon) and self or self:GetParent()
-		if not button then return end
-		if not texture or texture == '' or button.noItemLevel then
-			HideButtonLevel(button)
-			return
-		end
-
-		if not button.itemLevel then
-			local iLevel = button:CreateFontString(nil, 'OVERLAY', 'NumberFontNormalSmall')
-			      iLevel:SetPoint('TOPLEFT', -2, 1)
-			button.itemLevel = iLevel
-		end
-		button.itemLevel:SetText('')
-
-		local itemLink = button.link or button.hyperLink or button.hyperlink or button.itemlink or button.itemLink
-			or (button.item and type(button.item) == 'string' and button.item)
-			or (button.hasItem and type(button.hasItem) == 'string' and button.hasItem)
-		if not itemLink and button.GetItem then
-			itemLink = button:GetItem()
-		elseif not itemLink and button.UpdateTooltip then
-			-- tooltip scan as last resort
-			local itemLinkFunc = getItemLink[button.UpdateTooltip]
-			if itemLinkFunc then
-				itemLink = itemLinkFunc(button)
-			elseif not GameTooltip:IsShown() then
-				button:UpdateTooltip()
-				_, itemLink = GameTooltip:GetItem()
-				GameTooltip:Hide()
-			end
-		end
-
-		if itemLink then
-			local _, _, quality, itemLevel, _, _, _, _, equipSlot = GetItemInfo(itemLink)
-			if itemLevel and itemLevel > 1 and equipSlot ~= '' and equipSlot ~= 'INVTYPE_BAG' then
-				-- local r, g, b = GetItemQualityColor(quality)
-				itemLevel = LibItemUpgrade:GetUpgradedItemLevel(itemLink) or itemLevel
-				button.itemLevel:SetText(itemLevel)
-				button.itemLevel:SetTextColor(GetItemLevelColor(itemLevel))
-			end
-		end
-	end
-
-	function UpdateButtonLevels()
-		for _, button in pairs(buttons) do
-			UpdateButtonLevel(button, true)
-		end
-	end
-	plugin:RegisterEvent('PLAYER_AVG_ITEM_LEVEL_UPDATE', UpdateButtonLevels)
-
-	hooksecurefunc('SetItemButtonTexture', UpdateButtonLevel)
-	hooksecurefunc('BankFrameItemButton_Update', function(self) UpdateButtonLevel(self, true) end)
-	hooksecurefunc('EquipmentFlyout_DisplayButton', UpdateButtonLevel)
-	hooksecurefunc('EquipmentFlyout_DisplaySpecialButton', HideButtonLevel)
-
-	local function AddButton(button)
-		local icon = button and (button.icon or button.Icon)
-		if not button or not icon then return end
-		if button.SetTexture then hooksecurefunc(button, 'SetTexture', UpdateButtonLevel) end
-		if icon.SetTexture   then hooksecurefunc(icon,   'SetTexture', UpdateButtonLevel) end
-		hooksecurefunc(button, 'Hide', HideButtonLevel)
-		hooksecurefunc(icon,   'Hide', HideButtonLevel)
-		table.insert(buttons, button)
-	end
-
-	hooksecurefunc('CreateFrame', function(frameType, name, parent, templates, id)
-		if frameType:lower() == 'button' and templates and templates:lower():find('itembutton') then
-			if not name then return end
-			if parent and type(parent) == 'table' then
-				name = name:gsub('$parent', parent:GetName() or '')
-			end
-			AddButton(_G[name])
-		end
-	end)
-
-	-- HACK: registering ADDON_LOADED within OnEnable does not work, so we register 1s later
-	local function AddVoidStorageCallback()
-		if not IsAddOnLoaded('Blizzard_VoidStorageUI') then
-			plugin:RegisterEvent('ADDON_LOADED', function(event, arg1, ...)
-				if arg1 == 'Blizzard_VoidStorageUI' then
-					plugin:UnregisterEvent(event)
-					AddVoidStorageCallback()
-				end
-			end)
-			return
-		end
-		-- now, void storage is definitely loaded
-		AddButton(_G.VoidStorageStorageButton1)
-		getItemLink[VoidStorageItemButton_OnEnter] = function(self)
-			if not self.hasItem then return end
-			local itemID = GetVoidItemInfo(VoidStorageFrame.page, self.slot)
-			local itemLink = itemID and select(2, GetItemInfo(itemID))
-			return itemLink or itemID
-		end
-		hooksecurefunc('VoidStorageFrame_Update', UpdateButtonLevels)
-	end
-	C_Timer.After(1, AddVoidStorageCallback)
-end
-
-local postmaster = {
-	['The Postmaster'] = true,  -- enUS
-	['Der Postmeister'] = true, -- deDE
-}
-local function PostmasterSpamMaster()
-	local function DeleteEmptyPostmasterMails(event, ...)
-		if not addon.db.profile.deleteEmptyPostmasterMails then return end
-		for index = (GetInboxNumItems()), 1, -1 do
-			local _, _, sender, subject, money, _, _, itemCount, _, _, _, _, _, itemQuantity = GetInboxHeaderInfo(index)
-			if postmaster[sender] and money == 0 and not itemCount then
-				DeleteInboxItem(index)
-				break -- wait for MAIL_SUCCESS event to fire
-			end
-		end
-	end
-	plugin:RegisterEvent('MAIL_INBOX_UPDATE', DeleteEmptyPostmasterMails)
-	plugin:RegisterEvent('MAIL_SUCCESS', DeleteEmptyPostmasterMails)
-end
-
 local function CalendarIconFlash()
 	-- minimap calendar flashing:
 	--[[
@@ -592,7 +432,6 @@ end
 
 -- ================================================
 function plugin:OnEnable()
-	InitItemButtonLevels()
 	CalendarIconFlash()
 	CreateCorkButton()
 	AddUndressButtons()
@@ -607,7 +446,6 @@ function plugin:OnEnable()
 	HideUnusableCompareTips()
 	ExtendLibItemSearch()
 	AddMasque()
-	PostmasterSpamMaster()
 
 	local unitNames = setmetatable({}, { __index = function(t, unit)
 		local name = unit and UnitName(unit)

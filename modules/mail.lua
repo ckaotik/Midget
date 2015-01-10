@@ -131,6 +131,21 @@ local function AttachSimilarItems(itemLink, thisItemOnly)
 	end
 end
 
+local postmaster = {
+	['The Postmaster'] = true,  -- enUS
+	['Der Postmeister'] = true, -- deDE
+}
+local function DeleteEmptyPostmasterMails(event, ...)
+	if not addon.db.profile.deleteEmptyPostmasterMails then return end
+	for index = (GetInboxNumItems()), 1, -1 do
+		local _, _, sender, subject, money, _, _, itemCount, _, _, _, _, _, itemQuantity = GetInboxHeaderInfo(index)
+		if postmaster[sender] and money == 0 and not itemCount then
+			DeleteInboxItem(index)
+			break -- wait for MAIL_SUCCESS event to fire
+		end
+	end
+end
+
 function plugin:OnEnable()
 	hooksecurefunc("InboxFrameItem_OnEnter", ShowAttachmentInfo)
 	hooksecurefunc("ContainerFrameItemButton_OnModifiedClick", function(self, btn)
@@ -140,6 +155,9 @@ function plugin:OnEnable()
 		end
 	end)
 
-	addon:RegisterEvent('MAIL_INBOX_UPDATE', function() wipe(items) end)
-	addon:UnregisterEvent('ADDON_LOADED')
+	plugin:RegisterEvent('MAIL_INBOX_UPDATE', DeleteEmptyPostmasterMails)
+	plugin:RegisterEvent('MAIL_SUCCESS', DeleteEmptyPostmasterMails)
+
+	plugin:RegisterEvent('MAIL_INBOX_UPDATE', function() wipe(items) end)
+	plugin:UnregisterEvent('ADDON_LOADED')
 end
