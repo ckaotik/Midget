@@ -226,6 +226,8 @@ local function TooltipAddContacts(tooltip, needsSeparator)
 end
 
 local function TooltipAddGuildMembers(tooltip, needsSeparator)
+	GuildRoster() -- need this so GetGuildRosterInfo returns live data
+
 	local guildName = GetGuildInfo("player")
 	local numColumns, lineNum = #tooltip.columns
 
@@ -308,7 +310,6 @@ local function OnLDBEnter(self)
 	local numFriendsOnline = TooltipAddContacts(tooltip, numBNetOnline > 0)
 
 	-- guild roster
-	GuildRoster() -- need this so GetGuildRosterInfo returns live data
 	local numGuildOnline = TooltipAddGuildMembers(tooltip, numFriendsOnline == 0 or numBNetOnline > 0)
 
 	tooltip:Show()
