@@ -40,7 +40,7 @@ local function TooltipUnitInfo(tooltip)
 		-- local role, isLeader = UnitGroupRolesAssigned(unit), UnitIsGroupLeader(unit)
 
 		local _, specName, _, specIcon, _, role, _ = GetSpecializationInfoByID(data.spec or 0)
-		local left   = role and ('%s|T%s:0|t %s'):format(_G['INLINE_'.. role ..'_ICON'], specIcon, specName) or ''
+		local left   = role and ('%s|T%s:0|t %s'):format(_G['INLINE_'.. role ..'_ICON'], specIcon, specName) or ' '
 		local ilevel = data.ilevel
 		local right  = (ilevel and ilevel > 0) and ('%d |T%s:0|t'):format(ilevel, 'Interface\\GROUPFRAME\\UI-GROUP-MAINTANKICON') or ''
 

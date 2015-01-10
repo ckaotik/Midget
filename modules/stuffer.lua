@@ -311,7 +311,7 @@ function addon:AddFilter(criteriaIdentifier, value, operator)
 			result = criteriaValue <= value
 		elseif operator == '>=' then
 			result = criteriaValue >= value
-		elseif operator == '!=' then
+		elseif operator == '!=' or operator == '~=' then
 			result = criteriaValue ~= value
 		end
 		return result and 1 or 0
