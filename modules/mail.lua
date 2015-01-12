@@ -140,6 +140,7 @@ local function DeleteEmptyPostmasterMails(event, ...)
 	for index = (GetInboxNumItems()), 1, -1 do
 		local _, _, sender, subject, money, _, _, itemCount, _, _, _, _, _, itemQuantity = GetInboxHeaderInfo(index)
 		if postmaster[sender] and money == 0 and not itemCount then
+			HideUIPanel(OpenMailFrame)
 			DeleteInboxItem(index)
 			break -- wait for MAIL_SUCCESS event to fire
 		end
