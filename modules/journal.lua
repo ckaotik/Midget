@@ -5,6 +5,47 @@ local plugin = addon:NewModule('EncounterJournal', 'AceEvent-3.0')
 -- GLOBALS: CreateFrame, UnitName, IsAddOnLoaded, EncounterJournal_DisplayInstance, EJ_GetCurrentInstance, EJ_GetDifficulty, EJ_GetEncounterInfo, EJ_GetCreatureInfo, EJ_GetEncounterInfoByIndex, EJ_GetInstanceByIndex, EJ_InstanceIsRaid, NavBar_Reset, GetInstanceInfo, GetTexCoordsForRoleSmallCircle, GetLootSpecialization, SetLootSpecialization, GetSpecialization, GetSpecializationInfo, GetSpecializationInfoByID
 -- GLOBALS: pairs, hooksecurefunc
 
+-- to get these, select the correct instance in the EJ, then run
+--  /dump EJ_GetEncounterInfoByIndex(10)
+local encounterToJournalID = {
+	-- wod raid: blackrock foundry
+	[1691] = 1161, -- Gruul
+	[1696] = 1202, -- Oregorger
+	[1694] = 1122, -- Darmac
+	[1689] = 1123, -- Kagraz
+	[1693] = 1155, -- HansgarAndFranzok
+	[1622] = 1147, -- Thogar
+	[1690] = 1154, -- TheBlastFurnace
+	[1713] = 1162, -- Kromog
+	[1695] = 1203, -- TheIronMaidens
+	[1704] =  959, -- Blackhand
+
+	-- wod raid: highmaul
+	[1721] = 1128, -- KargathBladefist
+	[1706] =  971, -- TheButcher
+	[1722] = 1195, -- Tectus
+	[1720] = 1196, -- Brackenspore
+	[1719] = 1148, -- TwinOgron
+	[1723] = 1153, -- Koragh
+	[1705] = 1197, -- Margok
+
+	-- mop raid: siege of orgrimmar
+	--[[ [1622] = , -- Galakras
+	[1623] = , -- GarroshHellscream
+	[1603] = , -- GeneralNazgrim
+	[1602] = , -- Immerseus
+	[1600] = , -- IronJuggernaut
+	[1606] = , -- KorKron
+	[1595] = , -- Malkorok
+	[1624] = , -- Norushen
+	[1593] = , -- ParagonsOfTheKlaxxi
+	[1604] = , -- ShaOfPride
+	[1601] = , -- SiegecrafterBlackfuse
+	[1594] = , -- SpoilsOfPandaria
+	[1598] = , -- TheFallenProtectors
+	[1599] = , -- Thok --]]
+}
+
 -- ================================================
 --  Quickly browse multiple instances
 -- ================================================
@@ -119,8 +160,8 @@ local function CheckUpdateLootSpec(event, id, name, difficulty, groupSize)
 	-- EJ_SelectInstance(instanceID)
 	EncounterJournal_DisplayInstance(instanceID)
 
-	local encounterIndex, encounterID, encounterName = 1, nil, nil
-	while true do
+	local encounterIndex, encounterID, encounterName = 1, encounterToJournalID[id], nil
+	while not encounterToJournalID[id] do
 		encounterName, _, encounterID = EJ_GetEncounterInfoByIndex(encounterIndex, instanceID)
 		if not encounterName then
 			print('could not find encounter', encounterIndex, 'of', instanceID, '(', id, name, ")")
@@ -196,7 +237,7 @@ local function initialize()
 				local _, _, _, _, _, link = EJ_GetLootInfoByIndex(index)
 				local lootSpecs
 
-				if specID == 0 then
+				if specID == 0 then -- showing multiple specs
 					wipe(itemSpecs)
 					itemSpecs = GetItemSpecInfo(link, itemSpecs)
 					if #itemSpecs < GetNumSpecializationsForClassID(classID) then
@@ -224,7 +265,7 @@ function plugin:OnEnable()
 	else
 		plugin:RegisterEvent('ADDON_LOADED', function(event, arg1)
 			if arg1 == 'Blizzard_EncounterJournal' then
-				print('init triggered by Blizzard_EncounterJournal loading')
+				-- FIXME: this probably doesn't work thanks to AceEvent bugs
 				initialize()
 			end
 		end)
