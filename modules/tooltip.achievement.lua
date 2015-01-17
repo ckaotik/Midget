@@ -94,3 +94,4 @@ local function TooltipAchievementExtras(tooltip, hyperlink)
 	end
 end
 hooksecurefunc(GameTooltip, 'SetHyperlink', TooltipAchievementExtras)
+hooksecurefunc(ItemRefTooltip, 'SetHyperlink', TooltipAchievementExtras)
