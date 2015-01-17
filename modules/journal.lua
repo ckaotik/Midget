@@ -123,8 +123,7 @@ local function CheckUpdateLootSpec(event, id, name, difficulty, groupSize)
 	while true do
 		encounterName, _, encounterID = EJ_GetEncounterInfoByIndex(encounterIndex, instanceID)
 		if not encounterName then
-			print('could not find encounter', encounterIndex, 'of', instanceID, '(', id, name, ")\n",
-				EJ_GetEncounterInfoByIndex(encounterIndex, instanceID))
+			print('could not find encounter', encounterIndex, 'of', instanceID, '(', id, name, ")")
 			return
 		elseif encounterName == name then
 			break
@@ -167,23 +166,49 @@ local function initialize()
 		selectedDifficulty = EJ_GetDifficulty()
 	end)
 
-	local initArrows = nil
-	EncounterJournal:HookScript("OnShow", function(self)
-		if initArrows then return end
-		CreateArrow( 1, "BOTTOMRIGHT", "$parentInstanceTitle", "RIGHT", 30, 1)
-		CreateArrow(-1, "TOPRIGHT",    "$parentInstanceTitle", "RIGHT", 30, -1)
-		initArrows = true
-	end)
+	-- easily cycle through instances
+	CreateArrow( 1, "BOTTOMRIGHT", "$parentInstanceTitle", "RIGHT", 30, 1)
+	CreateArrow(-1, "TOPRIGHT",    "$parentInstanceTitle", "RIGHT", 30, -1)
 
-	local initTooltips = nil
+	-- don't like tooltips triggering EVERYWHERE
+	local scrollFrame = EncounterJournal.encounter.info.lootScroll
+	local lootButtons = scrollFrame.buttons
+	for _, button in pairs(lootButtons) do
+		button:SetHitRectInsets(0, 276, 0, 0)
+	end
+
+	local itemSpecs = {}
 	hooksecurefunc("EncounterJournal_LootUpdate", function()
-		if initTooltips then return end
-		-- don't like tooltips triggering EVERYWHERE
-		local lootButtons = EncounterJournal.encounter.info.lootScroll.buttons
-		for _, button in pairs(lootButtons) do
-			button:SetHitRectInsets(0, 276, 0, 0)
+		local classID, specID = EJ_GetLootFilter()
+		local scrollFrame = EncounterJournal.encounter.info.lootScroll
+		local offset = HybridScrollFrame_GetOffset(scrollFrame)
+
+		local numLoot = EJ_GetNumLoot()
+		for i = 1, #scrollFrame.buttons do
+			local button = scrollFrame.buttons[i]
+			local index = offset + i
+			if index <= numLoot then
+				if not button.specs then
+					button.specs = button:CreateFontString(nil, nil, 'GameFontBlack')
+					button.specs:SetPoint('BOTTOMLEFT', button.slot, 'BOTTOMRIGHT')
+				end
+
+				local _, _, _, _, _, link = EJ_GetLootInfoByIndex(index)
+				local lootSpecs
+
+				if specID == 0 then
+					wipe(itemSpecs)
+					itemSpecs = GetItemSpecInfo(link, itemSpecs)
+					if #itemSpecs < GetNumSpecializationsForClassID(classID) then
+						for _, itemSpecID in ipairs(itemSpecs) do
+							local _, _, _, icon = GetSpecializationInfoByID(itemSpecID)
+							lootSpecs = (lootSpecs and lootSpecs..'|n' or '') .. '|T'..icon..':0|t'
+						end
+					end
+				end
+				button.specs:SetText(lootSpecs)
+			end
 		end
-		initTooltips = true
 	end)
 
 	plugin:RegisterEvent('ENCOUNTER_START', CheckUpdateLootSpec)
@@ -199,6 +224,7 @@ function plugin:OnEnable()
 	else
 		plugin:RegisterEvent('ADDON_LOADED', function(event, arg1)
 			if arg1 == 'Blizzard_EncounterJournal' then
+				print('init triggered by Blizzard_EncounterJournal loading')
 				initialize()
 			end
 		end)
