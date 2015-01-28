@@ -1,4 +1,4 @@
-local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 17
+local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 18
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
@@ -119,7 +119,7 @@ local function Widget(key, option, widgetInfo)
 	widgetType = widgetInfo and type(widgetInfo) == 'string' and widgetInfo:lower() or key
 
 	-- detect multiselect table structures
-	if type(option) == 'table' then
+	if type(option) == 'table' and next(option) then
 		local isMultiSelect = true
 		for k, v in pairs(option) do
 			if type(k) ~= 'number' or type(v) ~= 'boolean' then
