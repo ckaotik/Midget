@@ -158,6 +158,7 @@ end
 function plugin:OnEnable()
 	-- tooltip position
 	hooksecurefunc('GameTooltip_SetDefaultAnchor', function(self, parent)
+		self:ClearAllPoints()
 		self:SetPoint('BOTTOMRIGHT', 'UIParent', 'BOTTOMRIGHT', -72, 152)
 	end)
 
