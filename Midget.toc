@@ -27,6 +27,7 @@ functions.lua
 
 # modules
 modules\configmode.lua
+modules\groupfinder.lua
 modules\journal.lua
 modules\learner.lua
 modules\mail.lua
