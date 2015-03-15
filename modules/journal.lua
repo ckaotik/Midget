@@ -148,6 +148,40 @@ local function UpdateBossButtons()
 	end
 end
 
+local itemSpecs, specTexts = {}, {}
+local function UpdateItemSpecs()
+	local numLoot, classID, specID = EJ_GetNumLoot(), EJ_GetLootFilter()
+	local scrollFrame = EncounterJournal.encounter.info.lootScroll
+	for i, button in pairs(scrollFrame.buttons) do
+		local lootSpecs
+		if button:IsShown() and button.link and specID == 0 then
+			-- showing an item for multiple specs
+			if not specTexts[button] then
+				-- can't parent to button since we're displayed outside the frame
+				local text = button:CreateFontString(nil, nil, 'GameFontBlack')
+				text:SetPoint('TOPRIGHT', button.icon, 'TOPLEFT', -4, 0)
+				text:SetJustifyH('RIGHT')
+				specTexts[button] = text
+				button:HookScript('OnShow', function() text:Show() end)
+				button:HookScript('OnHide', function() text:Hide() end)
+			end
+
+			wipe(itemSpecs)
+			itemSpecs = GetItemSpecInfo(button.link, itemSpecs)
+			print(i, button.index, button.link)
+			if #itemSpecs < GetNumSpecializationsForClassID(classID) then
+				for _, itemSpecID in ipairs(itemSpecs) do
+					local _, _, _, icon = GetSpecializationInfoByID(itemSpecID)
+					lootSpecs = (lootSpecs and lootSpecs..'|n' or '') .. '|T'..icon..':0|t'
+				end
+			end
+		end
+		if specTexts[button] then
+			specTexts[button]:SetText(lootSpecs)
+		end
+	end
+end
+
 -- we store the last started encounter, so if the player makes manual changes after a pull, we don't revert
 local lastEncounter
 local function CheckUpdateLootSpec(event, id, name, difficulty, groupSize)
@@ -211,49 +245,37 @@ local function initialize()
 	CreateArrow( 1, "BOTTOMRIGHT", "$parentInstanceTitle", "RIGHT", 30, 1)
 	CreateArrow(-1, "TOPRIGHT",    "$parentInstanceTitle", "RIGHT", 30, -1)
 
-	-- don't like tooltips triggering EVERYWHERE
+	-- add extra space for spec icons
 	local scrollFrame = EncounterJournal.encounter.info.lootScroll
-	local lootButtons = scrollFrame.buttons
-	for _, button in pairs(lootButtons) do
+	      scrollFrame:SetWidth(scrollFrame:GetWidth() + 20)
+	      scrollFrame:UpdateScrollChildRect()
+	for i, button in pairs(scrollFrame.buttons) do
+		if i == 1 then
+			local point, relativeTo, relativePoint, xOffset, yOffset = button:GetPoint()
+			button:SetPoint(point, relativeTo, relativePoint, xOffset + 20, yOffset)
+		end
+		-- don't like tooltips triggering EVERYWHERE
 		button:SetHitRectInsets(0, 276, 0, 0)
 	end
+	hooksecurefunc("EncounterJournal_LootUpdate", UpdateItemSpecs)
+	hooksecurefunc(scrollFrame, 'update', UpdateItemSpecs)
 
-	local itemSpecs = {}
-	hooksecurefunc("EncounterJournal_LootUpdate", function()
-		local classID, specID = EJ_GetLootFilter()
-		local scrollFrame = EncounterJournal.encounter.info.lootScroll
-		local offset = HybridScrollFrame_GetOffset(scrollFrame)
-
-		local numLoot = EJ_GetNumLoot()
-		for i = 1, #scrollFrame.buttons do
-			local button = scrollFrame.buttons[i]
-			local index = offset + i
-			if index <= numLoot then
-				if not button.specs then
-					button.specs = button:CreateFontString(nil, nil, 'GameFontBlack')
-					button.specs:SetPoint('BOTTOMLEFT', button.slot, 'BOTTOMRIGHT')
-				end
-
-				local _, _, _, _, _, link = EJ_GetLootInfoByIndex(index)
-				local lootSpecs
-
-				if specID == 0 then -- showing multiple specs
-					wipe(itemSpecs)
-					itemSpecs = GetItemSpecInfo(link, itemSpecs)
-					if #itemSpecs < GetNumSpecializationsForClassID(classID) then
-						for _, itemSpecID in ipairs(itemSpecs) do
-							local _, _, _, icon = GetSpecializationInfoByID(itemSpecID)
-							lootSpecs = (lootSpecs and lootSpecs..'|n' or '') .. '|T'..icon..':0|t'
-						end
-					end
-				end
-				button.specs:SetText(lootSpecs)
-			end
+	local trackerCollapsed
+	plugin:RegisterEvent('ENCOUNTER_START', function(...)
+		trackerCollapsed = ObjectiveTracker.collapsed
+		if not trackerCollapsed then
+			-- collapse quest tracker when encounter starts
+			ObjectiveTracker_Collapse()
 		end
+		CheckUpdateLootSpec(...)
 	end)
-
-	plugin:RegisterEvent('ENCOUNTER_START', CheckUpdateLootSpec)
-	-- plugin:RegisterEvent('ENCOUNTER_END', CheckUpdateLootSpec)
+	plugin:RegisterEvent('ENCOUNTER_END', function(...)
+		if ObjectiveTracker.collapsed ~= trackerCollapsed then
+			-- restore pre-encounter state
+			ObjectiveTracker_MinimizeButton_OnClick()
+		end
+		-- CheckUpdateLootSpec(...)
+	end)
 
 	plugin:UnregisterEvent('ADDON_LOADED')
 end
