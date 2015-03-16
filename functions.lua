@@ -1,39 +1,9 @@
 local addonName, addon, _ = ...
 local plugin = addon:NewModule('Functions', 'AceEvent-3.0')
 
--- GLOBALS: _G, UIParent, LibStub, TipTac, MidgetDB, CorkFrame, MainMenuBar, InterfaceOptionsFrameAddOnsList, SLASH_ROLECHECK1, CHAT_CONFIG_CHAT_LEFT, WHISPER, CURRENTLY_EQUIPPED, TIMER_TYPE_CHALLENGE_MODE, SlashCmdList, UnitPopupMenus, UIDROPDOWNMENU_INIT_MENU, StaticPopupDialogs, GameTooltip, ItemRefTooltip, ItemRefShoppingTooltip1, ItemRefShoppingTooltip2, ItemRefShoppingTooltip3, ShoppingTooltip1, ShoppingTooltip2, ShoppingTooltip3
+-- GLOBALS: _G, UIParent, LibStub, TipTac, MidgetDB, CorkFrame, MainMenuBar, InterfaceOptionsFrame, InterfaceOptionsFrameAddOnsList, SLASH_ROLECHECK1, CHAT_CONFIG_CHAT_LEFT, WHISPER, CURRENTLY_EQUIPPED, TIMER_TYPE_CHALLENGE_MODE, SlashCmdList, UnitPopupMenus, UIDROPDOWNMENU_INIT_MENU, StaticPopupDialogs, GameTooltip, ItemRefTooltip, ItemRefShoppingTooltip1, ItemRefShoppingTooltip2, ItemRefShoppingTooltip3, ShoppingTooltip1, ShoppingTooltip2, ShoppingTooltip3
 -- GLOBALS: GameTooltip, PlaySound, GetScreenHeight, ToggleChatMessageGroup, PetBattleFrame, GetLocale, IsListeningForMessageType, CreateFrame, IsAddOnLoaded, ScrollFrameTemplate_OnMouseWheel, InitiateRolePoll, GetItemIcon, ChatFrame_AddMessageEventFilter, IsShiftKeyDown, UnitPopupShown, StaticPopup_Hide, UnitIsBattlePet, TimerTracker, TimerTracker_OnEvent, BigWigsLoader
 -- GLOBALS: table, string, math, hooksecurefunc, type, ipairs, pairs
-
--- ================================================
--- Shared Media insertions
--- ================================================
-local LSM = LibStub("LibSharedMedia-3.0", true)
-local function AddMoreSharedMedia()
-	if not addon.db.profile.moreSharedMedia or not LSM then return end
-	local path = 'Interface\\Addons\\Midget\\media\\'
-	LSM:Register("border", "Glow", 			path .. "border\\glow.tga")
-	LSM:Register("border", "Inner Glow", 	path .. "border\\inner_glow.tga")
-	LSM:Register("border", "Double", 		path .. "border\\double_border.tga")
-	LSM:Register("border", "2px", 			path .. "border\\2px.tga")
-	LSM:Register("border", "Diablo", 		path .. "border\\diablo.tga")
-	LSM:Register("statusbar", "Smooth", 	path .. "statusbar\\Smooth.tga")
-	LSM:Register("statusbar", "TukTex", 	path .. "statusbar\\TukTexture.tga")
-	LSM:Register("statusbar", "Solid", 		path .. "statusbar\\solid.tga")
-	LSM:Register("font", "Andika Compact", 	path .. "Andika-font\\Compact.ttf")
-	LSM:Register("font", "Andika", 			path .. "font\\Andika.ttf")
-	LSM:Register("font", "Avant Garde", 	path .. "font\\AvantGarde.ttf")
-	LSM:Register("font", "Cibreo", 			path .. "font\\Cibreo.ttf")
-	LSM:Register("font", "DejaWeb", 		path .. "font\\DejaWeb.ttf")
-	LSM:Register("font", "Express", 		path .. "font\\express.ttf")
-	LSM:Register("font", "Futura Medium", 	path .. "font\\FuturaMedium.ttf")
-	LSM:Register("font", "Paralucent", 		path .. "font\\Paralucent.ttf")
-	LSM:Register("font", "Calibri", 		path .. "font\\Calibri.ttf")
-	LSM:Register("font", "Calibri Bold", 	path .. "font\\CalibriBold.ttf")
-	LSM:Register("font", "Calibri Italic", 	path .. "font\\CalibriItalic.ttf")
-	LSM:Register("font", "Calibri Bold Italic", path .. "font\\CalibriBoldItalic.ttf")
-	LSM:Register("font", "Accidental Presidency", path .. "font\\AccidentalPresidency.ttf")
-end
 
 -- ================================================
 --  Interface Options Frame
@@ -55,35 +25,6 @@ local function InterfaceOptionsDragging()
 	if not addon.db.profile.InterfaceOptionsDragging then return end
 	InterfaceOptionsFrame:SetMovable(true)
 	InterfaceOptionsFrame:CreateTitleRegion():SetAllPoints(InterfaceOptionsFrameHeader)
-end
-
--- ================================================
---  Cork
--- ================================================
-local function CreateCorkButton()
-	if not addon.db.profile.CorkButton or not IsAddOnLoaded("Cork") then return end
-
-	local buffButton = _G["CorkFrame"]
-
-	buffButton.texture = buffButton:CreateTexture(buffButton:GetName().."Icon")
-	buffButton.texture:SetTexture("Interface\\Icons\\Achievement_BG_winSOA")
-	buffButton.texture:SetAllPoints()
-	buffButton.dragHandle = buffButton:CreateTitleRegion()
-	buffButton.dragHandle:SetPoint("TOPLEFT", buffButton)
-	buffButton.dragHandle:SetPoint("BOTTOMRIGHT", buffButton, "TOPRIGHT", 0, -6)
-
-	buffButton:SetWidth(37); buffButton:SetHeight(37)
-	buffButton:SetPoint("CENTER")
-	buffButton:SetMovable(true)
-
-	-- LibButtonFacade support
-	local LBF = LibStub("LibButtonFacade", true)
-	if LBF then
-		LBF:Group("Cork"):Skin()
-		LBF:Group("Cork"):AddButton(buffButton)
-	end
-	hooksecurefunc("CameraZoomIn", function() CorkFrame:Click() end)
-	hooksecurefunc("CameraZoomOut", function() CorkFrame:Click() end)
 end
 
 -- ================================================
@@ -121,73 +62,32 @@ local function ShortenLFRNames()
 end
 
 -- ================================================
--- Chat link icons
+--  Cork
 -- ================================================
-local function AddLootIcons(self, event, message, ...)
-	if not addon.db.profile.chatLinkIcons then return end
-	local function Icon(link)
-		local texture = GetItemIcon(link)
-		return "\124T" .. texture .. ":" .. 12 .. "\124t" .. link
-	end
-	message = message:gsub("(\124c%x+\124Hitem:.-\124h\124r)", Icon)
-	return false, message, ...
-end
+local function CreateCorkButton()
+	if not addon.db.profile.CorkButton or not IsAddOnLoaded("Cork") then return end
 
-local function AddChatLinkHoverTooltips()
-	if not addon.db.profile.chatHoverTooltips then return end
-	local hoverTip = nil
-	-- see link types here: http://www.townlong-yak.com/framexml/19033/ItemRef.lua#162
-	local linkTypes = {
-		item = true, spell = true, enchant = true, talent = true, glyph = true, achievement = true, unit = true, quest = true, instancelock = true, trade = false, -- GameTooltip / ItemRefTooltip
-		battlepet           = 'FloatingBattlePetTooltip',
-		battlePetAbil       = 'FloatingPetBattleAbilityTooltip',
-		garrfollower        = 'FloatingGarrisonFollowerTooltip',
-		garrfollowerability = 'FloatingGarrisonFollowerAbilityTooltip',
-		garrmission         = 'FloatingGarrisonMissionTooltip',
-	}
-	local function OnHyperlinkEnter(self, linkData, link)
-		if IsModifiedClick() then return end
-		local linkType = linkData:match('^([^:]+)')
-		if not linkType or not linkTypes[linkType] then return end
-		local tooltip = linkTypes[linkType] == true and 'ItemRefTooltip' or linkTypes[linkType]
-		-- show special frames only with modifiers
-		ChatFrame_OnHyperlinkShow(self, linkData, link, 'LeftButton')
-		_G[tooltip]:ClearAllPoints()
-		GameTooltip:SetOwner(self, 'CURSOR')
-		_G[tooltip]:SetPoint(GameTooltip:GetPoint())
-		hoverTip = link
-	end
-	local function OnHyperlinkLeave(self, linkData, link)
-		local linkType = linkData:match('^([^:]+)')
-		if not hoverTip or hoverTip ~= link or not linkType or not linkTypes[linkType] then return end
-		local tooltip = linkTypes[linkType] == true and 'ItemRefTooltip' or linkTypes[linkType]
-		_G[tooltip]:Hide()
-	end
-	local function OnHyperlinkClick(self, linkData, link, btn)
-		-- do not close popups that were intentionally shown
-		if hoverTip and hoverTip == link then
-			-- OnEnter (=> toggle on) > OnClick (=> toggle off) > OnEnter (=> toggle on)
-			OnHyperlinkEnter(self, linkData, link)
-			hoverTip = nil
-		end
-	end
+	local buffButton = _G["CorkFrame"]
 
-	local function InitChatHoverTips(chatFrame)
-		if chatFrame.hoverTipsEnabled then return end
-		chatFrame:HookScript('OnHyperlinkClick', OnHyperlinkClick)
-		chatFrame:HookScript('OnHyperlinkEnter', OnHyperlinkEnter)
-		chatFrame:HookScript('OnHyperlinkLeave', OnHyperlinkLeave)
-		chatFrame.hoverTipsEnabled = true
+	buffButton.texture = buffButton:CreateTexture(buffButton:GetName().."Icon")
+	buffButton.texture:SetTexture("Interface\\Icons\\Achievement_BG_winSOA")
+	buffButton.texture:SetAllPoints()
+	buffButton.dragHandle = buffButton:CreateTitleRegion()
+	buffButton.dragHandle:SetPoint("TOPLEFT", buffButton)
+	buffButton.dragHandle:SetPoint("BOTTOMRIGHT", buffButton, "TOPRIGHT", 0, -6)
+
+	buffButton:SetWidth(37); buffButton:SetHeight(37)
+	buffButton:SetPoint("CENTER")
+	buffButton:SetMovable(true)
+
+	-- LibButtonFacade support
+	local LBF = LibStub("LibButtonFacade", true)
+	if LBF then
+		LBF:Group("Cork"):Skin()
+		LBF:Group("Cork"):AddButton(buffButton)
 	end
-	for i = 1, _G.NUM_CHAT_WINDOWS do
-		InitChatHoverTips(_G['ChatFrame'..i])
-	end
-	-- hooksecurefunc('FloatingChatFrame_Update', function(index) InitChatHoverTips(_G['ChatFrame'..index]) end)
-	hooksecurefunc('FCF_OpenTemporaryWindow', function(chatType)
-		for _, frameName in pairs(_G.CHAT_FRAMES) do
-			InitChatHoverTips(_G[frameName])
-		end
-	end)
+	hooksecurefunc("CameraZoomIn", function() CorkFrame:Click() end)
+	hooksecurefunc("CameraZoomOut", function() CorkFrame:Click() end)
 end
 
 -- ================================================
@@ -255,7 +155,7 @@ function plugin.AddUndressButton(frame)
 	end)
 
 	undressButton.tooltip = "Undress"
-	undressButton.tooltipText = "Click to completely undress this character!"
+	undressButton.tooltipText = "Completely undress the character model"
 
 	frame.controlFrame:SetWidth(frame.controlFrame:GetWidth() + undressButton:GetWidth())
 	frame.controlFrame.undressButton = undressButton
@@ -313,6 +213,30 @@ local function AutoAcceptPopup(which, arg1, arg2, data)
 end
 
 -- ================================================
+-- Tooltip Item Specs
+-- ================================================
+local itemSpecs = {}
+local function TooltipItemInfo(self)
+	local specs
+	local _, itemLink = self:GetItem()
+	if not itemLink then return end
+
+	wipe(itemSpecs)
+	GetItemSpecInfo(itemLink, itemSpecs)
+	-- TODO: only show own specializations GetNumSpecializations()
+	if #itemSpecs > 4 then return end
+	for i, specID in ipairs(itemSpecs) do
+		local _, _, _, icon, _, role, class = GetSpecializationInfoByID(specID)
+		specs = (specs and specs..' ' or '') .. '|T'..icon..':0|t'
+	end
+	if not specs then return end
+
+	local text = _G[self:GetName()..'TextRight'..(self:GetName():find('^ShoppingTooltip') and 2 or 1)]
+	      text:SetText(specs)
+	      text:Show()
+end
+
+-- ================================================
 --  Extend LibItemSearch
 -- ================================================
 local function ExtendLibItemSearch()
@@ -339,90 +263,9 @@ local function ExtendLibItemSearch()
 	}
 end
 
--- apply basic Masque styles to LibSpellWidget frames
-local function AddMasque()
-	local LibMasque       = LibStub('Masque', true)
-	local LibSpellWidget  = LibStub('LibSpellWidget-1.0', true)
-	local LibPlayerSpells = LibStub('LibPlayerSpells-1.0', true)
-	if not LibMasque or not LibSpellWidget then return end
-
-	local COOLDOWN, IMPORTANT = LibPlayerSpells.constants.COOLDOWN, LibPlayerSpells.constants.IMPORTANT
-	local SURVIVAL, BURST = LibPlayerSpells.constants.SURVIVAL, LibPlayerSpells.constants.BURST
-	local MANA_REGEN, POWER_REGEN = LibPlayerSpells.constants.MANA_REGEN, LibPlayerSpells.constants.POWER_REGEN
-
-	hooksecurefunc(LibSpellWidget.proto, 'SetSpell', function(self, spell)
-		if not spell then return end
-
-		if LibPlayerSpells then
-			local flags = LibPlayerSpells:GetSpellInfo(spell)
-			if not flags then
-				self.Border:Hide()
-			elseif bit.band(flags, BURST) > 0 then
-				self.Border:SetVertexColor(0, 1, 0, 1)
-				self.Border:Show()
-			elseif bit.band(flags, SURVIVAL) > 0 then
-				self.Border:SetVertexColor(1, 0, 0, 1)
-				self.Border:Show()
-			elseif bit.band(flags, MANA_REGEN) > 0 or bit.band(flags, POWER_REGEN) > 0 then
-				self.Border:SetVertexColor(0, 0, 1, 1)
-				self.Border:Show()
-			elseif bit.band(flags, COOLDOWN) > 0 or bit.band(flags, IMPORTANT) > 0 then
-				self.Border:SetVertexColor(.5, 0, .5, 1)
-				self.Border:Show()
-			else
-				self.Border:Hide()
-			end
-		end
-
-		LibMasque:Group('LibSpellWidget'):ReSkin()
-	end)
-	LibSpellWidget.proto.SetNormalTexture = function(self) end
-	LibSpellWidget.proto.GetNormalTexture = function(self) return self.Normal end
-
-	local Create = LibSpellWidget.Create
-	function LibSpellWidget:Create()
-		-- create widget as usual
-		local widget = Create(self)
-
-		local border = widget:CreateTexture(nil, 'OVERLAY')
-		      border:SetTexture('Interface\\Buttons\\UI-ActionButton-Border')
-		      border:SetAllPoints()
-		      border:Hide()
-		widget.Border = border
-
-		local normal = widget:CreateTexture(nil, 'BACKGROUND')
-		      normal:SetTexture('Interface\\Buttons\\UI-Quickslot2')
-		      normal:SetAllPoints()
-		widget.Normal = normal
-
-		-- now apply Masque to it
-		LibMasque:Group('LibSpellWidget'):AddButton(widget, {
-			Icon         = widget.Icon,
-			Cooldown     = widget.Cooldown,
-			Count        = widget.Count,
-			Normal       = widget.Normal,
-			Border       = widget.Border,
-
-			-- don't try to find these textures
-			Pushed       = false,
-			Disabled     = false,
-			Checked      = false,
-			FloatingBG   = false,
-			Flash        = false,
-			AutoCastable = false,
-			Highlight    = false,
-			HotKey       = false,
-			Name         = false,
-		    Duration     = false,
-			AutoCast     = false,
-		})
-
-		return widget
-	end
-end
-
 local function CalendarIconFlash()
-	-- minimap calendar flashing:
+	-- hide for events too far in the future
+	-- show for guild events
 	--[[
 	GameTimeCalendarInvitesTexture:Show()
 	GameTimeCalendarInvitesGlow:Show()
@@ -442,10 +285,15 @@ function plugin:OnEnable()
 	OutgoingWhisperColor()
 	InterfaceOptionsScrolling()
 	InterfaceOptionsDragging()
-	AddMoreSharedMedia()
 	HideUnusableCompareTips()
 	ExtendLibItemSearch()
-	AddMasque()
+
+	for _, tipName in pairs({'GameTooltip', 'ItemRefTooltip', 'ShoppingTooltip1', 'ShoppingTooltip2'}) do
+		local tooltip = _G[tipName]
+		if tooltip then
+			tooltip:HookScript('OnTooltipSetItem', TooltipItemInfo)
+		end
+	end
 
 	local unitNames = setmetatable({}, { __index = function(t, unit)
 		local name = unit and UnitName(unit)
@@ -477,9 +325,6 @@ function plugin:OnEnable()
 	tinsert(UISpecialFrames, 'WorldMapFrame')
 	-- allow opening other panels while map is open
 	WorldMapFrame:SetAttribute('UIPanelLayout-area', 'left')
-
-	ChatFrame_AddMessageEventFilter('CHAT_MSG_LOOT', AddLootIcons)
-	AddChatLinkHoverTooltips()
 
 	-- FIXME: doesn't work when triggered by SHIFT+Click
 	hooksecurefunc('StaticPopup_Show', AutoAcceptPopup)
