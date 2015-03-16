@@ -133,42 +133,12 @@ function plugin:PLAYER_SPECIALIZATION_CHANGED()
 	wipe(unitCache)
 end
 
--- display item specs
-local itemSpecs = {}
-local function TooltipItemInfo(self)
-	local specs
-	local _, itemLink = self:GetItem()
-	if not itemLink then return end
-
-	wipe(itemSpecs)
-	GetItemSpecInfo(itemLink, itemSpecs)
-	-- TODO: only show own specializations GetNumSpecializations()
-	if #itemSpecs > 4 then return end
-	for i, specID in ipairs(itemSpecs) do
-		local _, _, _, icon, _, role, class = GetSpecializationInfoByID(specID)
-		specs = (specs and specs..' ' or '') .. '|T'..icon..':0|t'
-	end
-	if not specs then return end
-
-	local text = _G[self:GetName()..'TextRight'..(self:GetName():find('^ShoppingTooltip') and 2 or 1)]
-	      text:SetText(specs)
-	      text:Show()
-end
-
 function plugin:OnEnable()
 	-- tooltip position
 	hooksecurefunc('GameTooltip_SetDefaultAnchor', function(self, parent)
 		self:ClearAllPoints()
 		self:SetPoint('BOTTOMRIGHT', 'UIParent', 'BOTTOMRIGHT', -72, 152)
 	end)
-
-	-- item info
-	for _, tipName in pairs({'GameTooltip', 'ItemRefTooltip', 'ShoppingTooltip1', 'ShoppingTooltip2'}) do
-		local tooltip = _G[tipName]
-		if tooltip then
-			tooltip:HookScript('OnTooltipSetItem', TooltipItemInfo)
-		end
-	end
 
 	-- unit info
 	self:RegisterEvent('INSPECT_READY')

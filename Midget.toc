@@ -1,4 +1,4 @@
-## Interface: 60000
+## Interface: 60100
 ## Author: ckaotik
 ## Title: Midget
 ## Version: dev
@@ -26,13 +26,16 @@ Midget.lua
 functions.lua
 
 # modules
+modules\bagnon.lua
 modules\configmode.lua
+modules\chatlinks.lua
 modules\groupfinder.lua
 modules\journal.lua
 modules\learner.lua
 modules\mail.lua
 modules\raid.lua
 modules\spellbook.lua
+modules\style.lua
 modules\stuffer.lua
 modules\tooltip.achievement.lua
 modules\tooltip.unit.lua

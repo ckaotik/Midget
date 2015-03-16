@@ -37,9 +37,68 @@ function addon:OnEnable()
 	self.db = LibStub('AceDB-3.0'):New(addonName..'DB', defaults, true)
 end
 
--- ================================================
+
+-- --------------------------------------------------------
+--  LoadWith
+-- --------------------------------------------------------
+local loadWith = {}
+function addon:LoadWith(otherAddon, handler, remove)
+	if remove then
+		if loadWith[otherAddon] then
+			for index, callback in pairs(loadWith[otherAddon]) do
+				if callback == handler then
+					loadWith[otherAddon][index] = nil
+					if not next(loadWith[otherAddon]) then
+						loadWith[otherAddon] = nil
+					end
+					if not next(loadWith) then
+						self:UnregisterEvent('ADDON_LOADED')
+					end
+					return true
+				end
+			end
+		end
+		return
+	end
+
+	if IsAddOnLoaded(otherAddon) then
+		-- addon is available, directly run handler code
+		return handler(self, nil, otherAddon)
+	else
+		if loadWith[otherAddon] then
+			for _, callback in pairs(loadWith[otherAddon]) do
+				if callback == handler then
+					return
+				end
+			end
+		end
+		-- handler is not yet registered
+		if not loadWith[otherAddon] then loadWith[otherAddon] = {} end
+		tinsert(loadWith[otherAddon], handler)
+		self:RegisterEvent('ADDON_LOADED')
+	end
+end
+function addon:ADDON_LOADED(event, arg1)
+	if loadWith[arg1] then
+		for key, callback in pairs(loadWith[arg1]) do
+			if callback(self, event, arg1) then
+				-- handler succeeded, remove from task list
+				loadWith[arg1][key] = nil
+				if not next(loadWith[arg1]) then
+					loadWith[arg1] = nil
+				end
+			end
+		end
+	end
+	if not next(loadWith) then
+		self:UnregisterEvent('ADDON_LOADED')
+	end
+end
+addon:RegisterEvent('ADDON_LOADED')
+
+-- --------------------------------------------------------
 -- Little Helpers
--- ================================================
+-- --------------------------------------------------------
 function addon:Print(text, ...)
 	if ... and text:find("%%") then
 		text = string.format(text, ...)
