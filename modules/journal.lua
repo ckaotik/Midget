@@ -259,6 +259,7 @@ local function initialize()
 	end
 	hooksecurefunc("EncounterJournal_LootUpdate", UpdateItemSpecs)
 	hooksecurefunc(scrollFrame, 'update', UpdateItemSpecs)
+	-- TODO: consider using EncounterJournal_LootCallback(itemID)
 
 	local trackerCollapsed
 	plugin:RegisterEvent('ENCOUNTER_START', function(...)
