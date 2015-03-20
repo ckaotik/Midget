@@ -168,7 +168,6 @@ local function UpdateItemSpecs()
 
 			wipe(itemSpecs)
 			itemSpecs = GetItemSpecInfo(button.link, itemSpecs)
-			print(i, button.index, button.link)
 			if #itemSpecs < GetNumSpecializationsForClassID(classID) then
 				for _, itemSpecID in ipairs(itemSpecs) do
 					local _, _, _, icon = GetSpecializationInfoByID(itemSpecID)
@@ -261,7 +260,7 @@ local function initialize()
 	hooksecurefunc(scrollFrame, 'update', UpdateItemSpecs)
 	-- TODO: consider using EncounterJournal_LootCallback(itemID)
 
-	local trackerCollapsed
+	--[[ local trackerCollapsed
 	plugin:RegisterEvent('ENCOUNTER_START', function(...)
 		trackerCollapsed = ObjectiveTracker.collapsed
 		if not trackerCollapsed then
@@ -276,7 +275,7 @@ local function initialize()
 			ObjectiveTracker_MinimizeButton_OnClick()
 		end
 		-- CheckUpdateLootSpec(...)
-	end)
+	end) --]]
 
 	plugin:UnregisterEvent('ADDON_LOADED')
 end
