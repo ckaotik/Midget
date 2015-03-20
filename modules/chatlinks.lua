@@ -15,29 +15,31 @@ local linkTypes = {
 	garrfollowerability = 'FloatingGarrisonFollowerAbilityTooltip',
 	garrmission         = 'FloatingGarrisonMissionTooltip',
 }
-local function OnHyperlinkEnter(self, linkData, link)
-	if IsModifiedClick() then return end
-	local linkType = linkData:match('^([^:]+)')
+local function OnHyperlinkEnter(self, linkData, link, acceptModifiers)
+	local linkType = addon.GetLinkData(link)
 	if not linkType or not linkTypes[linkType] then return end
-	local tooltip = linkTypes[linkType] == true and 'ItemRefTooltip' or linkTypes[linkType]
-	-- show special frames only with modifiers
+	if IsModifiedClick() and not acceptModifiers then return end
+
+	local tipName = linkTypes[linkType] == true and 'ItemRefTooltip' or linkTypes[linkType]
+	local tooltip = _G[tipName]
 	ChatFrame_OnHyperlinkShow(self, linkData, link, 'LeftButton')
-	_G[tooltip]:ClearAllPoints()
+
+	tooltip:ClearAllPoints()
 	GameTooltip:SetOwner(self, 'CURSOR')
-	_G[tooltip]:SetPoint(GameTooltip:GetPoint())
+	tooltip:SetPoint(GameTooltip:GetPoint())
 	hoverTip = link
 end
 local function OnHyperlinkLeave(self, linkData, link)
-	local linkType = linkData:match('^([^:]+)')
+	local linkType = addon.GetLinkData(link)
 	if not hoverTip or hoverTip ~= link or not linkType or not linkTypes[linkType] then return end
-	local tooltip = linkTypes[linkType] == true and 'ItemRefTooltip' or linkTypes[linkType]
-	_G[tooltip]:Hide()
+	local tipName = linkTypes[linkType] == true and 'ItemRefTooltip' or linkTypes[linkType]
+	_G[tipName]:Hide()
 end
 local function OnHyperlinkClick(self, linkData, link, btn)
 	-- do not close popups that were intentionally shown
 	if hoverTip and hoverTip == link then
-		-- OnEnter (=> toggle on) > OnClick (=> toggle off) > OnEnter (=> toggle on)
-		OnHyperlinkEnter(self, linkData, link)
+		-- OnEnter (=> custom handler will toggle on) > OnClick (=> default handler will toggle off) > show again
+		OnHyperlinkEnter(self, linkData, link, true)
 		hoverTip = nil
 	end
 end
@@ -51,14 +53,14 @@ local function InitChatHoverTips(chatFrame)
 end
 
 -- ----------------------------------------------------
+local function AddIconPrefix(link)
+	local texture = GetItemIcon(link)
+	return "\124T" .. texture .. ":" .. 12 .. "\124t" .. link
+end
 
 local function LootIcons(self, event, message, ...)
 	if not addon.db.profile.chatLinkIcons then return end
-	local function Icon(link)
-		local texture = GetItemIcon(link)
-		return "\124T" .. texture .. ":" .. 12 .. "\124t" .. link
-	end
-	message = message:gsub("(\124c%x+\124Hitem:.-\124h\124r)", Icon)
+	message = message:gsub("(\124c%x+\124Hitem:.-\124h\124r)", AddIconPrefix)
 	return false, message, ...
 end
 
@@ -76,6 +78,28 @@ function plugin:OnEnable()
 	hooksecurefunc('FCF_OpenTemporaryWindow', function(chatType)
 		for _, frameName in pairs(_G.CHAT_FRAMES) do
 			InitChatHoverTips(_G[frameName])
+		end
+	end)
+
+	-- ItemRef comparison tooltips
+	ItemRefTooltip:HookScript('OnUpdate', function(tooltip)
+		if IsModifiedClick('COMPAREITEMS') or GetCVar('alwaysCompareItems') then
+			if not tooltip.comparing then
+				GameTooltip_ShowCompareItem(tooltip, 1)
+			end
+			tooltip.comparing = true
+		else
+			tooltip.comparing = false
+		end
+	end)
+
+	hooksecurefunc('ChatFrame_OnHyperlinkShow', function(chatFrame, link, text, btn)
+		local linkType, linkID, linkData = addon.GetLinkData(link)
+		if linkType == 'achievement' and IsModifiedClick('DRESSUP') then
+			-- directly open achievement in UI
+			-- LoadAddOn('Blizzard_AchievementUI')
+			ShowUIPanel(AchievementFrame)
+			AchievementFrame_SelectAchievement(linkID)
 		end
 	end)
 end
