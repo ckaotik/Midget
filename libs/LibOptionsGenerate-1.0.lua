@@ -1,4 +1,4 @@
-local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 18
+local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 19
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
@@ -123,7 +123,8 @@ local function Widget(key, option, widgetInfo)
 		local isMultiSelect = true
 		for k, v in pairs(option) do
 			if type(k) ~= 'number' or type(v) ~= 'boolean' then
-				isMultiSelect = false break
+				isMultiSelect = false
+				break
 			end
 		end
 		if isMultiSelect then
@@ -141,10 +142,9 @@ local function Widget(key, option, widgetInfo)
 		-- hidden from display
 		return true
 	elseif widgetType == 'multiselect' then
-		-- TODO: this needs a custom get/set
 		local labels = {}
-		for selectKey, _ in pairs(option) do
-			labels[selectKey] = type(widgetInfo) == 'function' and widgetInfo(selectKey) or selectKey
+		for k, v in pairs(option) do
+			labels[k] = k
 		end
 		widget = {
 			type = 'multiselect',
@@ -263,6 +263,11 @@ local function Widget(key, option, widgetInfo)
 			get = GetListSetting,
 			set = SetListSetting,
 		}
+	elseif widgetType == 'text' then
+		widget = {
+			type = 'input',
+			name = key,
+		}
 	end
 
 	return widget
@@ -321,6 +326,14 @@ local function ParseOption(key, option, L, typeMappings)
 				order = 0,
 			}
 		end
+		local valuesHandler = widget.values and rawget(L, key..'Values') or nil
+		if type(valuesHandler) == 'function' then
+			for k, v in pairs(widget.values) do
+				local key, value = valuesHandler(k, v)
+				widget.values[k] = nil
+				widget.values[key] = value
+			end
+		end
 	end
 
 	return widget
@@ -370,7 +383,8 @@ local function AddNamespaces(optionsTable, variable, L, typeMappings)
 			local key = scope .. '_' .. namespace
 			-- allow to separate settings with equal names in different namespaces
 			local namespaceMappings = typeMappings and (typeMappings[key] or typeMappings[namespace] or typeMappings)
-			local option = ParseOption(key, options[scope], L, namespaceMappings)
+			local namespaceLocale = L and (L[key] or L[namespace] or L)
+			local option = ParseOption(key, options[scope], namespaceLocale, namespaceMappings)
 			if option and next(option.args) then
 				optionsTable.args[scope] = optionsTable.args[scope] or {
 					type 	= 'group',
