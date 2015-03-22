@@ -176,7 +176,7 @@ local function Widget(key, option, widgetInfo)
 			name = 'Font Size',
 			step = 1,
 			min = 5,
-			max = 24, -- Blizz won't go any larger
+			max = 32, -- Blizz won't go any larger
 		}
 	elseif (widgetType == 'font' or key:find('font')) and type(option) == 'string' and SharedMedia then
 		widget = {
@@ -240,6 +240,14 @@ local function Widget(key, option, widgetInfo)
 			get = GetPercentSetting,
 			set = SetPercentSetting,
 		}
+	elseif (widgetType == 'unsigned' or key:find('size')) and type(option) == 'number' and option >= 0 then
+		widget = {
+			type = 'range',
+			name = key,
+			min = 0,
+			softMax = 200,
+			bigStep = 10,
+		}
 	elseif (widgetType == 'itemquality' or key:find('quality')) and type(option) == 'number' then
 		widget = {
 			type = 'select',
@@ -262,6 +270,7 @@ local function Widget(key, option, widgetInfo)
 			usage = 'Insert one entry per line',
 			get = GetListSetting,
 			set = SetListSetting,
+			order = 70,
 		}
 	elseif widgetType == 'text' then
 		widget = {
