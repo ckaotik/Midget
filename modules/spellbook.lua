@@ -93,7 +93,7 @@ local function ScanActionButtons()
 	local actionType, action, spellID
 	local numActionButtons = (NUM_ACTIONBAR_PAGES + 4) * NUM_ACTIONBAR_BUTTONS -- regular + 2 right + 2 bottom bars
 
-	usedSpells = wipe(usedSpells)
+	wipe(usedSpells)
 	for i, spellID in ipairs(ignoredSpells) do
 		usedSpells[spellID] = true
 	end
@@ -121,9 +121,7 @@ local function ScanActionButtons()
 	end
 
 	if IsAddOnLoaded("Clique") then
-		local db = CliqueDB3 and CliqueDB3.profiles and CliqueDB3.profiles[ GetUnitName("player") .. " - " .. GetRealmName("player") ]
-			  db = db and db.bindings or {}
-		for i, binding in ipairs(db) do
+		for i, binding in ipairs(Clique.bindings) do
 			if binding.type == "spell" then
 				spellID = GetSpellID(binding.spell)
 				if spellID then
@@ -164,7 +162,8 @@ local function ScanSpellBook()
 			spell = GetSpellInfo(spell) or GetSpellInfo(actionID) -- gets the spell base name
 			spellID = GetSpellID(spell) -- can now get overlayed spell info
 			-- print('spellbook', index, spell, spellID, actionID, ';', IsSpellKnown(actionID), IsSpellKnown(spellID))
-			if spellID and IsSpellKnown(actionID) and not IsPassiveSpell(actionID) and not usedSpells[spellID] and not usedSpells[actionID] then
+			if spellID and IsSpellKnown(actionID) and not IsPassiveSpell(actionID)
+				and not usedSpells[spellID] and not usedSpells[actionID] then
 				hasMissing = true
 				NotifyUnusedSpell(spellID)
 			end
