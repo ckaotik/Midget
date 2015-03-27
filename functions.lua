@@ -347,4 +347,67 @@ function plugin:OnEnable()
 			end
 		end)
 	end)
+
+	-- addon memory usage on tracking button
+	local addonMemoryUsage, addonOrder = {}, {}
+	local function SortByMemoryUsage(a, b) return addonMemoryUsage[a] > addonMemoryUsage[b] end
+	local function FormatMemory(value) return value > 999 and format('%.1f MB', value / 1024) or format('%.1f KB', value) end
+
+	MiniMapTrackingButton:HookScript('OnEnter', function(self)
+		GameTooltip:SetOwner(self, 'ANCHOR_BOTTOMLEFT', 0, self:GetHeight())
+
+		local addonUsage = 0
+		wipe(addonMemoryUsage)
+		wipe(addonOrder)
+
+		UpdateAddOnMemoryUsage()
+		for index = 1, GetNumAddOns() do
+			if IsAddOnLoaded(index) then
+				local usage, folderName = GetAddOnMemoryUsage(index), GetAddOnInfo(index)
+				addonMemoryUsage[folderName] = usage
+				table.insert(addonOrder, folderName)
+				addonUsage = addonUsage + usage
+			end
+		end
+
+		GameTooltip:AddLine('Memory Usage')
+		GameTooltip:AddDoubleLine('User Addons:', FormatMemory(addonUsage))
+		GameTooltip:AddDoubleLine('Blizzard:', FormatMemory(gcinfo() - addonUsage))
+		GameTooltip:AddLine(' ')
+
+		table.sort(addonOrder, SortByMemoryUsage)
+		for _, folderName in pairs(addonOrder) do
+			local usage  = addonMemoryUsage[folderName] or 0
+			local author = GetAddOnMetadata(folderName, 'author') or _G.UNKNOWN
+			local title  = GetAddOnMetadata(folderName, 'title') or folderName
+			local label  = ('%s %s%s'):format(title, _G.GRAY_FONT_COLOR_CODE, author:match('%w+'))
+			GameTooltip:AddDoubleLine(_G.HIGHLIGHT_FONT_COLOR_CODE .. label, FormatMemory(usage))
+		end
+		GameTooltip:Show()
+	end)
+	MiniMapTrackingButton:HookScript('OnLeave', function(self)
+		GameTooltip:SetClampedToScreen(true)
+		GameTooltip:Hide()
+	end)
+	MiniMapTrackingButton:RegisterForClicks('AnyUp')
+	MiniMapTrackingButton:HookScript('OnClick', function(self, btn)
+		if btn == 'RightButton' then
+			CloseDropDownMenus()
+			local memoryUsage = collectgarbage('count')
+			collectgarbage('collect')
+			print('Collected garbage:', FormatMemory(memoryUsage - collectgarbage('count')))
+		end
+		GameTooltip:Hide()
+	end)
+	MiniMapTrackingButton:EnableMouseWheel()
+	MiniMapTrackingButton:SetScript('OnMouseWheel', function(self, direction)
+		GameTooltip:SetClampedToScreen(false)
+		local from, anchor, to, x, y = GameTooltip:GetPoint()
+		local diff = IsShiftKeyDown() and 30 or 15
+		if direction < 0 then
+			GameTooltip:SetPoint(from, anchor, to, x, y + diff)
+		else
+			GameTooltip:SetPoint(from, anchor, to, x, y - diff)
+		end
+	end)
 end
