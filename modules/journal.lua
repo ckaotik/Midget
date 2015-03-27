@@ -167,8 +167,8 @@ local function UpdateItemSpecs()
 			end
 
 			wipe(itemSpecs)
-			itemSpecs = GetItemSpecInfo(button.link, itemSpecs)
-			if #itemSpecs < GetNumSpecializationsForClassID(classID) then
+			GetItemSpecInfo(button.link, itemSpecs)
+			if itemSpecs and #itemSpecs < GetNumSpecializationsForClassID(classID) then
 				for _, itemSpecID in ipairs(itemSpecs) do
 					local _, _, _, icon = GetSpecializationInfoByID(itemSpecID)
 					lootSpecs = (lootSpecs and lootSpecs..'|n' or '') .. '|T'..icon..':0|t'
