@@ -1,9 +1,14 @@
-local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 19
+local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 20
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
 -- GLOBALS: _G, type, pairs, ipairs, wipe, strsplit
 local SharedMedia = LibStub('LibSharedMedia-3.0', true)
+
+-- TODO: race, realm, faction, factionrealm is not yet supported
+local AceDBScopes = { 'global', 'profile', 'char', 'class', a = 'race', b = 'realm', c = 'faction', d = 'factionrealm' }
+local AceDBExcludes = {'sv', 'callbacks', 'children', 'parent', 'keys', 'profiles', 'defaults'}
+local emptyTable = {}
 
 local itemQualities = {}
 for quality, color in pairs(_G.ITEM_QUALITY_COLORS) do
@@ -25,21 +30,17 @@ end
 
 local function GetSettingDefault(info, variable)
 	local data = type(variable) == 'string' and GetVariableFromPath(variable) or variable
-	for i = 1, #info - 1 do
-		if data[ info[i] ] then -- might have a container group
-			data = data[ info[i] ]
-		end
+	for i = 1, #info.arg - 1 do
+		data = data[ info.arg[i] ]
 	end
-	return data[ info[#info] ]
+	return data[ info.arg[#info.arg] ]
 end
 local function SetSettingDefault(info, value, variable)
 	local data = type(variable) == 'string' and GetVariableFromPath(variable) or variable
-	for i = 1, #info - 1 do
-		if data[ info[i] ] then -- might not have a container group
-			data = data[ info[i] ]
-		end
+	for i = 1, #info.arg - 1 do
+		data = data[ info.arg[i] ]
 	end
-	data[ info[#info] ] = value
+	data[ info.arg[#info.arg] ] = value
 end
 local function GetAncestorProperty(info, property)
 	local data, propertyValue = info.options.args, info.options[property]
@@ -282,14 +283,20 @@ local function Widget(key, option, widgetInfo)
 	return widget
 end
 
-local AceDBScopes = { 'global', 'profile', 'char', 'class', a = 'race', b = 'realm', c = 'faction', d = 'factionrealm' }
-local function ParseOption(key, option, L, typeMappings)
+local function ParseOption(key, option, L, typeMappings, path)
 	if type(key) ~= 'string' or (key == '*' or key == '**') then return end
 
 	local widget = Widget(key, option, typeMappings and typeMappings[key])
-	if widget == true then
-		return nil
-	elseif widget then
+	if widget == true then return nil end
+
+	-- create our own path table, we need table ownership
+	local arg = {}
+	for index, component in ipairs(path or emptyTable) do
+		table.insert(arg, component)
+	end
+	table.insert(arg, key)
+
+	if widget then
 		widget.name = widget.name or key
 	elseif type(option) == 'string' then
 		widget = {
@@ -318,14 +325,16 @@ local function ParseOption(key, option, L, typeMappings)
 			order 	= 80,
 		}
 		for subkey, subOption in pairs(option) do
-			widget.args[subkey] = ParseOption(subkey, subOption, L, typeMappings)
+			widget.args[subkey] = ParseOption(subkey, subOption, L, typeMappings, arg)
 		end
 	end
 
-	if widget then
-		widget.order = widget.order or 1
-	end
-	if widget and L and type(L) == 'table' and not tContains(AceDBScopes, key) then
+	if not widget then return nil end
+	widget.arg   = widget.arg or arg
+	widget.order = widget.order or 1
+
+	if L and type(L) == 'table' and not tContains(AceDBScopes, key) then
+		-- apply localization
 		widget.name = L[key..'Name'] or widget.name
 		widget.desc = L[key..'Desc'] or widget.desc
 		if widget.type == 'group' and widget.desc then
@@ -349,7 +358,7 @@ local function ParseOption(key, option, L, typeMappings)
 end
 
 local function AddScopeHeaders(optionsTable)
-	-- TODO: also available: race, realm, faction, factionrealm (remove keys in AceDBScopes table)
+	-- TODO: also available: race, realm, faction, factionrealm (disabled in AceDBScopes table)
 	local playerName, playerRealm = UnitFullName('player')
 	local className, class = UnitClass('player')
 
@@ -381,7 +390,6 @@ local function AddScopeHeaders(optionsTable)
 	end
 end
 
-local emptyTable = {}
 local function AddNamespaces(optionsTable, variable, L, typeMappings)
 	for namespace, options in pairs(variable.children or emptyTable) do
 		-- we need to access different data
@@ -393,7 +401,7 @@ local function AddNamespaces(optionsTable, variable, L, typeMappings)
 			-- allow to separate settings with equal names in different namespaces
 			local namespaceMappings = typeMappings and (typeMappings[key] or typeMappings[namespace] or typeMappings)
 			local namespaceLocale = L and (L[key] or L[namespace] or L)
-			local option = ParseOption(key, options[scope], namespaceLocale, namespaceMappings)
+			local option = ParseOption(scope, options[scope], namespaceLocale, namespaceMappings)
 			if option and next(option.args) then
 				optionsTable.args[scope] = optionsTable.args[scope] or {
 					type 	= 'group',
@@ -413,7 +421,6 @@ local function AddNamespaces(optionsTable, variable, L, typeMappings)
 	end
 end
 
-local AceDBExcludes = {'sv', 'callbacks', 'children', 'parent', 'keys', 'profiles', 'defaults'}
 function lib:GetOptionsTable(variable, typeMappings, L, includeNamespaces)
 	if type(variable) == 'string' then
 		variable = GetVariableFromPath(variable)
