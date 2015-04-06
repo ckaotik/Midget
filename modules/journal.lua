@@ -181,6 +181,15 @@ local function UpdateItemSpecs()
 	end
 end
 
+local playerLootSpec
+local function RestoreLootSpec()
+	if playerLootSpec then
+		print('Restoring previously selected loot spec')
+		SetLootSpecialization(playerLootSpec)
+		playerLootSpec = nil
+	end
+end
+
 -- we store the last started encounter, so if the player makes manual changes after a pull, we don't revert
 local lastEncounter
 local function CheckUpdateLootSpec(event, id, name, difficulty, groupSize)
@@ -209,6 +218,7 @@ local function CheckUpdateLootSpec(event, id, name, difficulty, groupSize)
 	local currentSpec = GetSpecializationInfo(GetSpecialization())
 	local specPreference = addon.db.char.LFRLootSpecs and addon.db.char.LFRLootSpecs[ encounterID ] or 0
 		  specPreference = GetSpecializationInfo(specPreference)
+	playerLootSpec = currentLoot
 
 	-- don't change if we have no preference set
 	if not specPreference or currentLoot == specPreference or (currentLoot == 0 and currentSpec == specPreference) then
@@ -259,6 +269,9 @@ local function initialize()
 	hooksecurefunc("EncounterJournal_LootUpdate", UpdateItemSpecs)
 	hooksecurefunc(scrollFrame, 'update', UpdateItemSpecs)
 	-- TODO: consider using EncounterJournal_LootCallback(itemID)
+
+	plugin:RegisterEvent('ENCOUNTER_START', CheckUpdateLootSpec)
+	plugin:RegisterEvent('ENCOUNTER_END', RestoreLootSpec)
 
 	--[[ local trackerCollapsed
 	plugin:RegisterEvent('ENCOUNTER_START', function(...)
