@@ -24,6 +24,7 @@ local defaults = {
 		hideUnusableCompareTips = true,
 		showRaidBuffIndicators = true,
 		deleteEmptyPostmasterMails = false,
+		restoreLootSpecAfterCombat = false,
 	},
 	char = {
 		trackBattlePetTeams = true,

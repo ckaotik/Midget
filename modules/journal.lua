@@ -183,7 +183,7 @@ end
 
 local playerLootSpec
 local function RestoreLootSpec()
-	if playerLootSpec then
+	if addon.db.profile.restoreLootSpecAfterCombat and playerLootSpec then
 		print('Restoring previously selected loot spec')
 		SetLootSpecialization(playerLootSpec)
 		playerLootSpec = nil
