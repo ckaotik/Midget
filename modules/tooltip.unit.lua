@@ -111,7 +111,7 @@ function plugin:INSPECT_READY(event, guid)
 				-- apply main hand level if two hand and offhand empty
 				if slot == _G.INVSLOT_MAINHAND and itemLink then
 					local _, _, _, _, _, class, subclass, _, equipSlot = GetItemInfo(itemLink)
-					if equipSlot == 'INVTYPE_2HWEAPON' or equipSlot == 'INVTYPE_RANGED' then -- RANGEDRIGHT?
+					if equipSlot == 'INVTYPE_2HWEAPON' or equipSlot == 'INVTYPE_RANGED' or equipSlot == 'INVTYPE_RANGEDRIGHT' then
 						mainHandLevel = itemLevel
 					end
 				elseif slot == _G.INVSLOT_OFFHAND and not itemLink and mainHandLevel then
