@@ -142,6 +142,51 @@ local function HideUnusableCompareTips()
 	HookCompareItems(ItemRefShoppingTooltip3)
 end
 
+local function EasySurvey()
+	if not addon.db.profile.easySurvey then return end
+	-- based on GoFish! easy fishing mode
+	local button = CreateFrame('Button', 'MidgetEasySurvey', UIParent, 'SecureActionButtonTemplate')
+	      button:SetAttribute('type', 'spell')
+	      button:SetAttribute('spell', (GetSpellInfo(80451)))
+	button:EnableMouse(true)
+	button:RegisterForClicks('RightButtonUp')
+	button:SetScript('PostClick', ClearOverrideBindings)
+	button:Hide()
+
+	local lastClickTime = 0
+	WorldFrame:HookScript('OnMouseDown', function(self, btn, down)
+		if btn ~= 'RightButton' or not CanScanResearchSite() or InCombatLockdown() or GetNumLootItems() > 0 then
+			return
+		end
+		local clickTime = GetTime() -- need ms precision, time() only provides s
+		local clickDiff = clickTime - lastClickTime
+		lastClickTime = clickTime
+
+		if clickDiff > 0.05 and clickDiff < 0.25 then
+			if IsMouselooking() then MouselookStop() end
+			SetOverrideBindingClick(button, true, 'BUTTON2', 'MidgetEasySurvey')
+		end
+	end)
+end
+
+-- ================================================
+-- Loot Won counts
+-- ================================================
+local function LootWonCounts(self, itemLink, quantity, rollType, roll, specID, isCurrency, showFactionBG, lootSource)
+	if not isCurrency and quantity and quantity > 1 then
+		if not self.Count then
+			self.Count = self:CreateFontString(nil, nil, 'NumberFontNormal')
+			self.Count:SetSize(52-2, 52-2)
+			self.Count:SetPoint('LEFT', 23+1, -2-1)
+			self.Count:SetJustifyH('RIGHT')
+			self.Count:SetJustifyV('BOTTOM')
+		end
+		self.Count:SetText(quantity)
+	elseif self.Count then
+		self.Count:SetText()
+	end
+end
+
 -- ================================================
 -- Undress button on models!
 -- ================================================
@@ -287,6 +332,9 @@ function plugin:OnEnable()
 	InterfaceOptionsDragging()
 	HideUnusableCompareTips()
 	ExtendLibItemSearch()
+	EasySurvey()
+
+	hooksecurefunc('LootWonAlertFrame_SetUp', LootWonCounts)
 
 	for _, tipName in pairs({'GameTooltip', 'ItemRefTooltip', 'ShoppingTooltip1', 'ShoppingTooltip2'}) do
 		local tooltip = _G[tipName]

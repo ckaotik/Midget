@@ -25,6 +25,7 @@ local defaults = {
 		showRaidBuffIndicators = true,
 		deleteEmptyPostmasterMails = false,
 		restoreLootSpecAfterCombat = false,
+		easySurvey = true,
 	},
 	char = {
 		trackBattlePetTeams = true,
