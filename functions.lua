@@ -188,6 +188,66 @@ local function LootWonCounts(self, itemLink, quantity, rollType, roll, specID, i
 end
 
 -- ================================================
+-- Merchant Alternative Currency Counts
+-- ================================================
+local function MerchantAltCurrencyCounts()
+	local function MerchantFrame_ShowHyperlinkTooltip(self)
+		if self.currencyID ~= 0 then return end
+		GameTooltip:SetOwner(self, 'ANCHOR_RIGHT')
+		GameTooltip:SetHyperlink(self.link)
+	end
+	for i = 1, MAX_MERCHANT_CURRENCIES do
+		local tokenButton = _G['MerchantToken'..i]
+		if not tokenButton then
+			tokenButton = CreateFrame('Button', 'MerchantToken'..i, MerchantFrame, 'BackpackTokenTemplate')
+			-- token display order is: 6 5 4 | 3 2 1
+			if i == 1 then
+				tokenButton:SetPoint('BOTTOMRIGHT', -16, 8)
+			elseif i == 4 then
+				tokenButton:SetPoint('BOTTOMLEFT', 89, 8)
+			else
+				tokenButton:SetPoint('RIGHT', _G['MerchantToken'..i-1], 'LEFT', 0, 0)
+			end
+			tokenButton:SetScript('OnEnter', MerchantFrame_ShowCurrencyTooltip)
+		end
+		tokenButton:HookScript('OnEnter', MerchantFrame_ShowHyperlinkTooltip)
+	end
+
+	local merchantCurrencies = {}
+	-- collect items used as currency
+	MerchantFrame:HookScript('OnShow', function(self)
+		wipe(merchantCurrencies)
+		for i = 1, GetMerchantNumItems() do
+			local _, itemTexture, itemPrice, _, _, _, extendedCost = GetMerchantItemInfo(i)
+			if extendedCost then
+				for j = 1, GetMerchantItemCostInfo(i) do
+					local _, _, link = GetMerchantItemCostItem(i, j)
+					if not tContains(merchantCurrencies, link) then
+						tinsert(merchantCurrencies, link)
+					end
+				end
+			end
+		end
+		table.sort(merchantCurrencies)
+	end)
+
+	-- display currency counts
+	hooksecurefunc('MerchantFrame_UpdateCurrencies', function()
+		for index, link in ipairs(merchantCurrencies) do
+			local i = MAX_MERCHANT_CURRENCIES - index + 1
+			if i <= 0 then break end
+			local tokenButton = _G['MerchantToken'..i]
+			      tokenButton:Show()
+			local count = GetItemCount(link)
+			tokenButton.icon:SetTexture(GetItemIcon(link))
+			tokenButton.count:SetText(count <= 99999 and count or '*')
+			tokenButton.currencyID = 0
+			tokenButton.link = link
+		end
+	end)
+end
+
+-- ================================================
 -- Undress button on models!
 -- ================================================
 function plugin.AddUndressButton(frame)
@@ -333,6 +393,7 @@ function plugin:OnEnable()
 	HideUnusableCompareTips()
 	ExtendLibItemSearch()
 	EasySurvey()
+	MerchantAltCurrencyCounts()
 
 	hooksecurefunc('LootWonAlertFrame_SetUp', LootWonCounts)
 
