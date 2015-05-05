@@ -89,7 +89,7 @@ end
 function ReagentsToggle:OnClick()
 	local hidden = self:GetProfile().hiddenBags
 	local show, hide = REAGENTBANK_CONTAINER, BANK_CONTAINER
-	if self:GetSettings().exclusiveReagent and not hidden[REAGENTBANK_CONTAINER] then
+	if Bagnon.profile.bank.exclusiveReagent and not hidden[REAGENTBANK_CONTAINER] then
 		show = BANK_CONTAINER
 		hide = REAGENTBANK_CONTAINER
 	end
@@ -134,45 +134,24 @@ function Bagnon.Frame:PlaceReagentsToggle()
 	elseif self.reagentsToggle then
 		self.reagentsToggle:Hide()
 	end
-	return 0,0
+	return 0, 0
 end
 
 function Bagnon.Frame:HasReagentsToggle()
-	return GetAddOnEnableState(UnitName('player'), 'Bagnon_Config') >= 2 and self:GetSettings().exclusiveReagent
+	return self.profile.exclusiveReagent
 end
 
 -- button display
-hooksecurefunc(Bagnon.Frame, 'PlaceSearchFrame', function(self)
-	local frame = self.searchFrame
-	if self:HasReagentsToggle() then
-		frame:SetPoint('RIGHT', self.reagentsToggle, 'LEFT', -2, 0)
-	else
-		if self:HasOptionsToggle() then
-			frame:SetPoint('RIGHT', self.optionsToggle, 'LEFT', -2, 0)
-		else
-			frame:SetPoint('RIGHT', self.closeButton, 'LEFT', -2, 0)
-		end
-	end
-end)
-hooksecurefunc(Bagnon.Frame, 'PlaceTitleFrame', function(self)
-	local frame = self.titleFrame
-	if self:HasReagentsToggle() then
-		frame:SetPoint('RIGHT', self.reagentsToggle, 'LEFT', -4, 0)
-	else
-		if self:HasOptionsToggle() then
-			frame:SetPoint('RIGHT', self.optionsToggle, 'LEFT', -4, 0)
-		else
-			frame:SetPoint('RIGHT', self.closeButton, 'LEFT', -4, 0)
-		end
-	end
-end)
 hooksecurefunc(Bagnon.Frame, 'Layout', function(self)
-	if not self:IsVisible() or self.frameID ~= 'bank' then return end
-
+	if not self:IsVisible() or not self:HasReagentsToggle() then return end
+	-- update widths
 	local width = self.width + self:PlaceReagentsToggle()
-
 	self.width = max(width, 156)
 	self:UpdateSize()
+
+	-- fix positions of sub frames
+	self.searchFrame:SetPoint('RIGHT', self.reagentsToggle, 'LEFT', -2, 0)
+	self.titleFrame:SetPoint('RIGHT', self.reagentsToggle, 'LEFT', -4, 0)
 end)
 
 end -- end: Reagens/Bank Toggle
