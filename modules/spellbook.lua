@@ -18,16 +18,16 @@ local function GetSpellButtonByID(index)
 end
 
 -- ================================================
--- Alt-CLick for Shinies!
+-- Alt-Click for Shinies!
 -- ================================================
 local function ShineSlot(index)
 	local slot = GetSpellButtonByID(index)
 		  slot:SetChecked(true)
 	if not slot.shine then
 		slot.shine = SpellBook_GetAutoCastShine()
-		slot.shine:Show()
 		slot.shine:SetParent(slot)
 		slot.shine:SetPoint("CENTER", slot, "CENTER")
+		slot.shine:Show()
 	end
 	AutoCastShine_AutoCastStart(slot.shine)
 end
@@ -38,13 +38,12 @@ end
 -- ================================================
 local usedSpells = {}
 local AUTOATTACK = 6603
-local relevantMacroCommands = {
-	["cast"] = true,
-	["use"] = true,
-	["castsequence"] = true,
-	["castrandom"] = true,
+local ignoredSpells = {
+	125439, -- ressurrect battle pets
+	5225,   -- track humanoids
+	83958,  -- mobile banking
+	5019,   -- shoot (wand)
 }
-local ignoredSpells = { 125439, 5225, 83958 }
 
 local function GetSpellID(spellName)
 	if not spellName then
@@ -58,54 +57,68 @@ local function GetSpellID(spellName)
 		return spellName and tonumber(spellName) or nil
 	end
 end
+
+local function AddUsedSpell(spell)
+	if type(spell) == 'string' then
+		spell = GetSpellID(spell)
+	end
+	if not spell then return end
+	usedSpells[spell] = GetSpellInfo(spell)
+end
+
+local function NotifyUnusedSpell(spellID)
+	local link = GetSpellLink(spellID)
+	local msg = string.format("Unbound spell: %s", link or spellID or '?')
+	addon:Print(msg)
+end
+
 local function ParseMacroSpells(macro)
-	local command, commandType
-	for i, action in ipairs({ string.split("\n", macro) }) do
-		commandType, command = string.match(action, "/([^%s]+)%s*(.*)")
+	local commandType, command
+	for commandType, command in macro:gmatch('/([^%s]+)([^\n]*)') do
+		-- remove conditions that do not contain [spec]
+		command = command:gsub('(%b[]%s*)', function(conditions)
+			local condition = conditions:match('(n?o?spec:[^%],]+)')
+			return condition and '['..condition..'] ' or ''
+		end)
+		-- remove castsequence reset conditions
+		command = command:trim():gsub('^reset=.- ', ' ')
+
 		if commandType == 'startattack' then
-			usedSpells[AUTOATTACK] = true
-		elseif relevantMacroCommands[commandType] then
-			-- remove conditions that do not contain [spec]
-			command = command:gsub('(%b[])', function(conditions)
-				local condition = conditions:match('(n?o?spec:[^%],]+)')
-				return condition and '['..condition..']' or ''
-			end)
-			command = command:gsub('^reset=.- ', ' ') -- remove castsequence conditions
-
-			local splitChar = ';'
-			if commandType == 'castsequence' or commandType == 'castrandom' then
-				splitChar = ','
-			end
-
-			for snippet in command:gmatch('[^'..splitChar..']+') do
+			AddUsedSpell(AUTOATTACK)
+		elseif commandType:find('^cast') or commandType:find('^use') then
+			local split = (commandType:find('sequence') or commandType:find('random')) and ',' or ';'
+			for snippet in command:gmatch('[^'..split..']+') do
 				local spell = SecureCmdOptionParse(snippet)
-				      spell = spell and spell:gsub('^!([^ ])', ' %1') -- fix !ToggleSpell
-				local spellID = GetSpellID(spell)
-				if spellID then
-					usedSpells[ tonumber(spellID) ] = spell
-				end
+				      spell = spell and spell:gsub('^!([^ ])', '%1')
+				AddUsedSpell(spell)
 			end
 		end
 	end
 end
 
 local function ScanActionButtons()
-	local actionType, action, spellID
-	local numActionButtons = (NUM_ACTIONBAR_PAGES + 4) * NUM_ACTIONBAR_BUTTONS -- regular + 2 right + 2 bottom bars
+	local actionType, action, spell
+	-- action bar pages + 2 right + 2 bottom bars
+	local numActionButtons = (NUM_ACTIONBAR_PAGES + 4) * NUM_ACTIONBAR_BUTTONS
 
 	wipe(usedSpells)
-	for i, spellID in ipairs(ignoredSpells) do
-		usedSpells[spellID] = true
+	for i, spell in ipairs(ignoredSpells) do
+		AddUsedSpell(spell)
 	end
 
 	for slot = 1, numActionButtons do
-		actionType, action, _, spellID = GetActionInfo(slot)
+		actionType, action, _, spell = GetActionInfo(slot)
 		-- companion, equipmentset, flyout, item, macro, spell
 
 		if actionType == "spell" then
-			usedSpells[action] = true
+			AddUsedSpell(action)
 		elseif actionType == "flyout" then
-			usedSpells[ -1*action ] = true
+			-- mark all contained spells as "used"
+			AddUsedSpell(-1*action)
+			for i = 1, (select(3, GetFlyoutInfo(action))) do
+				_, spell, known = GetFlyoutSlotInfo(action, i)
+				AddUsedSpell(spell)
+			end
 		elseif actionType == "macro" and action > 0 then
 			local macro = GetMacroBody(action)
 			ParseMacroSpells(macro)
@@ -113,33 +126,19 @@ local function ScanActionButtons()
 	end
 
 	for slot = 1, GetNumShapeshiftForms() do
-		_, spellID = GetShapeshiftFormInfo(slot)
-		spellID = GetSpellID(spellID)
-		if spellID then
-			usedSpells[ tonumber(spellID) ] = true
-		end
+		spell = select(2, GetShapeshiftFormInfo(slot))
+		AddUsedSpell(spell)
 	end
 
 	if IsAddOnLoaded("Clique") then
 		for i, binding in ipairs(Clique.bindings) do
 			if binding.type == "spell" then
-				spellID = GetSpellID(binding.spell)
-				if spellID then
-					usedSpells[ tonumber(spellID) ] = true
-				end
+				AddUsedSpell(binding.spell)
 			elseif binding.type == "macro" then
 				ParseMacroSpells(binding.macrotext)
 			end
 		end
 	end
-
-	-- [TODO] scan macaroon and whatever else there might be
-end
-
-local function NotifyUnusedSpell(spellID, ...)
-	local link = GetSpellLink(spellID)
-	local msg = string.format("Unused spell detected: %s", link or spellID or '?')
-	addon:Print(msg)
 end
 
 local function ScanSpellBook()
@@ -157,17 +156,15 @@ local function ScanSpellBook()
 		if not skillType then break end
 
 		if skillType == "SPELL" and actionID then
-			-- horrible procedure to handle transforming spells, e.g. talented or multi-stance
-			spell = GetSpellBookItemName(index, BOOKTYPE_SPELL)   -- gets overlayed spell name
-			spell = GetSpellInfo(spell) or GetSpellInfo(actionID) -- gets the spell base name
-			spellID = GetSpellID(spell) -- can now get overlayed spell info
-			-- print('spellbook', index, spell, spellID, actionID, ';', IsSpellKnown(actionID), IsSpellKnown(spellID))
-			if spellID and IsSpellKnown(actionID) and not IsPassiveSpell(actionID)
-				and not usedSpells[spellID] and not usedSpells[actionID] then
+			-- print(skillType, actionID, GetSpellBookItemName(index, BOOKTYPE_SPELL), GetSpellInfo(actionID))
+			-- spell = GetSpellInfo(actionID) -- the spell base name
+			spell   = GetSpellBookItemName(index, BOOKTYPE_SPELL) -- the talent-changed spell name
+			spellID = GetSpellID(spell)
+			if IsSpellKnown(actionID) and not IsPassiveSpell(actionID) and not usedSpells[actionID]
+				and (not spellID or not usedSpells[spellID]) then
 				hasMissing = true
 				NotifyUnusedSpell(spellID)
 			end
-
 		elseif skillType == "FLYOUT" and actionID then
 			_, _, size, flyoutKnown = GetFlyoutInfo(actionID)
 			if not usedSpells[ -1*actionID ] then
@@ -184,10 +181,6 @@ local function ScanSpellBook()
 	if not hasMissing then
 		addon:Print("All spells are bound! Well done.")
 	end
-end
-plugin.ScanSpells = function()
-	ScanActionButtons()
-	ScanSpellBook()
 end
 
 -- ================================================
@@ -227,12 +220,9 @@ end
 local LibFlash = LibStub("LibFlash")
 local flasher = nil
 function plugin.SearchInSpellBook()
-	if not flasher then
-		flasher = LibFlash:New(SpellBookTabFlashFrame)
-	end
-
 	local searchString = SpellBookFrame.searchString or ""
 	local offset, numSpells, isMatch, matchInTab, page
+	flasher = flasher or LibFlash:New(SpellBookTabFlashFrame)
 
 	local anyMatch = false
 	for tab = 1, GetNumSpellTabs() do
@@ -306,7 +296,10 @@ function plugin:OnEnable()
 	local scanButton = CreateFrame("Button", "$parentScanButton", SpellBookFrame, "UIPanelButtonTemplate");
 	scanButton:SetText("Scan")
 	scanButton:SetPoint("LEFT", "$parentTutorialButton", "RIGHT", -20, 2)
-	scanButton:SetScript("OnClick", plugin.ScanSpells)
+	scanButton:SetScript("OnClick", function(self, btn, up)
+		ScanActionButtons()
+		ScanSpellBook()
+	end)
 
 	local searchbox = CreateFrame("EditBox", "$parentSearchBox", SpellBookFrame, "SearchBoxTemplate")
 	searchbox:SetPoint("TOPRIGHT", SpellBookFrame, "TOPRIGHT", -20, -1)
