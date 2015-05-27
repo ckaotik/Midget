@@ -385,7 +385,10 @@ end
 
 local function CalendarIconFlash()
 	-- hide for events too far in the future
+	-- GameTimeFrame.pendingCalendarInvites = 1337
 	-- show for guild events
+	-- local numInvites = CalendarGetNumPendingInvites()
+	-- local numGuildEvents = CalendarGetNumGuildEvents()
 	--[[
 	GameTimeCalendarInvitesTexture:Show()
 	GameTimeCalendarInvitesGlow:Show()
@@ -428,11 +431,16 @@ function plugin:OnEnable()
 		if not color then return format("Cast by %s", name) end
 		return format("Cast by |cff%02x%02x%02x%s|r", color.r * 255, color.g * 255, color.b * 255, name)
 	end })
-	GameTooltip:HookScript('OnEnter', function(self)
-		local name, _, _, _, _, _, _, caster, _, _, spellID = UnitAura('player', self:GetID(), self.filter)
-	end)
 	hooksecurefunc(GameTooltip, 'SetUnitAura', function(self, unit, index, filter)
 		local name, _, _, _, _, _, _, caster, _, _, spellID = UnitAura(unit, index, filter)
+		if caster and unitNames[caster] then
+			self:AddLine(unitNames[caster])
+			self:Show()
+		end
+	end)
+	hooksecurefunc(GameTooltip, 'SetUnitConsolidatedBuff', function(self, unit, index)
+		local _, _, _, _, _, _, _, caster = UnitBuff(unit, (GetRaidBuffTrayAuraInfo(index)))
+		local class = caster and select(2, UnitClass(caster))
 		if caster and unitNames[caster] then
 			self:AddLine(unitNames[caster])
 			self:Show()
