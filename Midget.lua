@@ -23,6 +23,7 @@ local defaults = {
 		SHIFTAcceptPopups = true,
 		hideUnusableCompareTips = true,
 		showRaidBuffIndicators = true,
+		listenForAssignments = true,
 		deleteEmptyPostmasterMails = false,
 		restoreLootSpecAfterCombat = false,
 		easySurvey = true,
