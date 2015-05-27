@@ -233,16 +233,31 @@ local function MerchantAltCurrencyCounts()
 
 	-- display currency counts
 	hooksecurefunc('MerchantFrame_UpdateCurrencies', function()
-		for index, link in ipairs(merchantCurrencies) do
-			local i = MAX_MERCHANT_CURRENCIES - index + 1
-			if i <= 0 then break end
+		local index = 1
+		for i = 1, MAX_MERCHANT_CURRENCIES do
 			local tokenButton = _G['MerchantToken'..i]
-			      tokenButton:Show()
-			local count = GetItemCount(link)
-			tokenButton.icon:SetTexture(GetItemIcon(link))
-			tokenButton.count:SetText(count <= 99999 and count or '*')
-			tokenButton.currencyID = 0
-			tokenButton.link = link
+			if tokenButton and not tokenButton:IsShown() then
+				local link = merchantCurrencies[index]
+				if not link then break end
+				index = index + 1
+
+				local count = GetItemCount(link)
+				tokenButton.icon:SetTexture(GetItemIcon(link))
+				tokenButton.count:SetText(count <= 99999 and count or '*')
+				tokenButton.currencyID = 0
+				tokenButton.link = link
+				tokenButton:Show()
+			end
+		end
+
+		if #merchantCurrencies > 0 then
+			MerchantFrame:RegisterEvent('CURRENCY_DISPLAY_UPDATE')
+			if #merchantCurrencies > 3 then
+				MerchantMoneyFrame:Hide()
+			else
+				MerchantMoneyFrame:SetPoint('BOTTOMRIGHT', -169, 8)
+				MerchantMoneyFrame:Show()
+			end
 		end
 	end)
 end
