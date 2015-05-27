@@ -5,42 +5,52 @@ local plugin = addon:NewModule('HoverTips', 'AceEvent-3.0')
 -- GLOBALS:
 -- GLOBALS: hooksecurefunc
 
-local hoverTip = nil
+local stickyLink, displayedLink = nil, nil
 -- see link types here: http://www.townlong-yak.com/framexml/19033/ItemRef.lua#162
 local linkTypes = {
-	item = true, spell = true, enchant = true, talent = true, glyph = true, achievement = true, unit = true, quest = true, instancelock = true, trade = false, -- GameTooltip / ItemRefTooltip
+	item = true, spell = true, enchant = true, talent = true, glyph = true, achievement = true, unit = true, quest = true, instancelock = true, -- GameTooltip / ItemRefTooltip
 	battlepet           = 'FloatingBattlePetTooltip',
 	battlePetAbil       = 'FloatingPetBattleAbilityTooltip',
 	garrfollower        = 'FloatingGarrisonFollowerTooltip',
 	garrfollowerability = 'FloatingGarrisonFollowerAbilityTooltip',
 	garrmission         = 'FloatingGarrisonMissionTooltip',
 }
-local function OnHyperlinkEnter(self, linkData, link, acceptModifiers)
+local function OnHyperlinkEnter(self, linkData, link)
 	local linkType = addon.GetLinkData(link)
 	if not linkType or not linkTypes[linkType] then return end
-	if IsModifiedClick() and not acceptModifiers then return end
+	-- already displaying this link, do not toggle
+	if stickyLink == link or IsModifiedClick() then return end
 
-	local tipName = linkTypes[linkType] == true and 'ItemRefTooltip' or linkTypes[linkType]
-	local tooltip = _G[tipName]
 	ChatFrame_OnHyperlinkShow(self, linkData, link, 'LeftButton')
+	displayedLink = link
 
-	tooltip:ClearAllPoints()
-	GameTooltip:SetOwner(self, 'CURSOR')
-	tooltip:SetPoint(GameTooltip:GetPoint())
-	hoverTip = link
+	--[[ local tooltip = linkTypes[linkType] == true and 'ItemRefTooltip' or linkTypes[linkType]
+	local tooltip = tooltip and _G[tooltip]
+	if tooltip then
+		tooltip:ClearAllPoints()
+		GameTooltip:SetOwner(self, 'CURSOR')
+		tooltip:SetPoint(GameTooltip:GetPoint())
+	end --]]
 end
 local function OnHyperlinkLeave(self, linkData, link)
-	local linkType = addon.GetLinkData(link)
-	if not hoverTip or hoverTip ~= link or not linkType or not linkTypes[linkType] then return end
-	local tipName = linkTypes[linkType] == true and 'ItemRefTooltip' or linkTypes[linkType]
-	_G[tipName]:Hide()
+	if not stickyLink and displayedLink and not IsModifiedClick() then
+		-- toggle tooltip off
+		ChatFrame_OnHyperlinkShow(self, linkData, link, 'LeftButton')
+		stickyLink    = nil
+		displayedLink = nil
+	end
 end
 local function OnHyperlinkClick(self, linkData, link, btn)
-	-- do not close popups that were intentionally shown
-	if hoverTip and hoverTip == link then
-		-- OnEnter (=> custom handler will toggle on) > OnClick (=> default handler will toggle off) > show again
-		OnHyperlinkEnter(self, linkData, link, true)
-		hoverTip = nil
+	if not IsModifiedClick() then
+		if not stickyLink then
+			-- re-open tooltips that were intentionally shown
+			OnHyperlinkEnter(self, linkData, link)
+			stickyLink = link
+		else
+			-- tooltip was closed
+			stickyLink = nil
+			displayedLink = nil
+		end
 	end
 end
 
