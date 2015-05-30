@@ -252,6 +252,8 @@ local function MerchantAltCurrencyCounts()
 
 		if #merchantCurrencies > 0 then
 			MerchantFrame:RegisterEvent('CURRENCY_DISPLAY_UPDATE')
+			MerchantExtraCurrencyInset:Show()
+			MerchantExtraCurrencyBg:Show()
 			if #merchantCurrencies > 3 then
 				MerchantMoneyFrame:Hide()
 			else
