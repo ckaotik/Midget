@@ -37,9 +37,9 @@ end
 
 -- create a fake configuration panel
 local panel = CreateFrame('Frame')
-      panel.name = addonName
-      panel:Hide()
-      panel:SetScript('OnShow', OpenConfiguration)
+	  panel.name = addonName
+	  panel:Hide()
+	  panel:SetScript('OnShow', OpenConfiguration)
 InterfaceOptions_AddCategory(panel)
 
 -- use slash command to toggle config

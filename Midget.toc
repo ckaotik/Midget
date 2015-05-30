@@ -2,7 +2,7 @@
 ## Author: ckaotik
 ## Title: Midget
 ## Version: dev
-## OptionalDeps: Cork, TipTac, BigWigs, Dominos
+## OptionalDeps: Cork, TipTac, BigWigs, Dominos, Clique
 ## Dependencies:
 ## SavedVariables: MidgetDB, StufferDB
 ## SavedVariablesPerCharacter: MidgetLocalDB
@@ -45,3 +45,4 @@ modules\tooltip.unit.lua
 modules\upgrade.lua
 
 config.lua
+modules\clique.lua
