@@ -57,7 +57,6 @@ local function CliqueOpenConfiguration(self, args)
 	self:Hide()
 
 	-- initialize panel
-	LibStub('LibDualSpec-1.0'):EnhanceDatabase(addon.db, addonName)
 	LibStub('AceConfig-3.0'):RegisterOptionsTable('CliqueBindings', {
 		type = 'group',
 		name = 'Bindings',
