@@ -28,8 +28,8 @@ function plugin:OnCommReceived(prefix, message, channel, sender)
 	if prefix ~= 'AnAss1' then return end
 
 	-- data is serialized, compressed and encoded
-	local data
-	-- data = libCE:Decode(message)
+	local data = message
+	-- data = libCE:Decode(data)
 	data = LibCompress:Decompress(data)
 	if not data then return end
 	local success
