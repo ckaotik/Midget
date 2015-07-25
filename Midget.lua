@@ -40,7 +40,6 @@ function addon:OnEnable()
 	self.db = LibStub('AceDB-3.0'):New(addonName..'DB', defaults, true)
 end
 
-
 -- --------------------------------------------------------
 --  LoadWith
 -- --------------------------------------------------------
