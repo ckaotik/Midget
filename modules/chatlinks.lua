@@ -93,7 +93,9 @@ function plugin:OnEnable()
 
 	-- ItemRef comparison tooltips
 	ItemRefTooltip:HookScript('OnUpdate', function(tooltip)
-		if IsModifiedClick('COMPAREITEMS') or GetCVar('alwaysCompareItems') then
+		local _, itemLink = GameTooltip:GetItem()
+		if itemLink and IsEquippableItem(itemLink)
+			and (IsModifiedClick('COMPAREITEMS') or GetCVar('alwaysCompareItems')) then
 			if not tooltip.comparing then
 				GameTooltip_ShowCompareItem(tooltip, 1)
 			end
