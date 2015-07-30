@@ -5,7 +5,6 @@
 ## OptionalDeps: Cork, TipTac, BigWigs, Dominos, Clique
 ## Dependencies:
 ## SavedVariables: MidgetDB, StufferDB
-## SavedVariablesPerCharacter: MidgetLocalDB
 
 ## X-ConfigMode: true
 
@@ -42,6 +41,7 @@ modules\style.lua
 modules\stuffer.lua
 modules\tooltip.achievement.lua
 modules\tooltip.unit.lua
+modules\tracker.lua
 modules\upgrade.lua
 
 config.lua
