@@ -41,7 +41,6 @@ modules\style.lua
 modules\stuffer.lua
 modules\tooltip.achievement.lua
 modules\tooltip.unit.lua
-modules\tracker.lua
 modules\upgrade.lua
 
 config.lua
