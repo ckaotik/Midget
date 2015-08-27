@@ -95,3 +95,21 @@ local function TooltipAchievementExtras(tooltip, hyperlink)
 end
 hooksecurefunc(GameTooltip, 'SetHyperlink', TooltipAchievementExtras)
 hooksecurefunc(ItemRefTooltip, 'SetHyperlink', TooltipAchievementExtras)
+
+hooksecurefunc('AchievementMeta_OnEnter', function(self)
+	if self.date then
+		GameTooltip:ClearLines()
+	else
+		GameTooltip:SetOwner(self, 'ANCHOR_RIGHT')
+	end
+
+	local hyperlink = GetAchievementLink(self.id)
+	GameTooltip:SetHyperlink(hyperlink)
+
+	if self.date then
+		GameTooltip:AddLine(' ')
+		GameTooltip:AddLine(string.format(ACHIEVEMENT_META_COMPLETED_DATE, self.date), 1, 1, true)
+		AchievementFrameAchievements_CheckGuildMembersTooltip(self)
+	end
+  	GameTooltip:Show()
+end)
