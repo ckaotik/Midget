@@ -329,6 +329,26 @@ local function TooltipItemInfo(self)
 	local _, itemLink = self:GetItem()
 	if not itemLink then return end
 
+	--[[ -- indicate expansion level for reagents
+	for i = 1, self:NumLines() do
+		local left = _G[self:GetName()..'TextLeft'..i]
+		if left:GetText() == _G.PROFESSIONS_USED_IN_COOKING then
+			local itemLevel = select(4, GetItemInfo(itemLink))
+			if not itemLevel then break end
+			local expansion
+			for index, maxLevel in pairs(_G.MAX_PLAYER_LEVEL_TABLE) do
+				if itemLevel <= maxLevel and (not expansion or index <= expansion) then
+					expansion = index
+				end
+			end
+			local expansionName = expansion and EJ_GetTierInfo(expansion + 1)
+			if expansionName then
+				left:SetFormattedText('%s (%s)', _G.PROFESSIONS_USED_IN_COOKING, expansionName:gsub('(%w)%w*%s*', '%1'))
+			end
+			break
+		end
+	end --]]
+
 	wipe(itemSpecs)
 	GetItemSpecInfo(itemLink, itemSpecs)
 	-- TODO: only show own specializations GetNumSpecializations()
