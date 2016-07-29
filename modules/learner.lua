@@ -115,25 +115,37 @@ local function SortSpellTable(a, b)
 end
 
 local function PrintRespecChanges()
-	table.sort(respecUnlearned, SortSpellTable)
-	table.sort(respecLearned, SortSpellTable)
-	for i, spellID in ipairs(respecLearned) do
-		respecLearned[i] = GetSpellLink(spellID)
-	end
-	for i = #respecLearned, 1, -1 do
-		for j = #respecUnlearned, 1, -1 do
-			if respecUnlearned[j] == respecLearned[i] then
-				table.remove(respecUnlearned, j)
-				table.remove(respecLearned, i)
+	wipe(respecLearned)
+	local _, _, offset, numSpells = GetSpellTabInfo(2)
+	for i = 1, numSpells do
+		local spellType, spellID = GetSpellBookItemInfo(offset + i, 'SPELLS')
+		if spellType == 'SPELL' then
+			if not tContains(respecUnlearned, spellID) then
+				table.insert(respecLearned, spellID)
+			else
+				for k = #respecUnlearned, 1, -1 do
+					if respecUnlearned[k] == spellID then
+						table.remove(respecUnlearned, k)
+						break
+					end
+				end
 			end
 		end
 	end
 
 	if #respecUnlearned > 0 then
+		table.sort(respecUnlearned, SortSpellTable)
+		for k, spellID in ipairs(respecUnlearned) do
+			respecUnlearned[k] = GetSpellLink(spellID)
+		end
 		local unlearned = string.format(ERR_SPELL_UNLEARNED_S, table.concat(respecUnlearned, ', '))
 		ChatFrame_DisplaySystemMessageInPrimary(unlearned)
 	end
 	if #respecLearned > 0 then
+		table.sort(respecLearned, SortSpellTable)
+		for i, spellID in ipairs(respecLearned) do
+			respecLearned[i] = GetSpellLink(spellID)
+		end
 		local learned = string.format(ERR_LEARN_ABILITY_S, table.concat(respecLearned, ', '))
 		ChatFrame_DisplaySystemMessageInPrimary(learned)
 	end
@@ -146,31 +158,34 @@ end
 local function SpellLearned(event, arg1)
 	table.insert(respecLearned, arg1)
 end
-local function RespecStopped(event, ...)
-	local spellID = select(5, ...)
-	if spellID ~= 63645 and spellID ~= 63644 then return end
+local function RespecStopped(event, unit, _, _, _, spellID)
+	if unit ~= 'player' or spellID ~= 200749 then return end
+	PrintRespecChanges()
 
 	ChatFrame_RemoveMessageEventFilter("CHAT_MSG_SYSTEM", RespecSpamChatFilter)
-	plugin:UnregisterEvent("UNIT_SPELLCAST_INTERRUPTED")
-	plugin:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED")
 	plugin:UnregisterEvent("LEARNED_SPELL_IN_TAB")
-
-	if event == "UNIT_SPELLCAST_SUCCEEDED" then
-		PrintRespecChanges()
-	end
+	plugin:UnregisterEvent("UNIT_SPELLCAST_STOP")
 end
-local function RespecStarted()
+local function RespecStarted(event, unit, _, _, _, spellID)
+	if unit ~= 'player' or spellID ~= 200749 then return end
 	wipe(respecUnlearned)
-	wipe(respecLearned)
+	local _, _, offset, numSpells = GetSpellTabInfo(2)
+	for i = 1, numSpells do
+		local spellType, spellID = GetSpellBookItemInfo(offset + i, 'SPELLS')
+		if spellType == 'SPELL' then
+			table.insert(respecUnlearned, spellID)
+		end
+	end
 
 	ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", RespecSpamChatFilter)
-	plugin:RegisterEvent("LEARNED_SPELL_IN_TAB",        SpellLearned)
-	plugin:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED",    RespecStopped)
-	plugin:RegisterEvent("UNIT_SPELLCAST_INTERRUPTED",  RespecStopped)
+	plugin:RegisterEvent("LEARNED_SPELL_IN_TAB", SpellLearned)
+	plugin:RegisterEvent("UNIT_SPELLCAST_STOP",  RespecStopped)
 end
 
 function plugin:OnEnable()
-	hooksecurefunc("SetActiveSpecGroup", RespecStarted)
+	-- SPELLS_CHANGED
+	-- plugin:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED", OnRespecStart)
+	plugin:RegisterEvent("UNIT_SPELLCAST_START", RespecStarted)
 	plugin:RegisterEvent("TRAINER_SHOW", AddTrainAllButton)
 	plugin:RegisterEvent("TRAINER_UPDATE", AddTrainAllButton)
 end
