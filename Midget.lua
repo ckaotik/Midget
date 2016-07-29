@@ -146,7 +146,7 @@ function addon.GetLinkData(link)
 	return linkType, tonumber(id), data
 end
 
-local BATTLEPET = select(11, GetAuctionItemClasses())
+local BATTLEPET = AUCTION_CATEGORY_BATTLE_PETS
 -- this is a wrapper for battle pets, so you can use them like you would regular items
 function addon.GetItemInfo(link)
 	if not link or type(link) ~= "string" then return end
