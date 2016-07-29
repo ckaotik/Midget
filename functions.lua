@@ -456,9 +456,11 @@ function plugin:OnEnable()
 	ItemRefTooltip:SetPadding(0)
 
 	-- allow closing map with 'ESC'
-	tinsert(UISpecialFrames, 'WorldMapFrame')
+	-- tinsert(UISpecialFrames, 'WorldMapFrame')
 	-- allow opening other panels while map is open
-	WorldMapFrame:SetAttribute('UIPanelLayout-area', 'left')
+	SetUIPanelAttribute(_G.WorldMapFrame, 'area', 'left')
+	SetUIPanelAttribute(_G.WorldMapFrame, 'xoffset', 0)
+	SetUIPanelAttribute(_G.WorldMapFrame, 'yoffset', 0)
 
 	-- FIXME: doesn't work when triggered by SHIFT+Click
 	hooksecurefunc('StaticPopup_Show', AutoAcceptPopup)
