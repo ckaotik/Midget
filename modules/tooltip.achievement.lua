@@ -96,7 +96,7 @@ end
 hooksecurefunc(GameTooltip, 'SetHyperlink', TooltipAchievementExtras)
 hooksecurefunc(ItemRefTooltip, 'SetHyperlink', TooltipAchievementExtras)
 
-hooksecurefunc('AchievementMeta_OnEnter', function(self)
+--[[ hooksecurefunc('AchievementMeta_OnEnter', function(self)
 	if self.date then
 		GameTooltip:ClearLines()
 	else
@@ -111,5 +111,5 @@ hooksecurefunc('AchievementMeta_OnEnter', function(self)
 		GameTooltip:AddLine(string.format(ACHIEVEMENT_META_COMPLETED_DATE, self.date), 1, 1, true)
 		AchievementFrameAchievements_CheckGuildMembersTooltip(self)
 	end
-  	GameTooltip:Show()
-end)
+	GameTooltip:Show()
+end) --]]
