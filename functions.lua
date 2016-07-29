@@ -425,14 +425,6 @@ function plugin:OnEnable()
 			self:Show()
 		end
 	end)
-	hooksecurefunc(GameTooltip, 'SetUnitConsolidatedBuff', function(self, unit, index)
-		local _, _, _, _, _, _, _, caster = UnitBuff(unit, (GetRaidBuffTrayAuraInfo(index)))
-		local class = caster and select(2, UnitClass(caster))
-		if caster and unitNames[caster] then
-			self:AddLine(unitNames[caster])
-			self:Show()
-		end
-	end)
 
 	-- SLASH_ROLECHECK1 = "/rolecheck"
 	-- SlashCmdList.ROLECHECK = InitiateRolePoll
