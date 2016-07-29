@@ -26,7 +26,7 @@ local function ShowAttachmentInfo(self)
 			-- gather and group data
 			for attachmentIndex = 1, ATTACHMENTS_MAX do
 				link = GetInboxItemLink(self.index, attachmentIndex)
-				name, itemTexture, count, quality = GetInboxItem(self.index, attachmentIndex)
+				name, id, itemTexture, count, quality = GetInboxItem(self.index, attachmentIndex)
 
 				if name then
 					if not quality or quality == -1 then
