@@ -298,20 +298,6 @@ local function AddUndressButtons()
 		end
 	end)
 end
-local function FixModelLighting()
-	if not addon.db.profile.modelLighting then return end
-	for _, name in pairs({"DressUpModel", "CharacterModelFrame", "SideDressUpModel", "InspectModelFrame"}) do
-		local frame = _G[name]
-		if frame then
-			frame:SetLight(1, 0, 1, 1, -1, 1)
-			frame:SetFacing(0)
-			if name == "SideDressUpModel" then
-				frame:SetModelScale(2)
-				frame:SetPosition(0, 0.1, -0.5)
-			end
-		end
-	end
-end
 
 -- ================================================
 -- Accept popups on SHIFT
@@ -403,7 +389,6 @@ function plugin:OnEnable()
 	CalendarIconFlash()
 	CreateCorkButton()
 	AddUndressButtons()
-	FixModelLighting()
 	FixMenuBarHeight()
 	ShortenLFRNames()
 	AddTipTacStyles()
