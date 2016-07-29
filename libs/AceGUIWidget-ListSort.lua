@@ -309,14 +309,15 @@ local function Constructor()
 	scrollBG:SetPoint("BOTTOMLEFT", button, "TOPLEFT") --]]
 
 	local widget = {
+		type        = widgetType,
 		frame       = frame,
+
 		label       = label,
 		labelHeight = 10,
 		numlines    = 6,
 		-- scrollBar   = scrollBar,
 		-- scrollBG    = scrollBG,
 		scrollFrame = scrollFrame,
-		type        = widgetType
 	}
 	for method, func in pairs(methods) do
 		widget[method] = func
