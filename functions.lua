@@ -500,6 +500,42 @@ function plugin:OnEnable()
 		end)
 	end)
 
+	addon:LoadWith('Bazooka', function()
+		-- GLOBALS: Bazooka
+		-- Move when other top-anchored elements are moved.
+		hooksecurefunc('UIParent_UpdateTopFramePositions', function()
+			local _, _, _, _, newYOffset = _G.BuffFrame:GetPoint()
+			for i, bar in pairs(Bazooka.bars) do
+				local point, anchor, otherPoint, x, y = bar.frame:GetPoint()
+				if otherPoint:find('TOP') then
+					bar.frame:SetPoint(point, anchor, otherPoint, x, bar.db.y + newYOffset + 12)
+				end
+			end
+		end)
+	end)
+
+	addon:LoadWith('Squeenix', function()
+		-- GLOBALS: SqueenixDB2
+		local db = SqueenixDB2
+
+		-- Move when other top-anchored elements are moved.
+		local _, _, _, origX, origY = _G.Minimap:GetPoint()
+		hooksecurefunc('UIParent_UpdateTopFramePositions', function()
+			local _, _, _, _, newYOffset = _G.BuffFrame:GetPoint()
+
+			local point, anchor, otherPoint, x, y = _G.MinimapCluster:GetPoint()
+			if point == 'TOPRIGHT' then
+				_G.MinimapCluster:SetPoint(point, anchor, otherPoint, x, newYOffset)
+			end
+
+			local point, anchor, otherPoint, x, y = _G.Minimap:GetPoint()
+			local zoneTextHeight = _G.MinimapZoneTextButton:IsVisible() and _G.MinimapZoneTextButton:GetHeight() + 5 or 0
+			if point == 'CENTER' then
+				_G.Minimap:SetPoint('CENTER', db.anchorframe or 'MinimapCluster', db.anchor or 'TOP', db.x or 9, (db.y or -92) + newYOffset + zoneTextHeight)
+			end
+		end)
+	end)
+
 	-- addon memory usage on tracking button
 	local addonMemoryUsage, addonOrder = {}, {}
 	local function SortByMemoryUsage(a, b) return addonMemoryUsage[a] > addonMemoryUsage[b] end
