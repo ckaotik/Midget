@@ -27,7 +27,7 @@ Midget.lua
 functions.lua
 
 # modules
-modules\assignments.lua
+#modules\assignments.lua
 modules\bagnon.lua
 modules\configmode.lua
 modules\chatlinks.lua
