@@ -425,24 +425,19 @@ function plugin:OnEnable()
 	-- FIXME: doesn't work when triggered by SHIFT+Click
 	hooksecurefunc('StaticPopup_Show', AutoAcceptPopup)
 
-	-- show #uncollected garrison resources on minimap tooltip
-	local _, _, icon = GetCurrencyInfo(824)
-	local textFormat = _G.GARRISON_CACHE .. ' (%d|T' .. icon .. ':0|t)'
-	GameTooltip:HookScript('OnShow', function(self)
-		if self:IsOwned(_G.Minimap) and C_Garrison.IsOnGarrisonMap() then
-			for i = 1, self:NumLines() do
-				local left = _G['GameTooltipTextLeft' .. i]
-				if left:GetText() == _G.GARRISON_CACHE then
-					local uncollected  = DataStore:GetUncollectedResources(DataStore:GetCharacter() or '')
-					if uncollected and uncollected > 0 then
-						left:SetFormattedText(textFormat, uncollected)
-						self:Show()
-					end
-					break
-				end
-			end
-		end
-	end)
+	-- Try to prevent AngryWorldQuests from tainting everything.
+	function WorldMapFrame.UIElementsFrame.BountyBoard.GetDisplayLocation(self)
+		if InCombatLockdown() then return end
+		return WorldMapBountyBoardMixin.GetDisplayLocation(self)
+	end
+	function WorldMapFrame.UIElementsFrame.ActionButton.GetDisplayLocation(self, useAlternateLocation)
+		if InCombatLockdown() then return end
+		return WorldMapActionButtonMixin.GetDisplayLocation(self, useAlternateLocation)
+	end
+	function WorldMapFrame.UIElementsFrame.ActionButton.Refresh(self)
+		if InCombatLockdown() then return end
+		WorldMapActionButtonMixin.Refresh(self)
+	end
 
 	-- guild news tab: allow hyperlink interaction
 	addon:LoadWith('Blizzard_GuildUI', function()
