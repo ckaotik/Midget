@@ -413,7 +413,7 @@ function plugin:OnEnable()
 	-- SlashCmdList.ROLECHECK = InitiateRolePoll
 
 	-- don't add spacing for closing 'x'
-	ItemRefTooltip:SetPadding(0)
+	ItemRefTooltip:SetPadding(0, 0)
 
 	-- allow closing map with 'ESC'
 	-- tinsert(UISpecialFrames, 'WorldMapFrame')
