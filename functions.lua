@@ -21,12 +21,6 @@ local function InterfaceOptionsScrolling()
 	end
 end
 
-local function InterfaceOptionsDragging()
-	if not addon.db.profile.InterfaceOptionsDragging then return end
-	InterfaceOptionsFrame:SetMovable(true)
-	InterfaceOptionsFrame:CreateTitleRegion():SetAllPoints(InterfaceOptionsFrameHeader)
-end
-
 -- ================================================
 -- 	Whisper (outgoing) Color
 -- ================================================
@@ -414,7 +408,6 @@ function plugin:OnEnable()
 	AddTipTacStyles()
 	OutgoingWhisperColor()
 	InterfaceOptionsScrolling()
-	InterfaceOptionsDragging()
 	HideUnusableCompareTips()
 	ExtendLibItemSearch()
 	EasySurvey()
