@@ -134,6 +134,8 @@ end
 local postmaster = {
 	['The Postmaster'] = true,  -- enUS
 	['Der Postmeister'] = true, -- deDE
+	['Thaumaturge Vashreen'] = true, -- enUS
+	['Thaumaturg Vashreen'] = true, -- deDE
 }
 local function DeleteEmptyPostmasterMails(event, ...)
 	if not addon.db.profile.deleteEmptyPostmasterMails then return end
