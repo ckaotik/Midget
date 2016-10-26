@@ -109,8 +109,10 @@ function plugin:OnEnable()
 		local linkType, linkID, linkData = addon.GetLinkData(link)
 		if linkType == 'achievement' and IsModifiedClick('DRESSUP') then
 			-- directly open achievement in UI
-			-- LoadAddOn('Blizzard_AchievementUI')
-			ShowUIPanel(AchievementFrame)
+			if not AchievementFrame then AchievementFrame_LoadUI() end
+			if not AchievementFrame:IsShown() then
+				AchievementFrame_ToggleAchievementFrame()
+			end
 			AchievementFrame_SelectAchievement(linkID)
 		end
 	end)
