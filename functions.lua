@@ -56,35 +56,6 @@ local function ShortenLFRNames()
 end
 
 -- ================================================
---  Cork
--- ================================================
-local function CreateCorkButton()
-	if not addon.db.profile.CorkButton or not IsAddOnLoaded("Cork") then return end
-
-	local buffButton = _G["CorkFrame"]
-
-	buffButton.texture = buffButton:CreateTexture(buffButton:GetName().."Icon")
-	buffButton.texture:SetTexture("Interface\\Icons\\Achievement_BG_winSOA")
-	buffButton.texture:SetAllPoints()
-	buffButton.dragHandle = buffButton:CreateTitleRegion()
-	buffButton.dragHandle:SetPoint("TOPLEFT", buffButton)
-	buffButton.dragHandle:SetPoint("BOTTOMRIGHT", buffButton, "TOPRIGHT", 0, -6)
-
-	buffButton:SetWidth(37); buffButton:SetHeight(37)
-	buffButton:SetPoint("CENTER")
-	buffButton:SetMovable(true)
-
-	-- LibButtonFacade support
-	local LBF = LibStub("LibButtonFacade", true)
-	if LBF then
-		LBF:Group("Cork"):Skin()
-		LBF:Group("Cork"):AddButton(buffButton)
-	end
-	hooksecurefunc("CameraZoomIn", function() CorkFrame:Click() end)
-	hooksecurefunc("CameraZoomOut", function() CorkFrame:Click() end)
-end
-
--- ================================================
 -- ValidateFramePosition with no menu bar
 -- ================================================
 local function FixMenuBarHeight()
@@ -401,7 +372,6 @@ end
 -- ================================================
 function plugin:OnEnable()
 	CalendarIconFlash()
-	CreateCorkButton()
 	AddUndressButtons()
 	FixMenuBarHeight()
 	ShortenLFRNames()
