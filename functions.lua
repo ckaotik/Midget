@@ -458,6 +458,12 @@ function plugin:OnEnable()
 		end)
 	end)
 
+	addon:LoadWith('Dominos_Cast', function()
+		local plugin = LibStub('AceAddon-3.0'):GetAddon('Dominos'):GetModule('CastBar')
+		local frame = plugin.frame
+		local targetCast = frame:New('ctarget', 'target')
+	end)
+
 	addon:LoadWith('Bazooka', function()
 		-- GLOBALS: Bazooka
 		-- Move when other top-anchored elements are moved.
