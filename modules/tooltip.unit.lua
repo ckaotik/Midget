@@ -93,8 +93,9 @@ function plugin:INSPECT_READY(event, guid)
 
 		-- TODO: fix heirloom item levels
 		-- get unit average item level
-		local itemLevels, mainHandLevel, complete = 0, nil, true
-		local numSlots = _G.INVSLOT_LAST_EQUIPPED - 3 -- tabard, ranged, body don't provide iLvl
+		local itemLevels, complete = 0, true
+		local mainHandLevel = nil
+		local numSlots = _G.INVSLOT_LAST_EQUIPPED - 2 -- tabard and body don't provide iLvl
 		for slot = _G.INVSLOT_FIRST_EQUIPPED, _G.INVSLOT_LAST_EQUIPPED do
 			if slot ~= _G.INVSLOT_TABARD and slot ~= _G.INVSLOT_BODY and slot ~= _G.INVSLOT_RANGED then
 				local itemID   = GetInventoryItemID(unit, slot)
@@ -106,15 +107,26 @@ function plugin:INSPECT_READY(event, guid)
 				end
 
 				local itemLevel = itemLink and LibItemUpgrade:GetUpgradedItemLevel(itemLink) or 0
+				-- Artifact offhand shares the main weapon's item level.
+				if itemLink and slot == _G.INVSLOT_OFFHAND and mainHandLevel
+					and select(3, GetItemInfo(itemLink)) == _G.LE_ITEM_QUALITY_ARTIFACT then
+					itemLevel = mainHandLevel
+					mainHandLevel = nil
+				end
 				itemLevels = itemLevels + itemLevel
 
 				-- apply main hand level if two hand and offhand empty
 				if slot == _G.INVSLOT_MAINHAND and itemLink then
-					local _, _, _, _, _, class, subclass, _, equipSlot = GetItemInfo(itemLink)
-					if equipSlot == 'INVTYPE_2HWEAPON' or equipSlot == 'INVTYPE_RANGED' or equipSlot == 'INVTYPE_RANGEDRIGHT' then
+					local _, _, quality, _, _, class, subclass, _, equipSlot = GetItemInfo(itemLink)
+					if quality == _G.LE_ITEM_QUALITY_ARTIFACT
+						or equipSlot == 'INVTYPE_2HWEAPON'
+						or equipSlot == 'INVTYPE_RANGED'
+						or equipSlot == 'INVTYPE_RANGEDRIGHT'
+					then
 						mainHandLevel = itemLevel
 					end
-				elseif slot == _G.INVSLOT_OFFHAND and not itemLink and mainHandLevel then
+					itemLevels = itemLevels + itemLevel
+				elseif slot == _G.INVSLOT_OFFHAND and mainHandLevel then
 					-- blizzard supposedly calculates it this way
 					numSlots = numSlots - 1
 					mainHandLevel = nil
