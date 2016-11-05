@@ -500,6 +500,44 @@ function plugin:OnEnable()
 		end)
 	end)
 
+	addon:LoadWith('Blizzard_OrderHallUI', function()
+		local threatCounters = CreateFrame('Frame', 'OrderHallThreatCountersFrame', OrderHallMissionFrame.FollowerTab, 'GarrisonThreatCountersFrameTemplate')
+		threatCounters.followerType = _G.LE_FOLLOWER_TYPE_GARRISON_7_0
+		local tooltipText = '%d |4follower provides:followers provide; %s.'
+		GarrisonThreatCountersFrame_OnLoad(threatCounters, threatCounters.followerType, nil)
+
+		-- Override icons and labels.
+		local counters = C_Garrison.GetFollowerAbilityCountersForMechanicTypes(threatCounters.followerType)
+		local mechanics = C_Garrison.GetAllEncounterThreats(threatCounters.followerType)
+		table.sort(mechanics, function(m1, m2) return strcmputf8i(m1.name, m2.name) > 0; end)
+
+		local buttons = {}
+		for index, info in pairs(mechanics) do
+			local button = threatCounters.ThreatsList[index]
+			if info.factor <= 300 then
+				-- Ignore basic garrison threats.
+				button:Hide()
+			elseif info.icon == 1357797 then
+				-- Replace specialization threats with counters
+				local counter = counters[info.id]
+				button.name = counter.name
+				button.Icon:SetTexture(counter.icon)
+				button:SetPoint('RIGHT', buttons[#buttons], 'LEFT', -14, 0)
+				table.insert(buttons, button)
+			else
+				-- Use the rest as-is.
+				button:SetPoint('RIGHT', buttons[#buttons], 'LEFT', -14, 0)
+				table.insert(buttons, button)
+			end
+		end
+		-- minions: C_Garrison.GetClassSpecCategoryInfo(threatCounters.followerType)
+		buttons[1]:SetPoint('TOPRIGHT', 0, 7)
+		wipe(threatCounters.ThreatsList)
+		threatCounters.ThreatsList = buttons
+		threatCounters:SetPoint('TOPRIGHT', -12, 30)
+		threatCounters:Show()
+	end)
+
 	-- addon memory usage on tracking button
 	local addonMemoryUsage, addonOrder = {}, {}
 	local function SortByMemoryUsage(a, b) return addonMemoryUsage[a] > addonMemoryUsage[b] end
