@@ -423,9 +423,9 @@ function plugin:OnEnable()
 	SetUIPanelAttribute(_G.WorldMapFrame, 'yoffset', 0)
 
 	-- FIXME: doesn't work when triggered by SHIFT+Click
-	hooksecurefunc('StaticPopup_Show', AutoAcceptPopup)
+	-- hooksecurefunc('StaticPopup_Show', AutoAcceptPopup)
 
-	-- Try to prevent AngryWorldQuests from tainting everything.
+	--[[ Try to prevent AngryWorldQuests from tainting everything.
 	function WorldMapFrame.UIElementsFrame.BountyBoard.GetDisplayLocation(self)
 		if InCombatLockdown() then return end
 		return WorldMapBountyBoardMixin.GetDisplayLocation(self)
@@ -437,7 +437,7 @@ function plugin:OnEnable()
 	function WorldMapFrame.UIElementsFrame.ActionButton.Refresh(self)
 		if InCombatLockdown() then return end
 		WorldMapActionButtonMixin.Refresh(self)
-	end
+	end --]]
 
 	-- guild news tab: allow hyperlink interaction
 	addon:LoadWith('Blizzard_GuildUI', function()
