@@ -75,7 +75,7 @@ function ReagentsToggle:Update(...)
 		self.icon:SetVertexColor(1, .1, .1)
 	end
 
-	if Bagnon:IsBagShown(self:GetFrame(), REAGENTBANK_CONTAINER) then
+	if self:GetFrame():IsBagFrameShown() then
 		self.icon:SetTexture('Interface\\Buttons\\Button-Backpack-Up')
 		self.tooltip = 'Show Bank'
 	else
@@ -96,7 +96,7 @@ function ReagentsToggle:OnClick()
 	hidden[show] = false
 	hidden[hide] = true
 
-	self:SendMessage('BAG_TOGGLED', show)
+	Bagnon:UpdateFrames()
 end
 
 function ReagentsToggle:OnEnter()
@@ -144,10 +144,7 @@ end
 -- button display
 hooksecurefunc(Bagnon.Frame, 'Layout', function(self)
 	if not self:IsVisible() or not self:HasReagentsToggle() then return end
-	-- update widths
-	local width = self.width + self:PlaceReagentsToggle()
-	self.width = max(width, 156)
-	self:UpdateSize()
+	self:PlaceReagentsToggle()
 
 	-- fix positions of sub frames
 	self.searchFrame:SetPoint('RIGHT', self.reagentsToggle, 'LEFT', -2, 0)
