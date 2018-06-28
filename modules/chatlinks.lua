@@ -97,7 +97,7 @@ function plugin:OnEnable()
 		if itemLink and IsEquippableItem(itemLink)
 			and (IsModifiedClick('COMPAREITEMS') or GetCVar('alwaysCompareItems')) then
 			if not tooltip.comparing then
-				GameTooltip_ShowCompareItem(tooltip, 1)
+				GameTooltip_ShowCompareItem(tooltip)
 			end
 			tooltip.comparing = true
 		else
