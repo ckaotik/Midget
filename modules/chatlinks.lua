@@ -5,7 +5,7 @@ local plugin = addon:NewModule('HoverTips', 'AceEvent-3.0')
 -- GLOBALS:
 -- GLOBALS: hooksecurefunc
 
-local stickyLink, displayedLink = nil, nil
+local stickyLink, displayedLink, displayedLinkData = nil, nil, nil
 -- see link types here: http://www.townlong-yak.com/framexml/19033/ItemRef.lua#162
 local linkTypes = {
 	item = true, spell = true, enchant = true, talent = true, glyph = true, achievement = true, unit = true, quest = true, instancelock = true, -- GameTooltip / ItemRefTooltip
@@ -23,6 +23,7 @@ local function OnHyperlinkEnter(self, linkData, link)
 
 	ChatFrame_OnHyperlinkShow(self, linkData, link, 'LeftButton')
 	displayedLink = link
+	displayedLinkData = linkData
 
 	--[[ local tooltip = linkTypes[linkType] == true and 'ItemRefTooltip' or linkTypes[linkType]
 	local tooltip = tooltip and _G[tooltip]
@@ -35,9 +36,10 @@ end
 local function OnHyperlinkLeave(self, linkData, link)
 	if not stickyLink and displayedLink and not IsModifiedClick() then
 		-- toggle tooltip off
-		ChatFrame_OnHyperlinkShow(self, linkData, link, 'LeftButton')
-		stickyLink    = nil
+		ChatFrame_OnHyperlinkShow(self, linkData or displayedLinkData, link or displayedLink, 'LeftButton')
+		stickyLink = nil
 		displayedLink = nil
+		displayedLinkData = nil
 	end
 end
 local function OnHyperlinkClick(self, linkData, link, btn)
