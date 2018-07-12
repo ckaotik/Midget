@@ -238,7 +238,7 @@ function plugin.AddUndressButton(frame)
 	undressButton:RegisterForClicks("AnyUp")
 	undressButton:SetScript("OnClick", function(self)
 		self:GetParent():GetParent():Undress()
-		PlaySound("igInventoryRotateCharacter");
+		PlaySound(SOUNDKIT.IG_INVENTORY_ROTATE_CHARACTER)
 	end)
 
 	undressButton.tooltip = "Undress"
@@ -503,8 +503,8 @@ function plugin:OnEnable()
 	addon:LoadWith('Blizzard_OrderHallUI', function()
 		local threatCounters = CreateFrame('Frame', 'OrderHallThreatCountersFrame', OrderHallMissionFrame.FollowerTab, 'GarrisonThreatCountersFrameTemplate')
 		threatCounters.followerType = _G.LE_FOLLOWER_TYPE_GARRISON_7_0
-		local tooltipText = '%d |4follower provides:followers provide; %s.'
-		GarrisonThreatCountersFrame_OnLoad(threatCounters, threatCounters.followerType, nil)
+		local tooltipText = '%d |4follower:followers; can use %s.'
+		GarrisonThreatCountersFrame_OnLoad(threatCounters, threatCounters.followerType, tooltipText)
 
 		-- Override icons and labels.
 		local counters = C_Garrison.GetFollowerAbilityCountersForMechanicTypes(threatCounters.followerType)
@@ -514,10 +514,11 @@ function plugin:OnEnable()
 		local buttons = {}
 		for index, info in pairs(mechanics) do
 			local button = threatCounters.ThreatsList[index]
-			if info.factor <= 300 then
+			if info.id <= 10 then
 				-- Ignore basic garrison threats.
 				button:Hide()
 			elseif info.icon == 1357797 then
+			-- elseif counters[info.id] then
 				-- Replace specialization threats with counters
 				local counter = counters[info.id]
 				button.name = counter.name
