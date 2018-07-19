@@ -14,7 +14,7 @@ libs\LibStub\LibStub.lua
 libs\LibButtonFacade-1.0\LibButtonFacade-1.0.lua
 libs\CustomSearch-1.0\CustomSearch-1.0.lua
 libs\LibItemSearch-1.2\LibItemSearch-1.2.lua
-libs\LibItemUpgradeInfo-1.0\LibItemUpgradeInfo-1.0.xml
+libs\LibItemUpgradeInfo-1.0\Core.lua
 libs\LibFlash\LibFlash.lua
 libs\LibQTip-1.0\LibQTip-1.0.lua
 libs\AceSerializer-3.0\AceSerializer-3.0.xml

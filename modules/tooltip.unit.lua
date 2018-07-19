@@ -1,15 +1,14 @@
 local addonName, addon, _ = ...
 local plugin = addon:NewModule('UnitTooltip', 'AceEvent-3.0')
 
--- GLOBALS: _G, LibStub, RED_FONT_COLOR, GameTooltip, hooksecurefunc
+-- GLOBALS: _G, RED_FONT_COLOR, GameTooltip, Item, hooksecurefunc
 -- GLOBALS: UnitIsPlayer, UnitLevel, UnitGUID, CanInspect, GetInspectSpecialization, GetSpecializationInfoByID, GetInventoryItemLink, GetItemInfo, NotifyInspect, UnitInParty, UnitInRaid
-
-local LibItemUpgrade = LibStub('LibItemUpgradeInfo-1.0')
 
 -- keys and values are weak and may be garbage collected
 local unitCache = setmetatable({}, {
 	__mode = 'kv',
 })
+local itemChecker = Item:CreateFromItemID(0)
 
 local function TooltipUnitInfo(tooltip)
 	local _, unit = tooltip:GetUnit()
@@ -106,7 +105,9 @@ function plugin:INSPECT_READY(event, guid)
 					itemLink = 'item:'..itemID
 				end
 
-				local itemLevel = itemLink and LibItemUpgrade:GetUpgradedItemLevel(itemLink) or 0
+				itemChecker:Clear()
+				itemChecker:SetItemLink(itemLink)
+				local itemLevel = itemChecker:GetCurrentItemLevel() or 0
 				-- Artifact offhand shares the main weapon's item level.
 				if itemLink and slot == _G.INVSLOT_OFFHAND and mainHandLevel
 					and select(3, GetItemInfo(itemLink)) == _G.LE_ITEM_QUALITY_ARTIFACT then

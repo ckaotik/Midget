@@ -81,7 +81,7 @@ local function DisplayItemUpgradeInfo()
 					currentUpgrade, maxUpgrade = 0, 0
 				end
 
-				local itemLevel = LibItemUpgrade:GetUpgradedItemLevel(itemLink) or 0
+				local itemLevel = GetDetailedItemLevelInfo(itemLink) or 0
 
 				local color = ''
 				if currentUpgrade == maxUpgrade then
