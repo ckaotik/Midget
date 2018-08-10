@@ -525,30 +525,6 @@ function plugin:OnEnable()
 	-- don't add spacing for closing 'x'
 	ItemRefTooltip:SetPadding(0, 0)
 
-	-- allow closing map with 'ESC'
-	-- tinsert(UISpecialFrames, 'WorldMapFrame')
-	-- allow opening other panels while map is open
-	SetUIPanelAttribute(_G.WorldMapFrame, 'area', 'left')
-	SetUIPanelAttribute(_G.WorldMapFrame, 'xoffset', 0)
-	SetUIPanelAttribute(_G.WorldMapFrame, 'yoffset', 0)
-
-	-- FIXME: doesn't work when triggered by SHIFT+Click
-	-- hooksecurefunc('StaticPopup_Show', AutoAcceptPopup)
-
-	--[[ Try to prevent AngryWorldQuests from tainting everything.
-	function WorldMapFrame.UIElementsFrame.BountyBoard.GetDisplayLocation(self)
-		if InCombatLockdown() then return end
-		return WorldMapBountyBoardMixin.GetDisplayLocation(self)
-	end
-	function WorldMapFrame.UIElementsFrame.ActionButton.GetDisplayLocation(self, useAlternateLocation)
-		if InCombatLockdown() then return end
-		return WorldMapActionButtonMixin.GetDisplayLocation(self, useAlternateLocation)
-	end
-	function WorldMapFrame.UIElementsFrame.ActionButton.Refresh(self)
-		if InCombatLockdown() then return end
-		WorldMapActionButtonMixin.Refresh(self)
-	end --]]
-
 	-- guild news tab: allow hyperlink interaction
 	addon:LoadWith('Blizzard_GuildUI', function()
 		local NEWS_GUILD_ACHIEVEMENT, NEWS_PLAYER_ACHIEVEMENT, NEWS_DUNGEON_ENCOUNTER = 0, 1, 2
