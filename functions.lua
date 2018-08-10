@@ -442,7 +442,7 @@ end
 local function GarrisonThreatCounterSummary(frame)
 	local threatCounters = CreateFrame('Frame', nil, frame.FollowerTab, 'GarrisonThreatCountersFrameTemplate')
 
-	local tooltipText = '%d |4follower:followers; for %s.'
+	local tooltipText = '%d |4follower:followers; for |cffffffff%s|r.'
 	GarrisonThreatCountersFrame_OnLoad(threatCounters, frame.followerTypeID, tooltipText)
 
 	-- Override icons and labels.
@@ -545,10 +545,16 @@ function plugin:OnEnable()
 		end)
 	end)
 
-	addon:LoadWith('Dominos_Cast', function()
-		local plugin = LibStub('AceAddon-3.0'):GetAddon('Dominos'):GetModule('CastBar')
-		local frame = plugin.frame
-		local targetCast = frame:New('ctarget', 'target')
+	addon:LoadWith('Blizzard_GarrisonUI', function()
+		local missionFrames = {}
+		hooksecurefunc(GarrisonMission, 'OnShowMainFrame', function (self)
+			if missionFrames[self] == nil then
+				-- Ensure we only initialize once.
+				missionFrames[self] = self.followerTypeID
+
+				GarrisonThreatCounterSummary(self)
+			end
+		end)
 	end)
 
 	addon:LoadWith('Bazooka', function()
@@ -563,6 +569,12 @@ function plugin:OnEnable()
 				end
 			end
 		end)
+	end)
+
+	addon:LoadWith('Dominos_Cast', function()
+		local plugin = LibStub('AceAddon-3.0'):GetAddon('Dominos'):GetModule('CastBar')
+		local frame = plugin.frame
+		local targetCast = frame:New('ctarget', 'target')
 	end)
 
 	addon:LoadWith('Squeenix', function()
@@ -583,18 +595,6 @@ function plugin:OnEnable()
 			local zoneTextHeight = _G.MinimapZoneTextButton:IsVisible() and _G.MinimapZoneTextButton:GetHeight() + 5 or 0
 			if point == 'CENTER' then
 				_G.Minimap:SetPoint('CENTER', db.anchorframe or 'MinimapCluster', db.anchor or 'TOP', db.x or 9, (db.y or -92) + newYOffset + zoneTextHeight)
-			end
-		end)
-	end)
-
-	addon:LoadWith('Blizzard_GarrisonUI', function()
-		local missionFrames = {}
-		hooksecurefunc(GarrisonMission, 'OnShowMainFrame', function (self)
-			if missionFrames[self] == nil then
-				-- Ensure we only initialize once.
-				missionFrames[self] = self.followerTypeID
-
-				GarrisonThreatCounterSummary(self)
 			end
 		end)
 	end)
