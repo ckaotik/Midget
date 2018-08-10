@@ -548,12 +548,11 @@ function plugin:OnEnable()
 	addon:LoadWith('Blizzard_GarrisonUI', function()
 		local missionFrames = {}
 		hooksecurefunc(GarrisonMission, 'OnShowMainFrame', function (self)
-			if missionFrames[self] == nil then
-				-- Ensure we only initialize once.
-				missionFrames[self] = self.followerTypeID
+			-- Ensure we only initialize once.
+			if missionFrames[self] then return end
+			missionFrames[self] = true
 
-				GarrisonThreatCounterSummary(self)
-			end
+			GarrisonThreatCounterSummary(self)
 		end)
 	end)
 
