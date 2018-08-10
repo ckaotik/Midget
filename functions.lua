@@ -519,18 +519,20 @@ function plugin:OnEnable()
 		end
 	end)
 
-	-- SLASH_ROLECHECK1 = "/rolecheck"
-	-- SlashCmdList.ROLECHECK = InitiateRolePoll
-
 	-- don't add spacing for closing 'x'
 	ItemRefTooltip:SetPadding(0, 0)
 
-	-- guild news tab: allow hyperlink interaction
-	addon:LoadWith('Blizzard_GuildUI', function()
+	-- SLASH_ROLECHECK1 = "/rolecheck"
+	-- SlashCmdList.ROLECHECK = InitiateRolePoll
+
+	-- Guild News: Allow hyperlink interaction.
+	addon:LoadWith('Blizzard_Communities', function()
 		local NEWS_GUILD_ACHIEVEMENT, NEWS_PLAYER_ACHIEVEMENT, NEWS_DUNGEON_ENCOUNTER = 0, 1, 2
 		local NEWS_ITEM_LOOTED, NEWS_ITEM_CRAFTED, NEWS_ITEM_PURCHASED = 3, 4, 5
-		hooksecurefunc('GuildNewsButton_OnClick', function(self, btn)
+
+		hooksecurefunc('CommunitiesGuildNewsButton_OnClick', function(self, btn)
 			if btn ~= 'LeftButton' or not IsModifiedClick() then return end
+
 			if self.newsType == NEWS_ITEM_LOOTED or self.newsType == NEWS_ITEM_CRAFTED or self.newsType == NEWS_ITEM_PURCHASED then
 				local _, _, _, _, itemLink = GetGuildNewsInfo(self.index)
 				HandleModifiedItemClick(itemLink)
@@ -539,7 +541,6 @@ function plugin:OnEnable()
 				HandleModifiedItemClick(GetAchievementLink(achievementID))
 			elseif self.newsType == NEWS_DUNGEON_ENCOUNTER then
 				local _, _, _, _, encounterName, encounterID, instanceMapID, displayID = GetGuildNewsInfo(self.index)
-				-- GetGuildNewsInfo(34) => false, false, 2, "Entropie", "Die Eisernen Jungfern", 1695, 1205, 53876, 4, 18, 2, 15, 0
 			end
 		end)
 	end)
