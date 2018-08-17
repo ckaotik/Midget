@@ -1,12 +1,11 @@
-local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 20
+local MAJOR, MINOR = 'LibOptionsGenerate-1.0', 24
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
 -- GLOBALS: _G, type, pairs, ipairs, wipe, strsplit
 local SharedMedia = LibStub('LibSharedMedia-3.0', true)
 
--- TODO: race, realm, faction, factionrealm is not yet supported
-local AceDBScopes = { 'global', 'profile', 'char', 'class', a = 'race', b = 'realm', c = 'faction', d = 'factionrealm' }
+local AceDBScopes = {'global', 'profile', 'char', 'realm', 'factionrealm', 'faction', 'class', 'race'}
 local AceDBExcludes = {'sv', 'callbacks', 'children', 'parent', 'keys', 'profiles', 'defaults'}
 local emptyTable = {}
 
@@ -92,18 +91,35 @@ local function SetColorSetting(info, r, g, b, a)
 	color[1], color[2], color[3], color[4] = r, g, b, a
 	set(info, color)
 end
-local function GetPercentSetting(info)        local get = GetAncestorProperty(info, 'get'); return get(info) * 100 end
-local function SetPercentSetting(info, value) local set = GetAncestorProperty(info, 'set'); set(info, value/100) end
-local function GetNumberSetting(info)         local get = GetAncestorProperty(info, 'get'); return tostring(get(info)) end
-local function SetNumberSetting(info, value)  local set = GetAncestorProperty(info, 'set'); set(info, tonumber(value)) end
-local function GetMultiSelectSetting(info, key) local get = GetAncestorProperty(info, 'get'); return get(info)[key] end
+local function GetPercentSetting(info)
+	local get = GetAncestorProperty(info, 'get')
+	return get(info) * 100
+end
+local function SetPercentSetting(info, value)
+	local set = GetAncestorProperty(info, 'set')
+	set(info, value/100)
+end
+local function GetNumberSetting(info)
+	local get = GetAncestorProperty(info, 'get')
+	return tostring(get(info))
+end
+local function SetNumberSetting(info, value)
+	local set = GetAncestorProperty(info, 'set')
+	set(info, tonumber(value))
+end
+local function GetMultiSelectSetting(info, key)
+	local get = GetAncestorProperty(info, 'get')
+	return get(info)[key]
+end
 local function SetMultiSelectSetting(info, key, value)
 	-- we get the container table and then set the specific value
 	local get = GetAncestorProperty(info, 'get')
 	get(info)[key] = value
 end
 
-local function GetTableFromList(dataString, seperator) return { strsplit(seperator, dataString) } end
+local function GetTableFromList(dataString, seperator)
+	return { strsplit(seperator, dataString) }
+end
 local function GetListFromTable(dataTable, seperator)
 	local output = ''
 	for _, value in pairs(dataTable) do
@@ -111,13 +127,30 @@ local function GetListFromTable(dataTable, seperator)
 	end
 	return output
 end
-local function GetListSetting(info) return GetListFromTable(info.options.args[ info[1] ].get(info), '\n') end
-local function SetListSetting(info, value) info.options.args[ info[1] ].set(info, GetTableFromList(value, '\n')) end
+local function GetListSetting(info)
+	local get = GetAncestorProperty(info, 'get')
+	return GetListFromTable(get(info), '\n')
+end
+local function SetListSetting(info, value)
+	local set = GetAncestorProperty(info, 'set')
+	set(info, GetTableFromList(value, '\n'))
+end
 
 local function Widget(key, option, widgetInfo)
-	local widget, widgetType
+	-- trigger callback
+	if type(widgetInfo) == 'function' then
+		widgetInfo = widgetInfo(key, option)
+		if type(widgetInfo) == 'table' and widgetInfo.type then
+			return widgetInfo
+		end
+	end
+
+	local widget
 	key = tostring(key):lower()
-	widgetType = widgetInfo and type(widgetInfo) == 'string' and widgetInfo:lower() or key
+	local widgetType = key
+	if type(widgetInfo) == 'string' then
+		widgetType = widgetInfo:lower()
+	end
 
 	-- detect multiselect table structures
 	if type(option) == 'table' and next(option) then
@@ -351,50 +384,49 @@ local function ParseOption(key, option, L, typeMappings, path)
 				widget.values[k] = nil
 				widget.values[key] = value
 			end
+		elseif type(valuesHandler) == 'table' then
+			for k, v in pairs(widget.values) do
+				widget.values[k] = valuesHandler[k] or v
+			end
 		end
 	end
 
 	return widget
 end
 
-local function AddScopeHeaders(optionsTable)
-	-- TODO: also available: race, realm, faction, factionrealm (disabled in AceDBScopes table)
-	local playerName, playerRealm = UnitFullName('player')
+local function GetScopeLabel(scope)
+	local character, realm = UnitFullName('player')
 	local className, class = UnitClass('player')
+	local classColor = (_G.CUSTOM_CLASS_COLORS or _G.RAID_CLASS_COLORS)[class].colorStr
+	local faction = UnitFactionGroup('player')
 
-	local lastScope, hasMultipleScopes = nil, false
-	for weight, scope in ipairs(AceDBScopes) do
-		if optionsTable.args[scope] then
-			if lastScope then hasMultipleScopes = true end
-			lastScope = scope
-
-			optionsTable.args[scope..'Header'] = {
-				type = 'header',
-				name = scope:gsub('^.', string.upper)..' Settings',
-				order = weight*10 - 1,
-			}
-			optionsTable.args[scope].order = weight*10
-			optionsTable.args[scope].name = ''
-
-			if scope == 'char' then
-				optionsTable.args[scope..'Header'].name = ('Settings for |c%s%s-%s|r'):format((CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS)[class].colorStr, playerName, playerRealm)
-			elseif scope == 'class' then
-				optionsTable.args[scope..'Header'].name = ('Settings for |c%s%s|r'):format((CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS)[class].colorStr, className)
-			end
-		end
+	local label = ('%s Settings'):format(scope:gsub('^.', string.upper))
+	if scope == 'char' then
+		label = ('Settings for |c%s%s-%s|r'):format(classColor, character, realm)
+	elseif scope == 'class' then
+		label = ('Settings for |c%s%s|r'):format(classColor, className)
+	elseif scope == 'faction' then
+		local factionColor = faction == 'Alliance' and BATTLENET_FONT_COLOR_CODE or RED_FONT_COLOR_CODE
+		label = ('Settings for %s%s|r'):format(factionColor, faction)
+	elseif scope == 'realm' then
+		label = ('Settings for %s'):format(realm)
+	elseif scope == 'factionrealm' then
+		label = ('Settings for %s (%s)'):format(realm, faction)
+	elseif scope == 'race' then
+		local race = UnitRace('player')
+		label = ('Settings for %s'):format(race)
 	end
-
-	if not hasMultipleScopes and lastScope then
-		-- don't show header for single scope
-		optionsTable.args[lastScope..'Header'] = nil
-	end
+	return label
 end
 
-local function AddNamespaces(optionsTable, variable, L, typeMappings)
+local function AddNamespaces(optionsTable, variable, L, typeMappings, callback)
 	for namespace, options in pairs(variable.children or emptyTable) do
 		-- we need to access different data
 		local get = function(info) return GetSettingDefault(info, options) end
-		local set = function(info, value) return SetSettingDefault(info, value, options) end
+		local set = function(info, value)
+			SetSettingDefault(info, value, options)
+			if callback then callback(info, value, options) end
+		end
 		for scope in pairs(options.defaults or emptyTable) do
 			-- note: this will create empty groups when empty defaults are defined
 			local key = scope .. '_' .. namespace
@@ -421,9 +453,12 @@ local function AddNamespaces(optionsTable, variable, L, typeMappings)
 	end
 end
 
-function lib:GetOptionsTable(variable, typeMappings, L, includeNamespaces)
+function lib:GetOptionsTable(variable, typeMappings, L, includeNamespaces, callback)
 	if type(variable) == 'string' then
 		variable = GetVariableFromPath(variable)
+	end
+	if type(callback) ~= 'function' then
+		callback = nil
 	end
 
 	local optionsTable = {
@@ -431,7 +466,10 @@ function lib:GetOptionsTable(variable, typeMappings, L, includeNamespaces)
 		type = 'group',
 		args = {},
 		get = function(info) return GetSettingDefault(info, variable or info[1]) end,
-		set = function(info, value) return SetSettingDefault(info, value, variable or info[1]) end,
+		set = function(info, value)
+			SetSettingDefault(info, value, variable or info[1])
+			if callback then callback(info, value, variable or info[1]) end
+		end,
 	}
 
 	local isAceDB = variable.sv and variable.defaults
@@ -450,10 +488,35 @@ function lib:GetOptionsTable(variable, typeMappings, L, includeNamespaces)
 
 	if isAceDB then
 		if includeNamespaces then
-			-- add namespace settings to core addon's scopes
-			AddNamespaces(optionsTable, variable, L, typeMappings)
+			-- Add namespace settings to core addon's scopes.
+			AddNamespaces(optionsTable, variable, L, typeMappings, callback)
 		end
-		AddScopeHeaders(optionsTable)
+
+		local lastScope, numScopes = nil, 0
+		for weight, scope in ipairs(AceDBScopes) do
+			if optionsTable.args[scope] then
+				if not next(optionsTable.args[scope].args) then
+					-- Remove empty scopes.
+					optionsTable.args[scope] = nil
+				else
+					-- Add scope header.
+					optionsTable.args[scope..'Header'] = {
+						type = 'header',
+						name = GetScopeLabel(scope),
+						order = weight*10 - 1,
+					}
+					optionsTable.args[scope].order = weight*10
+					optionsTable.args[scope].name = ''
+
+					numScopes = numScopes + 1
+					lastScope = scope
+				end
+			end
+		end
+		if numScopes < 2 and lastScope then
+			-- Don't show header for single scope.
+			optionsTable.args[lastScope..'Header'] = nil
+		end
 	end
 	return optionsTable
 end
